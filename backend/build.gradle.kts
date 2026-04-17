@@ -30,14 +30,18 @@ dependencies {
     implementation("org.springframework.modulith:spring-modulith-starter-core")
     implementation("org.springframework.modulith:spring-modulith-starter-jpa")
 
+    // db
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
+
     // jwt
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
 
     // querydsl
-    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
-    annotationProcessor("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    implementation("io.github.openfeign.querydsl:querydsl-core:6.11")
+    implementation("io.github.openfeign.querydsl:querydsl-jpa:6.11")
+    annotationProcessor("io.github.openfeign.querydsl:querydsl-apt:6.11:jpa")
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 
