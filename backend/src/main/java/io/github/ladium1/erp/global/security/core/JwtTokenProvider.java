@@ -33,11 +33,9 @@ public class JwtTokenProvider {
     // 토큰 생성
     public String createToken(String userId, String role) {
         Date now = new Date();
-        // minutes -> ms
         long validityInMilliseconds = this.validityInMinutes * 60 * 1000;
         Date validity = new Date(now.getTime() + validityInMilliseconds);
 
-        // "ROLE_" 접두사 처리 내장
         String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
 
         return Jwts.builder()
@@ -58,7 +56,7 @@ public class JwtTokenProvider {
         return new UsernamePasswordAuthenticationToken(principal, token, principal.getAuthorities());
     }
 
-    // 토큰 유효성 검증
+    // 유효성 검증
     public boolean validateToken(String token) {
         try {
             getClaims(token);
