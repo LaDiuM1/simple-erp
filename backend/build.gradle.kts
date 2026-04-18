@@ -45,9 +45,12 @@ dependencies {
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 
-    // lombok
+    // lombok & mapstruct
+    implementation("org.mapstruct:mapstruct:1.5.5.Final")
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
+    annotationProcessor("org.mapstruct:mapstruct-processor:1.5.5.Final")
 
     // test
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
