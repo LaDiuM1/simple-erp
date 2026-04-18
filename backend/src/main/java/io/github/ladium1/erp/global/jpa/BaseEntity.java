@@ -1,4 +1,4 @@
-package io.github.ladium1.erp.global.entity;
+package io.github.ladium1.erp.global.jpa;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

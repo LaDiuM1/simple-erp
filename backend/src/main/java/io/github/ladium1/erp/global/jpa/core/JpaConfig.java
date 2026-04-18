@@ -1,4 +1,4 @@
-package io.github.ladium1.erp.global.config;
+package io.github.ladium1.erp.global.jpa.core;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;

@@ -1,6 +1,6 @@
 package io.github.ladium1.erp.members.internal.entity;
 
-import io.github.ladium1.erp.global.entity.BaseEntity;
+import io.github.ladium1.erp.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
