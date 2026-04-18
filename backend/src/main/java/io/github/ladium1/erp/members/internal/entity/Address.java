@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.members.internal.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -11,11 +12,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Address {
 
-    // 우편번호
+    @Column(comment = "우편번호")
     private String zipCode;
-    // 기본 주소
+
+    @Column(comment = "기본 주소")
     private String roadAddress;
-    // 상세 주소
+
+    @Column(comment = "상세 주소")
     private String detailAddress;
 
     @Builder

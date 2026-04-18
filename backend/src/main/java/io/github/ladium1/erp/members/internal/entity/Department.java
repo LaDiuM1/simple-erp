@@ -15,15 +15,18 @@ public class Department extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    // 부서 코드
-    @Column(nullable = false, unique = true)
+
+    @Column(nullable = false, unique = true,
+            comment = "부서 코드")
     private String code;
-    // 부서명
-    @Column(nullable = false)
+
+    @Column(nullable = false,
+            comment = "부서명")
     private String name;
-    // 계층형 상위 부서
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
+    @JoinColumn(name = "parent_id",
+            comment = "상위 부서 외래키")
     private Department parent;
 
 }

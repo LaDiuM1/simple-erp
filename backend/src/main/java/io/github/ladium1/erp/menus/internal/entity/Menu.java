@@ -17,16 +17,20 @@ public class Menu {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    // 메뉴명(도메인명)
-    @Column(nullable = false)
+
+    @Column(nullable = false,
+            comment = "메뉴명")
     private String name;
-    // 접근 관리 주소, 최상위 카테고리 시 null
-    @Column(nullable = true)
+
+    @Column(comment = "접근 관리 주소")
     private String url;
-    // 메뉴 순서(동일 레벨 기준)
+
+    @Column(comment = "메뉴 순서, 부모 기준으로 1부터 시작")
     private int sortOrder;
-    // 계층 레벨, 자동 계산
+
+    @Column(comment = "계층 레벨, 1부터 시작")
     private int level;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Menu parent;

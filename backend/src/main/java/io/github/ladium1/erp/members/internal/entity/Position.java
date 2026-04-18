@@ -15,14 +15,17 @@ public class Position extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    // 직책 코드
-    @Column(nullable = false, unique = true)
+
+    @Column(nullable = false, unique = true,
+            comment = "직책 코드")
     private String code;
-    // 직책명
-    @Column(nullable = false)
+
+    @Column(nullable = false,
+            comment = "직책명")
     private String name;
-    // 직책 서열, 오름차순
-    @Column(nullable = false)
+
+    @Column(nullable = false,
+            comment = "직책 서열")
     private int rankLevel;
 
 }

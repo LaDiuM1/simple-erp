@@ -18,39 +18,50 @@ public class Member extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    // 로그인 id
-    @Column(nullable = false, unique = true)
+
+    @Column(nullable = false, unique = true,
+            comment = "로그인 id")
     private String loginId;
-    // 비밀번호 (BCrypt)
-    @Column(nullable = false)
+
+    @Column(nullable = false,
+            comment = "비밀번호")
     private String password;
-    // 직원명
-    @Column(nullable = false)
+
+    @Column(nullable = false,
+            comment = "직원명")
     private String name;
-    // 거주지 주소
+
     @Embedded
+    @Column(comment = "거주지 주소")
     private Address address;
-    // 입사일
+
+    @Column(comment = "입사일")
     private LocalDate joinDate;
-    // 이메일 주소
+
+    @Column(comment = "이메일 주소")
     private String email;
-    // 연락처
+
+    @Column(comment = "연락처")
     private String phone;
-    // 재직 상태
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false,
+            comment = "재직 상태")
     private MemberStatus status;
-    // 역할(시스템 권한)
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id")
+    @JoinColumn(name = "role_id",
+            comment = "역할 외래키")
     private Role role;
-    // 부서
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id")
+    @JoinColumn(name = "department_id",
+            comment = "부서 외래키")
     private Department department;
-    // 직책
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "position_id")
+    @JoinColumn(name = "position_id",
+            comment = "직책 외래키")
     private Position position;
 
     @Builder
