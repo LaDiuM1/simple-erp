@@ -56,6 +56,9 @@ dependencies {
     // test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("org.springframework.boot:spring-boot-test-autoconfigure")
+    testImplementation("org.springframework.boot:spring-boot-starter-json")
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.modulith:spring-modulith-starter-test")
     testCompileOnly("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
