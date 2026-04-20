@@ -62,7 +62,7 @@ public class SecurityConfig {
 
                 // 전역 권한 설정 (세부 권한은 컨트롤러 위임)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/*/auth/**").permitAll()
                         .anyRequest().authenticated()
                 )
 

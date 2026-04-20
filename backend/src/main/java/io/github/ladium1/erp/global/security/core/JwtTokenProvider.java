@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.global.security.core;
 
+import io.github.ladium1.erp.global.security.TokenProvider;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -17,7 +18,7 @@ import java.util.Date;
 
 @Slf4j
 @Component
-public class JwtTokenProvider {
+public class JwtTokenProvider implements TokenProvider {
 
     private final SecretKey key;
     private final long validityInMinutes;
@@ -31,6 +32,7 @@ public class JwtTokenProvider {
     }
 
     // 토큰 생성
+    @Override
     public String createToken(String userId, String role) {
         Date now = new Date();
         long validityInMilliseconds = this.validityInMinutes * 60 * 1000;
@@ -47,7 +49,8 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    // 인증 정보 추출
+    // 인증 정보 반환
+    @Override
     public Authentication getAuthentication(String token) {
         Claims claims = getClaims(token);
         String role = claims.get("role", String.class);
@@ -57,6 +60,7 @@ public class JwtTokenProvider {
     }
 
     // 유효성 검증
+    @Override
     public boolean validateToken(String token) {
         try {
             getClaims(token);

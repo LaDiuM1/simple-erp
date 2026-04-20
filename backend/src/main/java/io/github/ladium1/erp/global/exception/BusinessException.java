@@ -3,7 +3,7 @@ package io.github.ladium1.erp.global.exception;
 import lombok.Getter;
 
 @Getter
-public abstract class BusinessException extends RuntimeException {
+public class BusinessException extends RuntimeException {
 
     private final ErrorCode errorCode;
 
