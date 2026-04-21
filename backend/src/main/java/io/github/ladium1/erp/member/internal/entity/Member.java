@@ -54,10 +54,9 @@ public class Member extends BaseEntity {
             comment = "역할 외래키")
     private Role role;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id",
-            comment = "부서 외래키")
-    private Department department;
+    @Column(name = "department_id",
+            comment = "부서 식별자")
+    private Long departmentId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "position_id",
@@ -74,7 +73,7 @@ public class Member extends BaseEntity {
            LocalDate joinDate,
            MemberStatus status,
            Role role,
-           Department department,
+           Long departmentId,
            Position position) {
         this.loginId = loginId;
         this.password = password;
@@ -85,7 +84,7 @@ public class Member extends BaseEntity {
         this.joinDate = joinDate;
         this.status = status;
         this.role = role;
-        this.department = department;
+        this.departmentId = departmentId;
         this.position = position;
     }
 }
