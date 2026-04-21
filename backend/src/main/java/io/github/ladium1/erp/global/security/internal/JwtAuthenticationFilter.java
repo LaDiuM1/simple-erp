@@ -1,4 +1,4 @@
-package io.github.ladium1.erp.global.security.core;
+package io.github.ladium1.erp.global.security.internal;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

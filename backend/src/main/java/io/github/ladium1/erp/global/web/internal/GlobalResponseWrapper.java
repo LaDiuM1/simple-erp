@@ -1,6 +1,6 @@
-package io.github.ladium1.erp.global.api.core;
+package io.github.ladium1.erp.global.web.internal;
 
-import io.github.ladium1.erp.global.api.ApiResponse;
+import io.github.ladium1.erp.global.web.ApiResponse;
 import org.jspecify.annotations.NonNull;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;

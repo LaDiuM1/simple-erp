@@ -1,4 +1,4 @@
-package io.github.ladium1.erp.global.security.core;
+package io.github.ladium1.erp.global.security.internal;
 
 import io.github.ladium1.erp.global.security.TokenProvider;
 import io.jsonwebtoken.*;

@@ -1,4 +1,4 @@
-package io.github.ladium1.erp.global.api;
+package io.github.ladium1.erp.global.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

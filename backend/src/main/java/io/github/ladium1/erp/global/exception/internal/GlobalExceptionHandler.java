@@ -1,6 +1,6 @@
-package io.github.ladium1.erp.global.exception.core;
+package io.github.ladium1.erp.global.exception.internal;
 
-import io.github.ladium1.erp.global.api.ApiResponse;
+import io.github.ladium1.erp.global.web.ApiResponse;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;

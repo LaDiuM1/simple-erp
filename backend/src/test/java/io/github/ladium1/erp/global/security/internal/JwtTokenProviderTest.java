@@ -1,4 +1,4 @@
-package io.github.ladium1.erp.global.security.core;
+package io.github.ladium1.erp.global.security.internal;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

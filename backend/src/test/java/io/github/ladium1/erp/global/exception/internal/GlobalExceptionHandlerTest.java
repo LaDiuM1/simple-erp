@@ -1,4 +1,4 @@
-package io.github.ladium1.erp.global.exception.core;
+package io.github.ladium1.erp.global.exception.internal;
 
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.exception.ErrorCode;
