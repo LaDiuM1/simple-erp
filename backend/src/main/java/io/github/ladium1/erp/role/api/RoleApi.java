@@ -1,4 +1,7 @@
-package io.github.ladium1.erp.role;
+package io.github.ladium1.erp.role.api;
+
+import io.github.ladium1.erp.role.api.dto.RoleCreateRequest;
+import io.github.ladium1.erp.role.api.dto.RoleInfo;
 
 import java.util.List;
 import java.util.Optional;

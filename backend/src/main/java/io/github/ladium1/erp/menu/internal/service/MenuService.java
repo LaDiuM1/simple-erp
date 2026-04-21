@@ -1,7 +1,7 @@
-package io.github.ladium1.erp.menu.service;
+package io.github.ladium1.erp.menu.internal.service;
 
-import io.github.ladium1.erp.menu.MenuApi;
-import io.github.ladium1.erp.menu.MenuInfo;
+import io.github.ladium1.erp.menu.api.MenuApi;
+import io.github.ladium1.erp.menu.api.dto.MenuInfo;
 import io.github.ladium1.erp.menu.internal.mapper.MenuMapper;
 import io.github.ladium1.erp.menu.internal.repository.MenuRepository;
 import lombok.RequiredArgsConstructor;

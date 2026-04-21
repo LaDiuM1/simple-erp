@@ -1,9 +1,9 @@
 package io.github.ladium1.erp.role.internal.service;
 
 import io.github.ladium1.erp.global.exception.BusinessException;
-import io.github.ladium1.erp.role.RoleApi;
-import io.github.ladium1.erp.role.RoleCreateRequest;
-import io.github.ladium1.erp.role.RoleInfo;
+import io.github.ladium1.erp.role.api.RoleApi;
+import io.github.ladium1.erp.role.api.dto.RoleCreateRequest;
+import io.github.ladium1.erp.role.api.dto.RoleInfo;
 import io.github.ladium1.erp.role.internal.entity.Role;
 import io.github.ladium1.erp.role.internal.entity.RoleMenu;
 import io.github.ladium1.erp.role.internal.exception.RoleErrorCode;

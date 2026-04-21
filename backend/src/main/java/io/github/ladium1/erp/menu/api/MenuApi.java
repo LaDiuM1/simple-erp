@@ -1,4 +1,6 @@
-package io.github.ladium1.erp.menu;
+package io.github.ladium1.erp.menu.api;
+
+import io.github.ladium1.erp.menu.api.dto.MenuInfo;
 
 import java.util.List;
 
