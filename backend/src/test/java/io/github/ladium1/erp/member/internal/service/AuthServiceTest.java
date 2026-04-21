@@ -55,7 +55,7 @@ class AuthServiceTest {
                 .roleId(1L)
                 .build();
 
-        given(memberRepository.findForLoginByLoginId(TEST_ID)).willReturn(Optional.of(member));
+        given(memberRepository.findNotResignedByLoginId(TEST_ID)).willReturn(Optional.of(member));
         given(passwordEncoder.matches(TEST_PASSWORD, member.getPassword())).willReturn(true);
         given(roleApi.getById(member.getRoleId())).willReturn(roleInfo);
         given(tokenProvider.createToken(TEST_ID, roleInfo.code())).willReturn("mock.jwt.token");
@@ -73,7 +73,7 @@ class AuthServiceTest {
     void login_fail_member_not_found() {
         // given
         LoginRequest request = new LoginRequest(TEST_ID, TEST_PASSWORD);
-        given(memberRepository.findForLoginByLoginId(TEST_ID)).willReturn(Optional.empty());
+        given(memberRepository.findNotResignedByLoginId(TEST_ID)).willReturn(Optional.empty());
 
         // when & then
         BusinessException exception = assertThrows(BusinessException.class, () -> authService.login(request));
@@ -90,7 +90,7 @@ class AuthServiceTest {
                 .password("encodedPassword")
                 .build();
 
-        given(memberRepository.findForLoginByLoginId(TEST_ID)).willReturn(Optional.of(member));
+        given(memberRepository.findNotResignedByLoginId(TEST_ID)).willReturn(Optional.of(member));
         given(passwordEncoder.matches(TEST_PASSWORD, member.getPassword())).willReturn(false);
 
         // when & then

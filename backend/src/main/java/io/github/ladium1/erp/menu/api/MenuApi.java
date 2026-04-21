@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.menu.api;
 
 import io.github.ladium1.erp.menu.api.dto.MenuInfo;
+import io.github.ladium1.erp.menu.internal.entity.Menu;
 
 import java.util.List;
 
@@ -10,4 +11,7 @@ public interface MenuApi {
      */
     List<MenuInfo> getAllMenus();
 
+    MenuInfo getById(Long id);
+
+    List<MenuInfo> getByIds(List<Long> ids);
 }

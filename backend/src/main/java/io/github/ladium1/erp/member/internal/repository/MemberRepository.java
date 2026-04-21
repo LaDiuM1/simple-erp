@@ -14,7 +14,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
            where m.loginId = :loginId
            and m.status != MemberStatus.RESIGNED
            """)
-    Optional<Member> findForLoginByLoginId(String loginId);
+    Optional<Member> findNotResignedByLoginId(String loginId);
+
+    Optional<Member> findByLoginId(String loginId);
+
     boolean existsByLoginId(String loginId);
 
 }

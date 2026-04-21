@@ -25,7 +25,7 @@ public class AuthService {
     private final TokenProvider tokenProvider;
 
     public TokenResponse login(LoginRequest request) {
-        Member member = memberRepository.findForLoginByLoginId(request.loginId())
+        Member member = memberRepository.findNotResignedByLoginId(request.loginId())
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
 
         if (!passwordEncoder.matches(request.password(), member.getPassword())) {

@@ -19,12 +19,12 @@ public class RoleMenu extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false,
-            comment = "권한")
+            comment = "권한 외래키")
     private Role role;
 
     // 메뉴 수정 시 이벤트 리스너 기반 자동 관리
     @Column(nullable = false,
-            comment = "메뉴 id")
+            comment = "메뉴 식별자")
     private Long menuId;
 
     @Column(comment = "읽기 권한")

@@ -19,6 +19,11 @@ public class Menu {
     private Long id;
 
     @Column(nullable = false,
+            unique = true,
+            comment = "메뉴 코드")
+    private String code;
+
+    @Column(nullable = false,
             comment = "메뉴명")
     private String name;
 

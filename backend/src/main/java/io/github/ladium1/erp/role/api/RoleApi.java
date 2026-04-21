@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.role.api;
 
+import io.github.ladium1.erp.role.api.dto.MenuPermission;
 import io.github.ladium1.erp.role.api.dto.RoleCreateRequest;
 import io.github.ladium1.erp.role.api.dto.RoleInfo;
 
@@ -21,10 +22,15 @@ public interface RoleApi {
     /**
      * 권한 생성
      */
-    RoleInfo createRole(RoleCreateRequest request);    /**
+    RoleInfo createRole(RoleCreateRequest request);
 
-     *
+    /**
      * 특정 권한에 대해 주어진 메뉴에 대한 읽기, 쓰기 권한 할당
      */
     void assignMenuPermissions(Long roleId, List<Long> menuIds);
+
+    /**
+     * 권한 id로 권한에 대한 메뉴 권한 반환
+     */
+    List<MenuPermission> getMenuPermissionsByRoleId(Long roleId);
 }
