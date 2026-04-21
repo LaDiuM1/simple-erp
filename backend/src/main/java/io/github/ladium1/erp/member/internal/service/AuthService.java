@@ -7,6 +7,8 @@ import io.github.ladium1.erp.member.internal.dto.TokenResponse;
 import io.github.ladium1.erp.member.internal.entity.Member;
 import io.github.ladium1.erp.member.internal.exception.MemberErrorCode;
 import io.github.ladium1.erp.member.internal.repository.MemberRepository;
+import io.github.ladium1.erp.role.RoleApi;
+import io.github.ladium1.erp.role.RoleInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final MemberRepository memberRepository;
+    private final RoleApi roleApi;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
 
@@ -29,7 +32,8 @@ public class AuthService {
             throw new BusinessException(MemberErrorCode.INVALID_PASSWORD);
         }
 
-        String token = tokenProvider.createToken(member.getLoginId(), member.getRole().getCode());
+        RoleInfo memberRoleInfo = roleApi.getById(member.getRoleId());
+        String token = tokenProvider.createToken(member.getLoginId(), memberRoleInfo.code());
 
         return new TokenResponse(token);
     }

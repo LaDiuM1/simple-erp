@@ -5,9 +5,10 @@ import io.github.ladium1.erp.global.security.TokenProvider;
 import io.github.ladium1.erp.member.internal.dto.LoginRequest;
 import io.github.ladium1.erp.member.internal.dto.TokenResponse;
 import io.github.ladium1.erp.member.internal.entity.Member;
-import io.github.ladium1.erp.member.internal.entity.Role;
 import io.github.ladium1.erp.member.internal.exception.MemberErrorCode;
 import io.github.ladium1.erp.member.internal.repository.MemberRepository;
+import io.github.ladium1.erp.role.RoleApi;
+import io.github.ladium1.erp.role.RoleInfo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,9 @@ class AuthServiceTest {
     private MemberRepository memberRepository;
 
     @Mock
+    private RoleApi roleApi;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -44,20 +48,17 @@ class AuthServiceTest {
     void login_success() {
         // given
         LoginRequest request = new LoginRequest(TEST_ID, TEST_PASSWORD);
-        Role role = Role.builder()
-                .code("USER")
-                .name("일반사원")
-                .build();
-
+        RoleInfo roleInfo = new RoleInfo(1L, "USER", "일반사원", "설명");
         Member member = Member.builder()
                 .loginId(TEST_ID)
                 .password("encodedPassword")
-                .role(role)
+                .roleId(1L)
                 .build();
 
         given(memberRepository.findForLoginByLoginId(TEST_ID)).willReturn(Optional.of(member));
         given(passwordEncoder.matches(TEST_PASSWORD, member.getPassword())).willReturn(true);
-        given(tokenProvider.createToken(TEST_ID, "USER")).willReturn("mock.jwt.token");
+        given(roleApi.getById(member.getRoleId())).willReturn(roleInfo);
+        given(tokenProvider.createToken(TEST_ID, roleInfo.code())).willReturn("mock.jwt.token");
 
         // when
         TokenResponse response = authService.login(request);

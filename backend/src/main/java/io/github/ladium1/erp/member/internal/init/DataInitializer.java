@@ -2,12 +2,12 @@ package io.github.ladium1.erp.member.internal.init;
 
 import io.github.ladium1.erp.member.internal.entity.Member;
 import io.github.ladium1.erp.member.internal.entity.MemberStatus;
-import io.github.ladium1.erp.member.internal.entity.Role;
-import io.github.ladium1.erp.member.internal.entity.RoleMenu;
 import io.github.ladium1.erp.member.internal.repository.MemberRepository;
-import io.github.ladium1.erp.member.internal.repository.RoleMenuRepository;
-import io.github.ladium1.erp.member.internal.repository.RoleRepository;
 import io.github.ladium1.erp.menu.MenuApi;
+import io.github.ladium1.erp.menu.MenuInfo;
+import io.github.ladium1.erp.role.RoleApi;
+import io.github.ladium1.erp.role.RoleCreateRequest;
+import io.github.ladium1.erp.role.RoleInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
@@ -19,7 +19,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @Slf4j
 @Component
@@ -27,11 +26,9 @@ import java.util.List;
 public class DataInitializer implements ApplicationRunner {
 
     private final MemberRepository memberRepository;
-    private final RoleRepository roleRepository;
-    private final RoleMenuRepository roleMenuRepository;
-    private final PasswordEncoder passwordEncoder;
-
+    private final RoleApi roleApi;
     private final MenuApi menuApi;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${app.admin-login-id}")
     private String adminLoginId;
@@ -50,13 +47,25 @@ public class DataInitializer implements ApplicationRunner {
 
         log.info("최초 관리자 계정 초기화 시작");
 
-        // 2. MASTER 권한 조회 또는 생성
-        Role masterRole = roleRepository.findByCode("MASTER")
+        // 2. 관리자 권한 조회 후 없으면 생성
+        RoleInfo masterRole = roleApi.findByCode("MASTER")
                 .orElseGet(() -> {
-                    Role newRole = roleRepository.save(
-                            Role.builder().code("MASTER").name("관리자").build()
+                    // 관리자 권한 생성
+                    RoleInfo newRole = roleApi.createRole(RoleCreateRequest.builder()
+                            .code("MASTER")
+                            .name("관리자")
+                            .description("시스템 전체 관리 권한")
+                            .build());
+
+                    // 관리자 계정에 모든 메뉴의 권한 할당
+                    roleApi.assignMenuPermissions(
+                            newRole.id(),
+                            menuApi.getAllMenus()
+                                    .stream()
+                                    .map(MenuInfo::id)
+                                    .toList()
                     );
-                    initMasterPermissions(newRole);
+
                     return newRole;
                 });
 
@@ -67,23 +76,9 @@ public class DataInitializer implements ApplicationRunner {
                 .name("관리자")
                 .joinDate(LocalDate.now())
                 .status(MemberStatus.ACTIVE)
-                .role(masterRole)
+                .roleId(masterRole.id())
                 .build());
 
         log.info("관리자 계정 생성 완료");
     }
-
-    private void initMasterPermissions(Role role) {
-        List<RoleMenu> roleMenus = menuApi.getAllMenus().stream()
-                .map(menu -> RoleMenu.builder()
-                        .menuId(menu.id())
-                        .role(role)
-                        .canRead(true)
-                        .canWrite(true)
-                        .build())
-                .toList();
-
-        roleMenuRepository.saveAll(roleMenus);
-    }
-
 }
