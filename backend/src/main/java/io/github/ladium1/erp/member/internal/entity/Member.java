@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.member.internal.entity;
 
 import io.github.ladium1.erp.global.jpa.BaseEntity;
+import io.github.ladium1.erp.position.internal.Position;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -58,10 +59,9 @@ public class Member extends BaseEntity {
             comment = "부서 식별자")
     private Long departmentId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "position_id",
-            comment = "직책 외래키")
-    private Position position;
+            comment = "직책 식별자")
+    private Long positionId;
 
     @Builder
     Member(String loginId,
@@ -74,7 +74,7 @@ public class Member extends BaseEntity {
            MemberStatus status,
            Role role,
            Long departmentId,
-           Position position) {
+           Long positionId) {
         this.loginId = loginId;
         this.password = password;
         this.name = name;
@@ -85,6 +85,6 @@ public class Member extends BaseEntity {
         this.status = status;
         this.role = role;
         this.departmentId = departmentId;
-        this.position = position;
+        this.positionId = positionId;
     }
 }

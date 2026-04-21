@@ -1,4 +1,4 @@
-package io.github.ladium1.erp.member.internal.entity;
+package io.github.ladium1.erp.position.internal;
 
 import io.github.ladium1.erp.global.jpa.BaseEntity;
 import jakarta.persistence.*;
