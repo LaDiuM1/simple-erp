@@ -1,20 +1,40 @@
-import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import * as React from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
 import Typography from '@mui/material/Typography';
-import { useAppSelector } from '@/app/hooks';
-import { FormField, LoginCard, LoginContainer, LogoBox, StyledInput } from './LoginPage.styles';
+import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { useLoginMutation } from '@/features/auth/api/authApi';
+import { setToken } from '@/features/auth/store/authSlice';
+import type { ApiError } from '@/shared/types/api';
+import { ErrorBox, FormField, LoginCard, LoginContainer, LogoBox, StyledInput } from './LoginPage.styles';
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const accessToken = useAppSelector((s) => s.auth.accessToken);
+
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
 
+  const [login, { isLoading, error }] = useLoginMutation();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (error) setErrorMessage((error as ApiError).message);
+  }, [error]);
+
   if (accessToken) return <Navigate to="/" replace />;
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const result = await login({ loginId, password });
+    if ('data' in result && result.data) {
+      dispatch(setToken(result.data.accessToken));
+      navigate('/');
+    }
   };
 
   return (
@@ -75,10 +95,15 @@ export default function LoginPage() {
             />
           </FormField>
 
+          <Collapse in={!!errorMessage} timeout={150}>
+            <ErrorBox>{errorMessage}</ErrorBox>
+          </Collapse>
+
           <Button
             type="submit"
             variant="contained"
             fullWidth
+            disabled={isLoading}
             sx={{
               mt: '0.25rem',
               py: '0.75rem',
@@ -87,7 +112,7 @@ export default function LoginPage() {
               '&:active': { transform: 'scale(0.99)' },
             }}
           >
-            로그인
+            {isLoading ? '로그인 중...' : '로그인'}
           </Button>
         </Box>
       </LoginCard>
