@@ -9,8 +9,8 @@ export interface MemberProfileResponse {
   id: number;
   loginId: string;
   name: string;
-  departmentName: string;
-  positionName: string;
+  departmentName: string | null;
+  positionName: string | null;
   roleName: string;
   roleCode: string;
   menuPermissions: MenuPermission[];

@@ -6,25 +6,23 @@ import Typography from '@mui/material/Typography';
 import { useAppDispatch } from '@/app/hooks';
 import { logout } from '@/features/auth/store/authSlice';
 import { useGetMyProfileQuery } from '@/features/member/api/memberApi';
+import { MENU_CONFIG } from '@/shared/config/menuConfig';
 import {
   AppBarInner,
   BrandLink,
   BrandLogo,
+  ChildNavItem,
   HamburgerButton,
   HamburgerLine,
   LayoutBody,
   LayoutRoot,
   MainContent,
   MobileOverlay,
+  NavGroupTitle,
   NavItem,
   Sidebar,
   StyledAppBar,
 } from './AppLayout.styles';
-
-const NAV_ITEMS = [
-  { to: '/', label: '대시보드', end: true },
-  { to: '/member/me', label: '내 정보', end: false },
-];
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -38,6 +36,10 @@ export default function AppLayout() {
   };
 
   const closeSidebar = () => setSidebarOpen(false);
+
+  const readableCodes = new Set(
+    profile?.menuPermissions.filter((p) => p.canRead).map((p) => p.menuCode) ?? [],
+  );
 
   return (
     <LayoutRoot>
@@ -62,8 +64,21 @@ export default function AppLayout() {
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
             {profile && (
-              <Typography sx={{ fontSize: '0.875rem', fontWeight: 500, color: 'text.secondary' }}>
-                {profile.name}
+              <Typography
+                sx={{
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: 'text.secondary',
+                  whiteSpace: 'nowrap',
+                  display: { xs: 'none', sm: 'block' },
+                }}
+              >
+                {[
+                  profile.departmentName,
+                  `${profile.name}${profile.positionName ? ` ${profile.positionName}님` : ''}`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </Typography>
             )}
             <Button
@@ -94,12 +109,28 @@ export default function AppLayout() {
 
         <Sidebar className={sidebarOpen ? 'open' : ''}>
           <nav>
-            <p>메인 메뉴</p>
-            {NAV_ITEMS.map(({ to, label, end }) => (
-              <NavItem key={to} to={to} end={end} onClick={closeSidebar}>
-                {label}
-              </NavItem>
-            ))}
+            <NavItem to="/member/me" onClick={closeSidebar}>
+              내 정보
+            </NavItem>
+
+            {MENU_CONFIG.map((parent) => {
+              const children = (parent.children ?? []).filter(
+                (child) => child.to && readableCodes.has(child.code),
+              );
+
+              if (children.length === 0) return null;
+
+              return (
+                <Box key={parent.code}>
+                  <NavGroupTitle>{parent.name}</NavGroupTitle>
+                  {children.map((child) => (
+                    <ChildNavItem key={child.code} to={child.to!} onClick={closeSidebar}>
+                      {child.name}
+                    </ChildNavItem>
+                  ))}
+                </Box>
+              );
+            })}
           </nav>
         </Sidebar>
 
