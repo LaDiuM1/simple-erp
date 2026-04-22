@@ -7,6 +7,7 @@ import { useAppDispatch } from '@/app/hooks';
 import { logout } from '@/features/auth/store/authSlice';
 import { useGetMyProfileQuery } from '@/features/member/api/memberApi';
 import { MENU_CONFIG } from '@/shared/config/menuConfig';
+import ConfirmModal from './ConfirmModal';
 import {
   AppBarInner,
   BrandLink,
@@ -26,6 +27,7 @@ import {
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { data: profile } = useGetMyProfileQuery();
@@ -84,7 +86,7 @@ export default function AppLayout() {
             <Button
               variant="outlined"
               size="small"
-              onClick={handleLogout}
+              onClick={() => setLogoutModalOpen(true)}
               sx={{
                 fontSize: '0.8125rem',
                 fontWeight: 500,
@@ -138,6 +140,16 @@ export default function AppLayout() {
           <Outlet />
         </MainContent>
       </LayoutBody>
+
+      <ConfirmModal
+        isOpen={logoutModalOpen}
+        title="로그아웃"
+        message="정말 로그아웃 하시겠습니까?"
+        confirmLabel="로그아웃"
+        danger
+        onConfirm={handleLogout}
+        onCancel={() => setLogoutModalOpen(false)}
+      />
     </LayoutRoot>
   );
 }
