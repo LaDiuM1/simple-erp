@@ -7,8 +7,11 @@ import io.github.ladium1.erp.department.internal.mapper.DepartmentMapper;
 import io.github.ladium1.erp.department.internal.repository.DepartmentRepository;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -23,5 +26,20 @@ public class DepartmentService implements DepartmentApi {
         return departmentRepository.findById(id)
                 .map(departmentMapper::toDepartmentInfo)
                 .orElseThrow(() -> new BusinessException(DepartmentErrorCode.DEPARTMENT_NOT_FOUND));
+    }
+
+    @Override
+    public List<DepartmentInfo> findAll() {
+        return departmentMapper.toDepartmentInfos(
+                departmentRepository.findAll(Sort.by("name").ascending())
+        );
+    }
+
+    @Override
+    public List<DepartmentInfo> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return departmentMapper.toDepartmentInfos(departmentRepository.findAllById(ids));
     }
 }

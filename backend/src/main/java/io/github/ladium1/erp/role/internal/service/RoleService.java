@@ -15,6 +15,7 @@ import io.github.ladium1.erp.role.internal.repository.RoleMenuRepository;
 import io.github.ladium1.erp.role.internal.repository.RoleRepository;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -104,5 +105,20 @@ public class RoleService implements RoleApi {
                             .build();
                 })
                 .toList();
+    }
+
+    @Override
+    public List<RoleInfo> findAll() {
+        return roleMapper.toRoleInfos(
+                roleRepository.findAll(Sort.by("name").ascending())
+        );
+    }
+
+    @Override
+    public List<RoleInfo> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return roleMapper.toRoleInfos(roleRepository.findAllById(ids));
     }
 }

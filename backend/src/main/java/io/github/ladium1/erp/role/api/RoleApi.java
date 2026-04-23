@@ -33,4 +33,14 @@ public interface RoleApi {
      * 권한 id로 권한에 대한 메뉴 권한 반환
      */
     List<MenuPermission> getMenuPermissionsByRoleId(Long roleId);
+
+    /**
+     * 전체 권한 목록 반환 (이름 오름차순)
+     */
+    List<RoleInfo> findAll();
+
+    /**
+     * 주어진 id 목록에 해당하는 권한 정보 반환
+     */
+    List<RoleInfo> findByIds(List<Long> ids);
 }
