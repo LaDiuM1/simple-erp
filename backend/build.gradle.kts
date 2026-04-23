@@ -46,6 +46,9 @@ dependencies {
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 
+    // excel (Apache POI .xlsx)
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+
     // lombok & mapstruct
     implementation("org.mapstruct:mapstruct:1.5.5.Final")
     compileOnly("org.projectlombok:lombok")
