@@ -85,4 +85,24 @@ public class Member extends BaseEntity {
         this.departmentId = departmentId;
         this.positionId = positionId;
     }
+
+    public void update(String name,
+                       String email,
+                       String phone,
+                       Address address,
+                       LocalDate joinDate,
+                       MemberStatus status,
+                       Long roleId,
+                       Long departmentId,
+                       Long positionId) {
+        this.name = name;
+        this.email = email;
+        this.phone = phone;
+        this.address = address;
+        this.joinDate = joinDate;
+        this.status = status;
+        this.roleId = roleId;
+        this.departmentId = departmentId;
+        this.positionId = positionId;
+    }
 }

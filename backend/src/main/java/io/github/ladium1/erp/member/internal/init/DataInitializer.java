@@ -19,11 +19,30 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DataInitializer implements ApplicationRunner {
+
+    private static final List<String> TEST_MEMBER_NAMES = List.of(
+            "김민수", "이지영", "박서준", "최수빈", "정도현",
+            "강하늘", "윤지호", "임서연", "한예린", "오재민",
+            "신유진", "조성민", "배지우", "송하윤", "권나연",
+            "황준혁", "안수현", "홍태윤", "노은서", "유시우",
+            "전민재", "고아영", "문채원", "양도윤", "손지아",
+            "백현우", "허지훈", "남예진", "심다은", "장우빈"
+    );
+
+    private static final List<MemberStatus> TEST_MEMBER_STATUS_CYCLE = List.of(
+            MemberStatus.ACTIVE, MemberStatus.ACTIVE, MemberStatus.ACTIVE,
+            MemberStatus.ACTIVE, MemberStatus.ACTIVE, MemberStatus.LEAVE,
+            MemberStatus.ACTIVE, MemberStatus.ACTIVE, MemberStatus.RESIGNED,
+            MemberStatus.ACTIVE
+    );
+
+    private static final String TEST_MEMBER_PASSWORD = "password123";
 
     private final MemberRepository memberRepository;
     private final RoleApi roleApi;
@@ -80,5 +99,34 @@ public class DataInitializer implements ApplicationRunner {
                 .build());
 
         log.info("관리자 계정 생성 완료");
+
+        // 4. 테스트 직원 데이터 생성
+        createTestMembers(masterRole.id());
+    }
+
+    private void createTestMembers(Long roleId) {
+        String encodedPassword = passwordEncoder.encode(TEST_MEMBER_PASSWORD);
+
+        for (int i = 0; i < TEST_MEMBER_NAMES.size(); i++) {
+            int idx = i + 1;
+            String loginId = String.format("user%02d", idx);
+            String email = String.format("%s@simple-erp.io", loginId);
+            String phone = String.format("010-%04d-%04d", 1000 + (idx * 37) % 9000, 2000 + (idx * 53) % 8000);
+            LocalDate joinDate = LocalDate.of(2020 + (idx % 6), 1 + (idx % 12), 1 + (idx % 28));
+            MemberStatus status = TEST_MEMBER_STATUS_CYCLE.get(i % TEST_MEMBER_STATUS_CYCLE.size());
+
+            memberRepository.save(Member.builder()
+                    .loginId(loginId)
+                    .password(encodedPassword)
+                    .name(TEST_MEMBER_NAMES.get(i))
+                    .email(email)
+                    .phone(phone)
+                    .joinDate(joinDate)
+                    .status(status)
+                    .roleId(roleId)
+                    .build());
+        }
+
+        log.info("테스트 직원 {}명 생성 완료", TEST_MEMBER_NAMES.size());
     }
 }
