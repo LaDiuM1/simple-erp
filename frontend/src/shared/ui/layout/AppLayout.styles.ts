@@ -13,10 +13,10 @@ export const LayoutRoot = styled(Box)({
 
 export const StyledAppBar = styled(AppBar)(({ theme }) => ({
   height: HEADER_HEIGHT,
-  backgroundColor: theme.palette.background.paper,
+  backgroundColor: '#FFFFFF',
   color: theme.palette.text.primary,
   borderBottom: `1px solid ${theme.palette.divider}`,
-  boxShadow: theme.shadows[1],
+  boxShadow: '0 2px 6px -1px rgba(15, 23, 42, 0.06)',
   position: 'sticky',
   top: 0,
   zIndex: theme.zIndex.appBar,
@@ -40,7 +40,7 @@ export const HamburgerButton = styled(Box)(({ theme }) => ({
   cursor: 'pointer',
   transition: 'background-color 0.15s',
   flexShrink: 0,
-  '&:hover': { backgroundColor: theme.palette.background.default },
+  '&:hover': { backgroundColor: 'rgba(15, 23, 42, 0.06)' },
   [theme.breakpoints.down('md')]: { display: 'flex' },
 }));
 
@@ -91,11 +91,14 @@ export const MobileOverlay = styled(Box)(({ theme }) => ({
 
 export const Sidebar = styled(Box)(({ theme }) => ({
   width: SIDEBAR_WIDTH,
-  backgroundColor: theme.palette.background.paper,
+  backgroundColor: '#F8FAFC',
   borderRight: `1px solid ${theme.palette.divider}`,
-  padding: '1.25rem 0.75rem',
+  padding: '0.625rem 0.5rem 1.25rem',
   overflowY: 'auto',
   flexShrink: 0,
+  boxShadow: '4px 0 10px -3px rgba(15, 23, 42, 0.06)',
+  position: 'relative',
+  zIndex: 1,
   [theme.breakpoints.down('md')]: {
     position: 'fixed',
     top: HEADER_HEIGHT,
@@ -104,6 +107,7 @@ export const Sidebar = styled(Box)(({ theme }) => ({
     zIndex: 200,
     transform: 'translateX(-100%)',
     transition: 'transform 0.25s ease',
+    boxShadow: 'none',
     '&.open': {
       transform: 'translateX(0)',
       boxShadow: theme.shadows[4],
@@ -111,48 +115,74 @@ export const Sidebar = styled(Box)(({ theme }) => ({
   },
 }));
 
-export const NavGroupTitle = styled('p')(({ theme }) => ({
-  fontSize: '0.6875rem',
-  fontWeight: 600,
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  color: theme.palette.text.disabled,
-  padding: '0 0.75rem',
-  marginTop: '1.25rem',
-  marginBottom: '0.375rem',
+export const NavGroup = styled(Box)({
+  '& + &': { marginTop: '0.125rem' },
+});
+
+export const NavGroupHeader = styled('button')(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  width: '100%',
+  padding: '0.5rem 0.625rem',
+  border: 'none',
+  borderRadius: 0,
+  backgroundColor: 'transparent',
+  fontSize: '0.9375rem',
+  fontWeight: 700,
+  letterSpacing: '-0.005em',
+  color: theme.palette.text.primary,
+  cursor: 'pointer',
+  textAlign: 'left',
+  fontFamily: 'inherit',
+  transition: 'background-color 0.12s',
+  '&:hover': { backgroundColor: 'rgba(15, 23, 42, 0.04)' },
+  '&:focus-visible': {
+    outline: `2px solid ${theme.palette.primary.light}`,
+    outlineOffset: -2,
+  },
 }));
 
 export const NavItem = styled(NavLink)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  padding: '0.625rem 0.75rem',
-  borderRadius: 6,
-  fontSize: '0.875rem',
+  padding: '0.375rem 0.625rem',
+  margin: 0,
+  borderRadius: 0,
+  fontSize: '0.8125rem',
   fontWeight: 500,
   color: theme.palette.text.secondary,
   textDecoration: 'none',
-  transition: 'all 0.15s',
-  marginBottom: '0.125rem',
+  transition: 'background-color 0.12s, color 0.12s',
   '&:hover': {
-    backgroundColor: theme.palette.background.default,
+    backgroundColor: 'rgba(15, 23, 42, 0.04)',
     color: theme.palette.text.primary,
   },
   '&.active': {
-    backgroundColor: theme.palette.primarySubtle,
+    backgroundColor: 'rgba(59, 130, 246, 0.09)',
     color: theme.palette.primary.main,
     fontWeight: 600,
   },
 }));
 
 export const ChildNavItem = styled(NavItem)({
-  paddingLeft: '1.25rem',
+  paddingLeft: '1.625rem',
 });
 
-export const MainContent = styled(Box)(({ theme }) => ({
+export const ContentColumn = styled(Box)({
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  minWidth: 0,
+  overflow: 'hidden',
+});
+
+export const MainContent = styled('main')(({ theme }) => ({
   flex: 1,
   overflowY: 'auto',
   padding: '2rem',
   minWidth: 0,
+  minHeight: 0,
   [theme.breakpoints.down('sm')]: {
     padding: '1rem',
   },

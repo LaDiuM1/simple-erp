@@ -31,13 +31,13 @@ const theme = createTheme({
   },
   palette: {
     primary: {
-      main: '#4F46E5',
-      dark: '#4338CA',
-      light: '#818CF8',
+      main: '#3B82F6',
+      dark: '#2563EB',
+      light: '#93C5FD',
       contrastText: '#ffffff',
     },
-    primarySubtle: '#EEF2FF',
-    primaryLight: '#E0E7FF',
+    primarySubtle: '#EFF6FF',
+    primaryLight: '#DBEAFE',
     background: {
       default: '#F8FAFC',
       paper: '#FFFFFF',
@@ -93,7 +93,12 @@ const theme = createTheme({
         disableElevation: true,
       },
       styleOverrides: {
-        root: { textTransform: 'none' },
+        root: { textTransform: 'none', borderRadius: '6px' },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: { borderRadius: '6px' },
       },
     },
   },

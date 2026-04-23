@@ -2,8 +2,8 @@ import { Navigate } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
 import { useGetMyProfileQuery } from '@/features/member/api/memberApi';
 import type { ApiError } from '@/shared/types/api';
-import LoadingScreen from './LoadingScreen';
-import ErrorScreen from './ErrorScreen';
+import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
+import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import AppLayout from './AppLayout';
 
 export default function ProtectedRoute() {
