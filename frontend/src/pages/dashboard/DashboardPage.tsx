@@ -1,7 +1,14 @@
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import { useGetMyProfileQuery } from '@/features/member/api/memberApi';
-import { DashboardCard, DashboardGrid } from './DashboardPage.styles';
+import {
+  CardLabel,
+  CardValue,
+  DashboardCard,
+  DashboardGrid,
+  GreetingBlock,
+  GreetingDate,
+  GreetingTitle,
+  PageRoot,
+} from './DashboardPage.styles';
 
 export default function DashboardPage() {
   const { data: profile } = useGetMyProfileQuery();
@@ -14,13 +21,11 @@ export default function DashboardPage() {
   });
 
   return (
-    <Box sx={{ maxWidth: 900 }}>
-      <Box sx={{ mb: '2rem' }}>
-        <Typography sx={{ fontSize: '1.625rem', fontWeight: 700, color: 'text.primary', mb: '0.375rem' }}>
-          안녕하세요, {profile?.name}님
-        </Typography>
-        <Typography sx={{ fontSize: '0.9375rem', color: 'text.secondary' }}>{today}</Typography>
-      </Box>
+    <PageRoot>
+      <GreetingBlock>
+        <GreetingTitle>안녕하세요, {profile?.name}님</GreetingTitle>
+        <GreetingDate>{today}</GreetingDate>
+      </GreetingBlock>
 
       <DashboardGrid>
         <InfoCard label="소속 부서" value={profile?.departmentName ?? '-'} />
@@ -28,21 +33,15 @@ export default function DashboardPage() {
         <InfoCard label="권한" value={profile?.roleName ?? '-'} />
         <InfoCard label="접근 가능 메뉴" value={`${profile?.menuPermissions.length ?? 0}개`} />
       </DashboardGrid>
-    </Box>
+    </PageRoot>
   );
 }
 
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <DashboardCard>
-      <Typography
-        sx={{ fontSize: '0.8125rem', fontWeight: 500, color: 'text.secondary', mb: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}
-      >
-        {label}
-      </Typography>
-      <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, color: 'text.primary' }}>
-        {value}
-      </Typography>
+      <CardLabel>{label}</CardLabel>
+      <CardValue>{value}</CardValue>
     </DashboardCard>
   );
 }

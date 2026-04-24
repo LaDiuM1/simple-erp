@@ -1,10 +1,9 @@
-import Typography from '@mui/material/Typography';
 import { useGetMyProfileQuery } from '@/features/member/api/memberApi';
 import MemberProfileCard from '@/features/member/components/MemberProfileCard';
-import LoadingScreen from '@/shared/ui/LoadingScreen';
-import ErrorScreen from '@/shared/ui/ErrorScreen';
+import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
+import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import type { ApiError } from '@/shared/types/api';
-import { PageRoot } from './MemberMePage.styles';
+import { PageRoot, PageTitle } from './MemberMePage.styles';
 
 export default function MemberMePage() {
   const { data: profile, isLoading, isError, error, refetch } = useGetMyProfileQuery();
@@ -15,9 +14,7 @@ export default function MemberMePage() {
 
   return (
     <PageRoot>
-      <Typography sx={{ fontSize: '1.375rem', fontWeight: 700, color: 'text.primary', mb: '1.5rem' }}>
-        내 정보
-      </Typography>
+      <PageTitle>내 정보</PageTitle>
       <MemberProfileCard profile={profile} />
     </PageRoot>
   );

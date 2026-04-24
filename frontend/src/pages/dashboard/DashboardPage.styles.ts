@@ -1,5 +1,26 @@
 import { styled } from '@mui/material/styles';
-import { Box } from '@mui/material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+
+export const PageRoot = styled(Box)({
+  maxWidth: 900,
+});
+
+export const GreetingBlock = styled(Box)({
+  marginBottom: '2rem',
+});
+
+export const GreetingTitle = styled(Typography)(({ theme }) => ({
+  fontSize: '1.625rem',
+  fontWeight: 700,
+  color: theme.palette.text.primary,
+  marginBottom: '0.375rem',
+}));
+
+export const GreetingDate = styled(Typography)(({ theme }) => ({
+  fontSize: '0.9375rem',
+  color: theme.palette.text.secondary,
+}));
 
 export const DashboardGrid = styled(Box)({
   display: 'grid',
@@ -24,4 +45,19 @@ export const DashboardCard = styled(Box)(({ theme }) => ({
     boxShadow: theme.shadows[3],
     transform: 'translateY(-2px)',
   },
+}));
+
+export const CardLabel = styled(Typography)(({ theme }) => ({
+  fontSize: '0.8125rem',
+  fontWeight: 500,
+  color: theme.palette.text.secondary,
+  marginBottom: '0.625rem',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+}));
+
+export const CardValue = styled(Typography)(({ theme }) => ({
+  fontSize: '1.25rem',
+  fontWeight: 700,
+  color: theme.palette.text.primary,
 }));
