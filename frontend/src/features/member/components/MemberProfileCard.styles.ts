@@ -14,7 +14,7 @@ export const ProfileHeader = styled(Box)(({ theme }) => ({
   alignItems: 'center',
   gap: '1.25rem',
   padding: '2rem',
-  background: 'linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%)',
+  background: 'linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)',
   borderBottom: `1px solid ${theme.palette.divider}`,
 }));
 
@@ -30,7 +30,7 @@ export const AvatarBox = styled(Box)(({ theme }) => ({
   fontWeight: 700,
   color: 'white',
   flexShrink: 0,
-  boxShadow: '0 4px 12px rgb(79 70 229 / 0.3)',
+  boxShadow: '0 4px 12px rgb(59 130 246 / 0.3)',
 }));
 
 export const InfoGrid = styled(Box)(({ theme }) => ({
