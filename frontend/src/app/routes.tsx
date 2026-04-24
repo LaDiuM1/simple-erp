@@ -3,6 +3,7 @@ import ProtectedRoute from '@/shared/ui/layout/ProtectedRoute';
 import LoginPage from '@/pages/login/LoginPage';
 import DashboardPage from '@/pages/dashboard/DashboardPage';
 import MemberMePage from '@/pages/member/MemberMePage';
+import MemberListPage from '@/pages/member/MemberListPage';
 
 export default function AppRoutes() {
   return (
@@ -11,6 +12,7 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/member/me" element={<MemberMePage />} />
+        <Route path="/members" element={<MemberListPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
