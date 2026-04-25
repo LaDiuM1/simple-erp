@@ -2,7 +2,6 @@ import { MENU_CODE } from '@/shared/config/menuConfig';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { useEmployeeCreateForm } from '@/features/employee/hooks/useEmployeeCreateForm';
-import EmployeeFormHero from '../employeeForm/EmployeeFormHero';
 import BasicInfoSection from '../employeeForm/BasicInfoSection';
 import AffiliationSection from '../employeeForm/AffiliationSection';
 import AddressSection from '../employeeForm/AddressSection';
@@ -30,7 +29,6 @@ export default function EmployeeCreateForm() {
 
       <CreateRoot>
         <CreateForm id={FORM_ID} onSubmit={form.handleSubmit} noValidate>
-          <EmployeeFormHero name={form.values.name} mode="create" />
           <AccountSection form={form} />
           <BasicInfoSection form={form} />
           <AffiliationSection form={form} />

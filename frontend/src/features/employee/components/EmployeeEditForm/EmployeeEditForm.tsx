@@ -7,7 +7,6 @@ import { useGetEmployeeQuery } from '@/features/employee/api/employeeApi';
 import { useEmployeeEditForm } from '@/features/employee/hooks/useEmployeeEditForm';
 import type { EmployeeDetail } from '@/features/employee/types';
 import type { ApiError } from '@/shared/types/api';
-import EmployeeFormHero from '../employeeForm/EmployeeFormHero';
 import BasicInfoSection from '../employeeForm/BasicInfoSection';
 import AffiliationSection from '../employeeForm/AffiliationSection';
 import AddressSection from '../employeeForm/AddressSection';
@@ -46,7 +45,6 @@ function EmployeeEditFormBody({ id, detail }: { id: number; detail: EmployeeDeta
 
       <CreateRoot>
         <CreateForm id={FORM_ID} onSubmit={form.handleSubmit} noValidate>
-          <EmployeeFormHero name={form.values.name} mode="edit" />
           <BasicInfoSection form={form} />
           <AffiliationSection form={form} showStatus />
           <AddressSection form={form} />
