@@ -106,6 +106,7 @@ export type UseExcelDownload<TFilters> = () => (
 
 export interface DeleteConfirmMessages {
   title: string;
+  /** message 내 `{no}` 가 있으면 삭제 대상 행의 No (글로벌 데이터 순번) 로 치환된다. */
   message: string;
 }
 

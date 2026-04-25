@@ -37,7 +37,7 @@ import type { ColumnConfig, DeleteConfirmMessages, SortState } from './types';
 
 const DEFAULT_DELETE_CONFIRM: DeleteConfirmMessages = {
   title: '항목 삭제',
-  message: '이 항목을 삭제하시겠습니까?',
+  message: '{no}번 항목을 삭제하시겠습니까?',
 };
 
 const DEFAULT_EMPTY_MESSAGE = '등록된 항목이 없습니다.';
@@ -84,7 +84,7 @@ export default function ListTable<TRow>({
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { canWrite } = usePermission(menuCode);
 
-  const [deletingRow, setDeletingRow] = useState<TRow | null>(null);
+  const [deletingTarget, setDeletingTarget] = useState<{ row: TRow; no: number } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSortClick = (col: ColumnConfig<TRow>) => {
@@ -99,53 +99,61 @@ export default function ListTable<TRow>({
     onSortChange({ key: col.key, direction: nextDirection });
   };
 
-  const requestDelete = onDelete ? (row: TRow) => setDeletingRow(row) : undefined;
+  const requestDelete = onDelete
+    ? (row: TRow, no: number) => setDeletingTarget({ row, no })
+    : undefined;
 
   const handleConfirmDelete = async () => {
-    if (!deletingRow || !onDelete) return;
+    if (!deletingTarget || !onDelete) return;
     setIsDeleting(true);
     try {
-      await onDelete(deletingRow);
+      await onDelete(deletingTarget.row);
     } catch {
       // GenericList 가 이미 스낵바로 에러를 노출한다. 모달은 닫고 재시도는 사용자 재클릭으로 유도.
     } finally {
       setIsDeleting(false);
-      setDeletingRow(null);
+      setDeletingTarget(null);
     }
   };
 
   const rowActions = canWrite && (onEdit || requestDelete)
-    ? (row: TRow) => (
-        <Stack direction="row" spacing={0.25} sx={{ justifyContent: 'flex-end' }}>
-          {onEdit && (
-            <Tooltip title="수정" arrow>
-              <IconButton
-                size="small"
-                aria-label="수정"
-                onClick={() => onEdit(row)}
-                sx={{ '&:hover': { color: 'primary.main' } }}
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-          {requestDelete && (
-            <Tooltip title="삭제" arrow>
-              <IconButton
-                size="small"
-                aria-label="삭제"
-                onClick={() => requestDelete(row)}
-                sx={{ '&:hover': { color: 'error.main' } }}
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Stack>
-      )
+    ? (row: TRow, idx: number) => {
+        const no = page * pageSize + idx + 1;
+        return (
+          <Stack direction="row" spacing={0.25} sx={{ justifyContent: 'flex-end' }}>
+            {onEdit && (
+              <Tooltip title="수정" arrow>
+                <IconButton
+                  size="small"
+                  aria-label="수정"
+                  onClick={() => onEdit(row)}
+                  sx={{ '&:hover': { color: 'primary.main' } }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {requestDelete && (
+              <Tooltip title="삭제" arrow>
+                <IconButton
+                  size="small"
+                  aria-label="삭제"
+                  onClick={() => requestDelete(row, no)}
+                  sx={{ '&:hover': { color: 'error.main' } }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Stack>
+        );
+      }
     : undefined;
 
   const confirm = { ...DEFAULT_DELETE_CONFIRM, ...deleteConfirm };
+  const confirmMessage = deletingTarget
+    ? confirm.message.replace('{no}', String(deletingTarget.no))
+    : confirm.message;
 
   return (
     <TableWrapper>
@@ -181,13 +189,13 @@ export default function ListTable<TRow>({
 
       {onDelete && (
         <ConfirmModal
-          isOpen={deletingRow !== null}
+          isOpen={deletingTarget !== null}
           title={confirm.title}
-          message={confirm.message}
+          message={confirmMessage}
           confirmLabel={isDeleting ? '삭제 중...' : '삭제'}
           danger
           onConfirm={handleConfirmDelete}
-          onCancel={() => setDeletingRow(null)}
+          onCancel={() => setDeletingTarget(null)}
         />
       )}
     </TableWrapper>
@@ -202,7 +210,7 @@ interface DesktopProps<TRow> {
   columns: ColumnConfig<TRow>[];
   rows: TRow[];
   rowKey: (row: TRow) => string | number;
-  rowActions?: (row: TRow) => ReactNode;
+  rowActions?: (row: TRow, idx: number) => ReactNode;
   page: number;
   pageSize: number;
   sort: SortState;
@@ -263,7 +271,7 @@ function DesktopTable<TRow>({
                 ))}
                 {rowActions && (
                   <RowActionsCell align="right" className="row-actions">
-                    {rowActions(row)}
+                    {rowActions(row, idx)}
                   </RowActionsCell>
                 )}
               </BodyRow>
@@ -283,7 +291,7 @@ interface MobileProps<TRow> {
   columns: ColumnConfig<TRow>[];
   rows: TRow[];
   rowKey: (row: TRow) => string | number;
-  rowActions?: (row: TRow) => ReactNode;
+  rowActions?: (row: TRow, idx: number) => ReactNode;
   emptyMessage: string;
 }
 
@@ -297,11 +305,11 @@ function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage }: 
 
   return (
     <>
-      {rows.map((row) => (
+      {rows.map((row, idx) => (
         <MobileCardItem key={rowKey(row)}>
           <MobilePrimaryRow>
             <div style={{ minWidth: 0, flex: 1 }}>{renderCell(primary, row)}</div>
-            {rowActions && <div style={{ flexShrink: 0 }}>{rowActions(row)}</div>}
+            {rowActions && <div style={{ flexShrink: 0 }}>{rowActions(row, idx)}</div>}
           </MobilePrimaryRow>
           {details.length > 0 && (
             <Stack spacing={0.625} sx={{ mt: '0.875rem' }}>
