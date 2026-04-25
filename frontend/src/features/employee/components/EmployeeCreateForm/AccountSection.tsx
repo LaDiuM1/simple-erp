@@ -5,7 +5,7 @@ import {
   renderLoginIdStatusIcon,
 } from '@/features/employee/validation/employeeFormValidation';
 import type { EmployeeCreateFormState } from '@/features/employee/hooks/useEmployeeCreateForm';
-import FormSection from '../employeeForm/FormSection';
+import { FormSection } from '@/shared/ui/GenericForm';
 import { FieldCol2, FieldGrid } from '../employeeForm/employeeForm.styles';
 
 export default function AccountSection({ form }: { form: EmployeeCreateFormState }) {

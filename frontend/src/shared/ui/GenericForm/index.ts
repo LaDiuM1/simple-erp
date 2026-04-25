@@ -1,6 +1,9 @@
 export { default } from './GenericForm';
 export type { GenericFormProps } from './GenericForm';
 
+export { default as FormSection } from './FormSection';
+export type { FormSectionProps } from './FormSection';
+
 export type {
   CustomFieldConfig,
   DateFieldConfig,
@@ -9,6 +12,7 @@ export type {
   FieldConfig,
   FieldOption,
   FormApiConfig,
+  FormSectionInfo,
   FormState,
   FormTitles,
   PasswordFieldConfig,

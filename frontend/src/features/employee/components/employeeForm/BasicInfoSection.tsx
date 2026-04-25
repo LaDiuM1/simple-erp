@@ -1,7 +1,7 @@
 import TextField from '@mui/material/TextField';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import type { EmployeeFormStateBase } from '@/features/employee/hooks/employeeFormState';
-import FormSection from './FormSection';
+import { FormSection } from '@/shared/ui/GenericForm';
 import { FieldGrid } from './employeeForm.styles';
 
 export default function BasicInfoSection({ form }: { form: EmployeeFormStateBase }) {

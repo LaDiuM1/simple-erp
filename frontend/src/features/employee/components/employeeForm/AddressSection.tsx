@@ -2,7 +2,7 @@ import TextField from '@mui/material/TextField';
 import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import type { EmployeeFormStateBase } from '@/features/employee/hooks/employeeFormState';
-import FormSection from './FormSection';
+import { FormSection } from '@/shared/ui/GenericForm';
 import {
   AddressSearchButton,
   AddressSearchRow,
