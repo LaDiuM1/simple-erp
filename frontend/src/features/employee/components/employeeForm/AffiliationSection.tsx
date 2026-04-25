@@ -6,22 +6,36 @@ import {
   useGetPositionsQuery,
   useGetRolesQuery,
 } from '@/features/reference/api/referenceApi';
-import type { EmployeeCreateFormState } from '@/features/employee/hooks/useEmployeeCreateForm';
+import {
+  EMPLOYEE_STATUS_OPTIONS,
+  type EmployeeStatus,
+} from '@/features/employee/types';
+import type { EmployeeFormStateBase } from '@/features/employee/hooks/employeeFormState';
 import FormSection from './FormSection';
-import { FieldGrid } from './EmployeeCreateForm.styles';
+import { FieldGrid } from './employeeForm.styles';
 
-export default function AffiliationSection({ form }: { form: EmployeeCreateFormState }) {
+interface Props {
+  form: EmployeeFormStateBase;
+  /** 재직 상태 셀렉트 노출 여부. create 페이지에서는 ACTIVE 고정이므로 숨김. */
+  showStatus?: boolean;
+}
+
+export default function AffiliationSection({ form, showStatus = false }: Props) {
   const { values, update, validation } = form;
 
   const { data: roles } = useGetRolesQuery();
   const { data: departments } = useGetDepartmentsQuery();
   const { data: positions } = useGetPositionsQuery();
 
+  const description = showStatus
+    ? '권한과 부서 / 직책 / 재직 상태를 지정합니다.'
+    : '권한과 부서 / 직책을 지정합니다. 재직 상태는 등록 시 ACTIVE 로 시작됩니다.';
+
   return (
     <FormSection
       icon={<BadgeRoundedIcon sx={{ fontSize: 18 }} />}
       title="소속 정보"
-      description="권한과 부서 / 직책을 지정합니다. 재직 상태는 등록 시 ACTIVE 로 시작됩니다."
+      description={description}
     >
       <FieldGrid>
         <TextField
@@ -69,6 +83,22 @@ export default function AffiliationSection({ form }: { form: EmployeeCreateFormS
             </MenuItem>
           ))}
         </TextField>
+        {showStatus && (
+          <TextField
+            select
+            size="small"
+            label="재직 상태"
+            required
+            value={values.status}
+            onChange={(e) => update('status', e.target.value as EmployeeStatus)}
+          >
+            {EMPLOYEE_STATUS_OPTIONS.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
       </FieldGrid>
     </FormSection>
   );

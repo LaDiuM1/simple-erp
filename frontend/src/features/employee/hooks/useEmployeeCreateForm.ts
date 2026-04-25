@@ -4,10 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { MENU_PATH } from '@/shared/config/menuConfig';
 import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
-import {
-  useFieldValidation,
-  type FieldValidation,
-} from '@/shared/hooks/useFieldValidation';
+import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCheckLoginIdAvailabilityQuery,
@@ -25,15 +22,12 @@ import {
   type LoginIdStatus,
 } from '@/features/employee/validation/employeeFormValidation';
 import type { ApiError } from '@/shared/types/api';
+import type { EmployeeFormStateBase } from './employeeFormState';
 
-export interface EmployeeCreateFormState {
-  values: EmployeeFormValues;
-  update: <K extends keyof EmployeeFormValues>(key: K, v: EmployeeFormValues[K]) => void;
-  validation: FieldValidation<EmployeeFormValues>;
+export interface EmployeeCreateFormState extends EmployeeFormStateBase {
   loginIdStatus: LoginIdStatus;
   isSaving: boolean;
   confirmOpen: boolean;
-  handleAddressSearch: () => void;
   handleSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void;
   handleConfirmedSubmit: () => Promise<void>;
   closeConfirm: () => void;

@@ -1,10 +1,10 @@
 import TextField from '@mui/material/TextField';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import type { EmployeeCreateFormState } from '@/features/employee/hooks/useEmployeeCreateForm';
+import type { EmployeeFormStateBase } from '@/features/employee/hooks/employeeFormState';
 import FormSection from './FormSection';
-import { FieldGrid } from './EmployeeCreateForm.styles';
+import { FieldGrid } from './employeeForm.styles';
 
-export default function BasicInfoSection({ form }: { form: EmployeeCreateFormState }) {
+export default function BasicInfoSection({ form }: { form: EmployeeFormStateBase }) {
   const { values, update, validation } = form;
 
   return (

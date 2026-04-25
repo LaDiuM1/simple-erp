@@ -7,12 +7,12 @@ import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { PrimaryPageHeaderButton } from '@/shared/ui/layout/PageHeaderButton';
 import PermissionGate from '@/shared/ui/layout/PermissionGate';
 import { useEmployeeCreateForm } from '@/features/employee/hooks/useEmployeeCreateForm';
-import EmployeeFormHero from './EmployeeFormHero';
+import EmployeeFormHero from '../employeeForm/EmployeeFormHero';
+import BasicInfoSection from '../employeeForm/BasicInfoSection';
+import AffiliationSection from '../employeeForm/AffiliationSection';
+import AddressSection from '../employeeForm/AddressSection';
+import { CreateForm, CreateRoot } from '../employeeForm/employeeForm.styles';
 import AccountSection from './AccountSection';
-import BasicInfoSection from './BasicInfoSection';
-import AffiliationSection from './AffiliationSection';
-import AddressSection from './AddressSection';
-import { CreateForm, CreateRoot } from './EmployeeCreateForm.styles';
 
 const FORM_ID = 'employee-create-form';
 
@@ -46,7 +46,7 @@ export default function EmployeeCreateForm() {
 
       <CreateRoot>
         <CreateForm id={FORM_ID} onSubmit={form.handleSubmit} noValidate>
-          <EmployeeFormHero name={form.values.name} />
+          <EmployeeFormHero name={form.values.name} mode="create" />
           <AccountSection form={form} />
           <BasicInfoSection form={form} />
           <AffiliationSection form={form} />

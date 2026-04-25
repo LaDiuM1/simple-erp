@@ -6,7 +6,7 @@ import {
   SectionSurface,
   SectionTitle,
   SectionTitleBox,
-} from './EmployeeCreateForm.styles';
+} from './employeeForm.styles';
 
 interface FormSectionProps {
   icon: ReactNode;

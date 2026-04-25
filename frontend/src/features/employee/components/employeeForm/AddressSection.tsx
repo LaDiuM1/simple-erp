@@ -1,16 +1,16 @@
 import TextField from '@mui/material/TextField';
 import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import type { EmployeeCreateFormState } from '@/features/employee/hooks/useEmployeeCreateForm';
+import type { EmployeeFormStateBase } from '@/features/employee/hooks/employeeFormState';
 import FormSection from './FormSection';
 import {
   AddressSearchButton,
   AddressSearchRow,
   FieldFull,
   FieldGrid,
-} from './EmployeeCreateForm.styles';
+} from './employeeForm.styles';
 
-export default function AddressSection({ form }: { form: EmployeeCreateFormState }) {
+export default function AddressSection({ form }: { form: EmployeeFormStateBase }) {
   const { values, update, handleAddressSearch } = form;
 
   return (

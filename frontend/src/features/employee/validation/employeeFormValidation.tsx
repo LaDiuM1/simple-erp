@@ -11,7 +11,17 @@ export const LOGIN_ID_MIN = 3;
 
 export type LoginIdStatus = 'idle' | 'checking' | 'available' | 'taken';
 
+/** create / edit 양쪽에서 공통으로 검사하는 필드. */
+export const employeeBaseValidators: ValidatorMap<EmployeeFormValues> = {
+  name: (v) => (v.trim() === '' ? '이름을 입력해주세요.' : null),
+  email: (v) =>
+    v !== '' && !EMAIL_RE.test(v) ? '이메일 형식이 올바르지 않습니다.' : null,
+  roleId: (v) => (v === '' ? '권한을 선택해주세요.' : null),
+};
+
+/** create 페이지 전용 — 계정 필드 (loginId / password / passwordConfirm) 추가. */
 export const employeeCreateValidators: ValidatorMap<EmployeeFormValues> = {
+  ...employeeBaseValidators,
   loginId: (v) => {
     const trimmed = v.trim();
     if (trimmed === '') return '로그인 ID를 입력해주세요.';
@@ -21,10 +31,6 @@ export const employeeCreateValidators: ValidatorMap<EmployeeFormValues> = {
   password: (v) => (v.length < 4 ? '비밀번호는 4자 이상이어야 합니다.' : null),
   passwordConfirm: (v, all) =>
     v !== all.password ? '비밀번호가 일치하지 않습니다.' : null,
-  name: (v) => (v.trim() === '' ? '이름을 입력해주세요.' : null),
-  email: (v) =>
-    v !== '' && !EMAIL_RE.test(v) ? '이메일 형식이 올바르지 않습니다.' : null,
-  roleId: (v) => (v === '' ? '권한을 선택해주세요.' : null),
 };
 
 export function loginIdStatusText(status: LoginIdStatus): string | undefined {
