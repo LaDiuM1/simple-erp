@@ -64,10 +64,14 @@ export default function SnackbarHost() {
       autoHideDuration={shown.duration ?? DEFAULT_DURATION}
       onClose={handleClose}
       slotProps={{ transition: { onExited: handleExited } }}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      sx={{ top: { xs: 80, sm: 88 } }}
     >
-      <SnackbarCard role={shown.severity === 'error' ? 'alert' : 'status'}>
-        <SnackbarIcon severity={shown.severity}>{ICON_MAP[shown.severity]}</SnackbarIcon>
+      <SnackbarCard
+        severity={shown.severity}
+        role={shown.severity === 'error' ? 'alert' : 'status'}
+      >
+        <SnackbarIcon>{ICON_MAP[shown.severity]}</SnackbarIcon>
         <SnackbarMessage>{shown.message}</SnackbarMessage>
         <SnackbarCloseButton
           size="small"
