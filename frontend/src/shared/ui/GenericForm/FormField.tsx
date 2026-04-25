@@ -18,6 +18,8 @@ interface Props<TValues extends object> {
   field: FieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
+  /** 입력 불가 상태 — disabledOnEdit 플래그를 GenericForm 이 mode 와 합쳐 결정 */
+  disabled?: boolean;
 }
 
 /**
@@ -28,10 +30,11 @@ export default function FormField<TValues extends object>({
   field,
   value,
   onChange,
+  disabled,
 }: Props<TValues>) {
   return (
     <FieldItem fullWidth={field.fullWidth}>
-      <FieldBody field={field} value={value} onChange={onChange} />
+      <FieldBody field={field} value={value} onChange={onChange} disabled={disabled} />
     </FieldItem>
   );
 }
@@ -40,20 +43,21 @@ function FieldBody<TValues extends object>({
   field,
   value,
   onChange,
+  disabled,
 }: Props<TValues>): ReactNode {
   switch (field.type) {
     case 'text':
-      return <TextFieldRenderer field={field} value={value} onChange={onChange} />;
+      return <TextFieldRenderer field={field} value={value} onChange={onChange} disabled={disabled} />;
     case 'password':
-      return <PasswordFieldRenderer field={field} value={value} onChange={onChange} />;
+      return <PasswordFieldRenderer field={field} value={value} onChange={onChange} disabled={disabled} />;
     case 'email':
-      return <EmailFieldRenderer field={field} value={value} onChange={onChange} />;
+      return <EmailFieldRenderer field={field} value={value} onChange={onChange} disabled={disabled} />;
     case 'phone':
-      return <PhoneFieldRenderer field={field} value={value} onChange={onChange} />;
+      return <PhoneFieldRenderer field={field} value={value} onChange={onChange} disabled={disabled} />;
     case 'date':
-      return <DateFieldRenderer field={field} value={value} onChange={onChange} />;
+      return <DateFieldRenderer field={field} value={value} onChange={onChange} disabled={disabled} />;
     case 'select':
-      return <SelectFieldRenderer field={field} value={value} onChange={onChange} />;
+      return <SelectFieldRenderer field={field} value={value} onChange={onChange} disabled={disabled} />;
     case 'custom':
       return <CustomFieldRenderer field={field} value={value} onChange={onChange} />;
   }
@@ -67,10 +71,12 @@ function TextFieldRenderer<TValues extends object>({
   field,
   value,
   onChange,
+  disabled,
 }: {
   field: TextFieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
+  disabled?: boolean;
 }) {
   return (
     <TextField
@@ -82,6 +88,7 @@ function TextFieldRenderer<TValues extends object>({
       required={field.required}
       helperText={field.helperText}
       placeholder={field.placeholder}
+      disabled={disabled}
       slotProps={{
         htmlInput: { maxLength: field.maxLength },
       }}
@@ -93,10 +100,12 @@ function PasswordFieldRenderer<TValues extends object>({
   field,
   value,
   onChange,
+  disabled,
 }: {
   field: PasswordFieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
+  disabled?: boolean;
 }) {
   return (
     <TextField
@@ -109,6 +118,7 @@ function PasswordFieldRenderer<TValues extends object>({
       required={field.required}
       helperText={field.helperText}
       placeholder={field.placeholder}
+      disabled={disabled}
       slotProps={{
         htmlInput: { minLength: field.minLength },
       }}
@@ -120,10 +130,12 @@ function EmailFieldRenderer<TValues extends object>({
   field,
   value,
   onChange,
+  disabled,
 }: {
   field: EmailFieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
+  disabled?: boolean;
 }) {
   return (
     <TextField
@@ -136,6 +148,7 @@ function EmailFieldRenderer<TValues extends object>({
       required={field.required}
       helperText={field.helperText}
       placeholder={field.placeholder}
+      disabled={disabled}
     />
   );
 }
@@ -144,10 +157,12 @@ function PhoneFieldRenderer<TValues extends object>({
   field,
   value,
   onChange,
+  disabled,
 }: {
   field: PhoneFieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
+  disabled?: boolean;
 }) {
   return (
     <TextField
@@ -159,6 +174,7 @@ function PhoneFieldRenderer<TValues extends object>({
       onChange={(e) => onChange(e.target.value)}
       helperText={field.helperText}
       placeholder={field.placeholder}
+      disabled={disabled}
     />
   );
 }
@@ -167,10 +183,12 @@ function DateFieldRenderer<TValues extends object>({
   field,
   value,
   onChange,
+  disabled,
 }: {
   field: DateFieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
+  disabled?: boolean;
 }) {
   return (
     <TextField
@@ -182,6 +200,7 @@ function DateFieldRenderer<TValues extends object>({
       onChange={(e) => onChange(e.target.value)}
       required={field.required}
       helperText={field.helperText}
+      disabled={disabled}
       slotProps={{
         inputLabel: { shrink: true },
       }}
@@ -197,10 +216,12 @@ function SelectFieldRenderer<TValues extends object>({
   field,
   value,
   onChange,
+  disabled,
 }: {
   field: SelectFieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
+  disabled?: boolean;
 }) {
   if (field.useOptions) {
     return (
@@ -211,6 +232,7 @@ function SelectFieldRenderer<TValues extends object>({
         field={field}
         value={value}
         onChange={onChange}
+        disabled={disabled}
       />
     );
   }
@@ -220,6 +242,7 @@ function SelectFieldRenderer<TValues extends object>({
       value={value}
       onChange={onChange}
       options={field.options ?? []}
+      disabled={disabled}
     />
   );
 }
@@ -231,6 +254,7 @@ function DynamicSelectRenderer<TValues extends object>({
   field,
   value,
   onChange,
+  disabled,
 }: {
   useOptions: () => { data?: unknown };
   mapOptions?: (data: unknown) => FieldOption[];
@@ -238,11 +262,12 @@ function DynamicSelectRenderer<TValues extends object>({
   field: SelectFieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
+  disabled?: boolean;
 }) {
   const { data } = useOptions();
   const options: FieldOption[] =
     data != null && mapOptions ? mapOptions(data) : fallbackOptions;
-  return <StaticSelect field={field} value={value} onChange={onChange} options={options} />;
+  return <StaticSelect field={field} value={value} onChange={onChange} options={options} disabled={disabled} />;
 }
 
 function StaticSelect<TValues extends object>({
@@ -250,11 +275,13 @@ function StaticSelect<TValues extends object>({
   value,
   onChange,
   options,
+  disabled,
 }: {
   field: SelectFieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
   options: FieldOption[];
+  disabled?: boolean;
 }) {
   return (
     <TextField
@@ -266,6 +293,7 @@ function StaticSelect<TValues extends object>({
       onChange={(e) => onChange(e.target.value)}
       required={field.required}
       helperText={field.helperText}
+      disabled={disabled}
     >
       {!field.required && <MenuItem value="">-</MenuItem>}
       {options.map((o) => (

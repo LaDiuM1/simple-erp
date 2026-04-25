@@ -1,14 +1,16 @@
-import { type FormEventHandler } from 'react';
+import { useState, type FormEventHandler } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import type { ApiError } from '@/shared/types/api';
 import FormField from './FormField';
+import FormSection from './FormSection';
 import { FormGrid, FormRoot, FormSurface } from './GenericForm.styles';
 import { useFormState } from './useFormState';
-import type { FieldConfig, FormApiConfig, FormState } from './types';
+import type { FieldConfig, FormApiConfig, FormSectionInfo, FormState } from './types';
 
 /** PageHeader 의 저장 버튼이 portal 을 넘어 form 을 연결할 때 쓰는 id. */
 const FORM_ID = 'generic-form';
@@ -69,10 +71,11 @@ function CreateForm<
   const snackbar = useSnackbar();
   const formState = useFormState<TValues>(api.emptyValues);
   const [createFn, { isLoading: isSaving }] = api.useCreate();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const visibleFields = fields.filter((f) => !f.hideOnCreate);
 
-  const handleSubmit = async () => {
+  const doCreate = async () => {
     try {
       await createFn(api.toCreateRequest(formState.values)).unwrap();
       snackbar.success(api.successMessages?.create ?? DEFAULT_CREATE_SUCCESS);
@@ -82,16 +85,40 @@ function CreateForm<
     }
   };
 
+  const handleSubmit = async () => {
+    if (api.confirm) {
+      setConfirmOpen(true);
+      return;
+    }
+    await doCreate();
+  };
+
   return (
-    <FormBody
-      menuCode={api.menuCode}
-      fields={visibleFields}
-      formState={formState}
-      isSaving={isSaving}
-      mode="create"
-      onSubmit={handleSubmit}
-      onCancel={() => navigate(api.listPath)}
-    />
+    <>
+      <FormBody
+        menuCode={api.menuCode}
+        fields={visibleFields}
+        formState={formState}
+        isSaving={isSaving}
+        mode="create"
+        section={api.section}
+        onSubmit={handleSubmit}
+        onCancel={() => navigate(api.listPath)}
+      />
+      {api.confirm && (
+        <ConfirmModal
+          isOpen={confirmOpen}
+          title={api.titles?.create ?? '등록'}
+          message="등록하시겠습니까?"
+          confirmLabel={isSaving ? '등록 중...' : '등록'}
+          onConfirm={async () => {
+            setConfirmOpen(false);
+            await doCreate();
+          }}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -149,10 +176,11 @@ function EditFormBody<
   const snackbar = useSnackbar();
   const formState = useFormState<TValues>(api.toValues(detail));
   const [updateFn, { isLoading: isSaving }] = api.useUpdate();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const visibleFields = fields.filter((f) => !f.hideOnEdit);
 
-  const handleSubmit = async () => {
+  const doUpdate = async () => {
     try {
       await updateFn({ id, body: api.toUpdateRequest(formState.values) }).unwrap();
       snackbar.success(api.successMessages?.edit ?? DEFAULT_EDIT_SUCCESS);
@@ -162,16 +190,40 @@ function EditFormBody<
     }
   };
 
+  const handleSubmit = async () => {
+    if (api.confirm) {
+      setConfirmOpen(true);
+      return;
+    }
+    await doUpdate();
+  };
+
   return (
-    <FormBody
-      menuCode={api.menuCode}
-      fields={visibleFields}
-      formState={formState}
-      isSaving={isSaving}
-      mode="edit"
-      onSubmit={handleSubmit}
-      onCancel={() => navigate(api.listPath)}
-    />
+    <>
+      <FormBody
+        menuCode={api.menuCode}
+        fields={visibleFields}
+        formState={formState}
+        isSaving={isSaving}
+        mode="edit"
+        section={api.section}
+        onSubmit={handleSubmit}
+        onCancel={() => navigate(api.listPath)}
+      />
+      {api.confirm && (
+        <ConfirmModal
+          isOpen={confirmOpen}
+          title={api.titles?.edit ?? '저장'}
+          message="저장하시겠습니까?"
+          confirmLabel={isSaving ? '저장 중...' : '저장'}
+          onConfirm={async () => {
+            setConfirmOpen(false);
+            await doUpdate();
+          }}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -185,6 +237,7 @@ interface FormBodyProps<TValues extends object> {
   formState: FormState<TValues>;
   isSaving: boolean;
   mode: 'create' | 'edit';
+  section?: FormSectionInfo;
   onSubmit: () => void;
   onCancel: () => void;
 }
@@ -195,6 +248,7 @@ function FormBody<TValues extends object>({
   formState,
   isSaving,
   mode,
+  section,
   onSubmit,
   onCancel,
 }: FormBodyProps<TValues>) {
@@ -220,21 +274,28 @@ function FormBody<TValues extends object>({
 
       <FormRoot>
         <FormSurface id={FORM_ID} onSubmit={handleFormSubmit}>
-          <FormGrid>
-            {fields.map((field) => (
-              <FormField
-                key={field.key}
-                field={field}
-                value={(formState.values as Record<string, unknown>)[field.key]}
-                onChange={(v) =>
-                  formState.updateField(
-                    field.key as keyof TValues,
-                    v as TValues[keyof TValues],
-                  )
-                }
-              />
-            ))}
-          </FormGrid>
+          <FormSection
+            icon={section?.icon}
+            title={section?.title}
+            description={section?.description}
+          >
+            <FormGrid>
+              {fields.map((field) => (
+                <FormField
+                  key={field.key}
+                  field={field}
+                  value={(formState.values as Record<string, unknown>)[field.key]}
+                  onChange={(v) =>
+                    formState.updateField(
+                      field.key as keyof TValues,
+                      v as TValues[keyof TValues],
+                    )
+                  }
+                  disabled={mode === 'edit' && field.disabledOnEdit === true}
+                />
+              ))}
+            </FormGrid>
+          </FormSection>
         </FormSurface>
       </FormRoot>
     </>

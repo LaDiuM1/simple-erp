@@ -42,6 +42,8 @@ interface BaseField<TValues> {
   hideOnCreate?: boolean;
   /** 수정 모드에서 숨김 (예: 로그인 ID / 비밀번호) */
   hideOnEdit?: boolean;
+  /** 수정 모드에서 입력 불가 (값은 보이되 변경 불가 — 예: 부서 코드) */
+  disabledOnEdit?: boolean;
   /** 그리드에서 한 줄을 전부 차지 (기본: 반 칸) */
   fullWidth?: boolean;
 }
@@ -94,6 +96,16 @@ export type FieldConfig<TValues> =
   | CustomFieldConfig<TValues>;
 
 /* --------------------------------------------------------------------------
+ * Section header (FormSection wrapper 에 주입할 선택적 헤더 정보)
+ * ------------------------------------------------------------------------ */
+
+export interface FormSectionInfo {
+  icon?: ReactNode;
+  title?: string;
+  description?: string;
+}
+
+/* --------------------------------------------------------------------------
  * API config
  * ------------------------------------------------------------------------ */
 
@@ -142,6 +154,15 @@ export interface FormApiConfig<
 
   /** 저장 성공 토스트 메시지 오버라이드 */
   successMessages?: FormSuccessMessages;
+
+  /**
+   * true 면 submit 직전에 ConfirmModal 1회 노출 후 확인 시에만 mutation 실행.
+   * 직원 등록/수정의 패턴과 동일.
+   */
+  confirm?: boolean;
+
+  /** 폼 컨텐츠 영역에 노출할 섹션 헤더 (icon + title + description). 미지정 시 헤더 없음. */
+  section?: FormSectionInfo;
 }
 
 /* --------------------------------------------------------------------------
