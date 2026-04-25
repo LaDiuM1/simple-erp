@@ -3,6 +3,7 @@ package io.github.ladium1.erp.member.internal.service;
 import io.github.ladium1.erp.department.api.DepartmentApi;
 import io.github.ladium1.erp.department.api.dto.DepartmentInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.member.internal.dto.MemberProfileResponse;
 import io.github.ladium1.erp.member.internal.entity.Member;
 import io.github.ladium1.erp.member.internal.exception.MemberErrorCode;
@@ -58,9 +59,6 @@ class MemberServiceTest {
         Long testPosId = 30L;
         String testPosition = "테스트직책";
 
-        Long testMenuId = 1L;
-        String testMenuCode = "TEST_MENU";
-
         Member mockMember = Member.builder()
                 .loginId(TEST_ID)
                 .name(testName)
@@ -75,12 +73,7 @@ class MemberServiceTest {
                 .name(testRoleName)
                 .build();
 
-        MenuPermission mockPermission = MenuPermission.builder()
-                .menuId(testMenuId)
-                .menuCode(testMenuCode)
-                .canRead(true)
-                .canWrite(true)
-                .build();
+        MenuPermission mockPermission = new MenuPermission(Menu.MDM_HRM, true, true);
         List<MenuPermission> mockPermissions = List.of(mockPermission);
 
         DepartmentInfo mockDeptInfo = DepartmentInfo.builder()
