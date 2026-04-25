@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import GenericList, { useListSelection } from '@/shared/ui/GenericList';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
@@ -55,6 +56,12 @@ export default function DepartmentListPage() {
                 },
               ]
             : []),
+          {
+            design: 'cancel' as const,
+            label: '부서 계층 관리',
+            icon: <AccountTreeRoundedIcon />,
+            onClick: () => navigate(`${MENU_PATH[MENU_CODE.DEPARTMENTS]}/hierarchy`),
+          },
           {
             design: 'create' as const,
             label: '부서 등록',

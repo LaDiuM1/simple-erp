@@ -9,6 +9,7 @@ import EmployeeEditPage from '@/pages/employee/EmployeeEditPage';
 import DepartmentListPage from '@/pages/department/DepartmentListPage';
 import DepartmentCreatePage from '@/pages/department/DepartmentCreatePage';
 import DepartmentEditPage from '@/pages/department/DepartmentEditPage';
+import DepartmentHierarchyPage from '@/pages/department/DepartmentHierarchyPage';
 
 export default function AppRoutes() {
   return (
@@ -21,6 +22,7 @@ export default function AppRoutes() {
         <Route path="/employees/new" element={<EmployeeCreatePage />} />
         <Route path="/employees/:id/edit" element={<EmployeeEditPage />} />
         <Route path="/departments" element={<DepartmentListPage />} />
+        <Route path="/departments/hierarchy" element={<DepartmentHierarchyPage />} />
         <Route path="/departments/new" element={<DepartmentCreatePage />} />
         <Route path="/departments/:id/edit" element={<DepartmentEditPage />} />
       </Route>

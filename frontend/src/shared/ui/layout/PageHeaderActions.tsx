@@ -32,10 +32,6 @@ export default function PageHeaderActions({ actions }: { actions: PageHeaderActi
   );
 }
 
-/* --------------------------------------------------------------------------
- * Action config
- * ------------------------------------------------------------------------ */
-
 export type PageHeaderAction =
   | {
       design: 'create' | 'save';
@@ -50,6 +46,8 @@ export type PageHeaderAction =
   | {
       design: 'cancel';
       label?: string;
+      /** 선택적 시작 아이콘. 일반 취소 버튼엔 안 쓰지만, 동일 outlined 톤의 보조 액션 (예: 부서 계층도) 에서 사용. */
+      icon?: ReactNode;
       onClick: () => void;
       disabled?: boolean;
     }
@@ -81,6 +79,7 @@ function renderAction(action: PageHeaderAction): ReactNode {
         type="button"
         onClick={action.onClick}
         disabled={action.disabled}
+        startIcon={action.icon}
       >
         {action.label ?? DEFAULT_LABEL.cancel}
       </CancelButton>
@@ -136,10 +135,6 @@ function renderAction(action: PageHeaderAction): ReactNode {
   }
   return button;
 }
-
-/* --------------------------------------------------------------------------
- * Styled — tonal soft primary + outlined neutral cancel, sharp corners.
- * ------------------------------------------------------------------------ */
 
 const buttonBase = {
   height: 34,

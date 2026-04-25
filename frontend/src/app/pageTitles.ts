@@ -10,6 +10,7 @@ const STATIC_TITLES: Record<string, string> = {
   '/employees/new': '직원 등록',
   '/departments': '부서 목록',
   '/departments/new': '부서 등록',
+  '/departments/hierarchy': '부서 계층 관리',
 };
 
 interface DynamicRule {

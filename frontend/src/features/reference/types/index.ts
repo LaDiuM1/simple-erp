@@ -2,6 +2,7 @@ export interface DepartmentInfo {
   id: number;
   code: string;
   name: string;
+  parentId: number | null;
 }
 
 export interface PositionInfo {
