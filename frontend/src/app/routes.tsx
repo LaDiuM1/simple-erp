@@ -6,6 +6,9 @@ import EmployeeMePage from '@/pages/employee/EmployeeMePage';
 import EmployeeListPage from '@/pages/employee/EmployeeListPage';
 import EmployeeCreatePage from '@/pages/employee/EmployeeCreatePage';
 import EmployeeEditPage from '@/pages/employee/EmployeeEditPage';
+import DepartmentListPage from '@/pages/department/DepartmentListPage';
+import DepartmentCreatePage from '@/pages/department/DepartmentCreatePage';
+import DepartmentEditPage from '@/pages/department/DepartmentEditPage';
 
 export default function AppRoutes() {
   return (
@@ -17,6 +20,9 @@ export default function AppRoutes() {
         <Route path="/employees" element={<EmployeeListPage />} />
         <Route path="/employees/new" element={<EmployeeCreatePage />} />
         <Route path="/employees/:id/edit" element={<EmployeeEditPage />} />
+        <Route path="/departments" element={<DepartmentListPage />} />
+        <Route path="/departments/new" element={<DepartmentCreatePage />} />
+        <Route path="/departments/:id/edit" element={<DepartmentEditPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

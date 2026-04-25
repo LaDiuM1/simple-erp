@@ -8,6 +8,8 @@ const STATIC_TITLES: Record<string, string> = {
   '/employee/me': '내 정보',
   '/employees': '직원 목록',
   '/employees/new': '직원 등록',
+  '/departments': '부서 목록',
+  '/departments/new': '부서 등록',
 };
 
 interface DynamicRule {
@@ -17,6 +19,7 @@ interface DynamicRule {
 
 const DYNAMIC_RULES: DynamicRule[] = [
   { test: (p) => /^\/employees\/\d+\/edit$/.test(p), title: '직원 수정' },
+  { test: (p) => /^\/departments\/\d+\/edit$/.test(p), title: '부서 수정' },
 ];
 
 export function getPageTitle(pathname: string): string {
