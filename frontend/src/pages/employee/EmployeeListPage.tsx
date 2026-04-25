@@ -1,10 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import AddIcon from '@mui/icons-material/Add';
 import { MENU_CODE } from '@/shared/config/menuConfig';
 import GenericList from '@/shared/ui/GenericList';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
-import { PrimaryPageHeaderButton } from '@/shared/ui/layout/PageHeaderButton';
-import PermissionGate from '@/shared/ui/layout/PermissionGate';
 import {
   employeeColumn,
   employeeSearchFilter,
@@ -17,16 +14,16 @@ export default function EmployeeListPage() {
 
   return (
     <>
-      <PageHeaderActions>
-        <PermissionGate menuCode={MENU_CODE.EMPLOYEES} action="write">
-          <PrimaryPageHeaderButton
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/employees/new')}
-          >
-            직원 등록
-          </PrimaryPageHeaderButton>
-        </PermissionGate>
-      </PageHeaderActions>
+      <PageHeaderActions
+        actions={[
+          {
+            design: 'create',
+            label: '직원 등록',
+            onClick: () => navigate('/employees/new'),
+            menuCode: MENU_CODE.EMPLOYEES,
+          },
+        ]}
+      />
 
       <GenericList api={api} searchFilter={employeeSearchFilter} column={employeeColumn} />
     </>

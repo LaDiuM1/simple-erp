@@ -1,6 +1,5 @@
 import { styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 
 /** 폼 페이지의 full-bleed 외곽 — 목록과 동일한 margin 탈출 + 스크롤 영역. */
 export const FormRoot = styled(Box)(({ theme }) => ({
@@ -41,21 +40,3 @@ export const FormGrid = styled(Box)(({ theme }) => ({
   },
 }));
 
-/** PageHeader 에 주입되는 취소 버튼. */
-export const CancelHeaderButton = styled(Button)(({ theme }) => ({
-  height: 34,
-  paddingLeft: '0.875rem',
-  paddingRight: '0.875rem',
-  fontSize: '0.8125rem',
-  fontWeight: 500,
-  borderRadius: '8px',
-  textTransform: 'none',
-  letterSpacing: '-0.005em',
-  color: theme.palette.text.secondary,
-  borderColor: theme.palette.divider,
-  '&:hover': {
-    borderColor: theme.palette.text.disabled,
-    color: theme.palette.text.primary,
-    backgroundColor: 'transparent',
-  },
-}));

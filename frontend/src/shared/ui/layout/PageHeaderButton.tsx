@@ -2,12 +2,11 @@ import Button from '@mui/material/Button';
 import { styled } from '@mui/material/styles';
 
 /**
- * 페이지 헤더(PageHeader 우측 액션 슬롯) 전용 버튼.
- * AppLayout의 PageHeader sub-toolbar 톤앤매너에 맞춰 높이 34px / 작은 폰트 / 8px radius 로 통일.
- * 본문 영역의 일반 버튼에는 사용하지 않는다.
+ * 페이지 헤더 영역의 보조(outlined) 버튼.
+ * 표준 액션 (등록/저장/취소) 은 PageHeaderActions 의 design prop 으로 처리하고,
+ * 이 버튼은 외부 컨텍스트에서 헤더 톤앤매너만 맞추고 싶을 때 사용 (현재는 GenericList 의 엑셀 다운로드).
  */
-
-const pageHeaderButtonBase = {
+export const SecondaryPageHeaderButton = styled(Button)(({ theme }) => ({
   height: 34,
   paddingLeft: '0.875rem',
   paddingRight: '0.875rem',
@@ -15,29 +14,13 @@ const pageHeaderButtonBase = {
   fontWeight: 500,
   borderRadius: '8px',
   boxShadow: 'none',
-  textTransform: 'none' as const,
+  textTransform: 'none',
   letterSpacing: '-0.005em',
-  '& .MuiButton-startIcon': { marginRight: '0.375rem' },
-  '& .MuiButton-startIcon > *': { fontSize: '1rem' },
-};
-
-/** 페이지 헤더의 기본(contained) 버튼. 등록/저장 등 primary 액션용. */
-export const PrimaryPageHeaderButton = styled(Button)(({ theme }) => ({
-  ...pageHeaderButtonBase,
-  backgroundColor: theme.palette.primary.main,
-  color: theme.palette.primary.contrastText,
-  '&:hover': {
-    backgroundColor: theme.palette.primary.dark,
-    boxShadow: 'none',
-  },
-}));
-
-/** 페이지 헤더의 보조(outlined) 버튼. 엑셀 다운로드 등 secondary 액션용. */
-export const SecondaryPageHeaderButton = styled(Button)(({ theme }) => ({
-  ...pageHeaderButtonBase,
   backgroundColor: theme.palette.background.paper,
   color: theme.palette.text.secondary,
   border: `1px solid ${theme.palette.divider}`,
+  '& .MuiButton-startIcon': { marginRight: '0.375rem' },
+  '& .MuiButton-startIcon > *': { fontSize: '1rem' },
   '&:hover': {
     backgroundColor: theme.palette.background.default,
     borderColor: theme.palette.text.disabled,

@@ -1,22 +1,12 @@
 import { type FormEventHandler } from 'react';
 import { useNavigate } from 'react-router-dom';
-import CircularProgress from '@mui/material/CircularProgress';
-import AddIcon from '@mui/icons-material/Add';
-import SaveIcon from '@mui/icons-material/Save';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
-import { PrimaryPageHeaderButton } from '@/shared/ui/layout/PageHeaderButton';
-import PermissionGate from '@/shared/ui/layout/PermissionGate';
 import type { ApiError } from '@/shared/types/api';
 import FormField from './FormField';
-import {
-  CancelHeaderButton,
-  FormGrid,
-  FormRoot,
-  FormSurface,
-} from './GenericForm.styles';
+import { FormGrid, FormRoot, FormSurface } from './GenericForm.styles';
 import { useFormState } from './useFormState';
 import type { FieldConfig, FormApiConfig, FormState } from './types';
 
@@ -216,34 +206,17 @@ function FormBody<TValues extends object>({
 
   return (
     <>
-      <PageHeaderActions>
-        <CancelHeaderButton
-          type="button"
-          variant="outlined"
-          onClick={onCancel}
-          disabled={isSaving}
-        >
-          취소
-        </CancelHeaderButton>
-        <PermissionGate menuCode={menuCode} action="write">
-          <PrimaryPageHeaderButton
-            type="submit"
-            form={FORM_ID}
-            disabled={isSaving}
-            startIcon={
-              isSaving ? (
-                <CircularProgress size={14} color="inherit" />
-              ) : mode === 'create' ? (
-                <AddIcon />
-              ) : (
-                <SaveIcon />
-              )
-            }
-          >
-            {mode === 'create' ? '등록' : '저장'}
-          </PrimaryPageHeaderButton>
-        </PermissionGate>
-      </PageHeaderActions>
+      <PageHeaderActions
+        actions={[
+          { design: 'cancel', onClick: onCancel, disabled: isSaving },
+          {
+            design: mode === 'create' ? 'create' : 'save',
+            formId: FORM_ID,
+            loading: isSaving,
+            menuCode,
+          },
+        ]}
+      />
 
       <FormRoot>
         <FormSurface id={FORM_ID} onSubmit={handleFormSubmit}>

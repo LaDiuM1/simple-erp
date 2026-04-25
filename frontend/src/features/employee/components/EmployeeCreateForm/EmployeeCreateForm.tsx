@@ -1,11 +1,6 @@
-import CircularProgress from '@mui/material/CircularProgress';
-import AddIcon from '@mui/icons-material/Add';
 import { MENU_CODE } from '@/shared/config/menuConfig';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
-import { CancelHeaderButton } from '@/shared/ui/GenericForm/GenericForm.styles';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
-import { PrimaryPageHeaderButton } from '@/shared/ui/layout/PageHeaderButton';
-import PermissionGate from '@/shared/ui/layout/PermissionGate';
 import { useEmployeeCreateForm } from '@/features/employee/hooks/useEmployeeCreateForm';
 import EmployeeFormHero from '../employeeForm/EmployeeFormHero';
 import BasicInfoSection from '../employeeForm/BasicInfoSection';
@@ -21,28 +16,17 @@ export default function EmployeeCreateForm() {
 
   return (
     <>
-      <PageHeaderActions>
-        <CancelHeaderButton
-          type="button"
-          variant="outlined"
-          onClick={form.handleCancel}
-          disabled={form.isSaving}
-        >
-          취소
-        </CancelHeaderButton>
-        <PermissionGate menuCode={MENU_CODE.EMPLOYEES} action="write">
-          <PrimaryPageHeaderButton
-            type="submit"
-            form={FORM_ID}
-            disabled={form.isSaving}
-            startIcon={
-              form.isSaving ? <CircularProgress size={14} color="inherit" /> : <AddIcon />
-            }
-          >
-            등록
-          </PrimaryPageHeaderButton>
-        </PermissionGate>
-      </PageHeaderActions>
+      <PageHeaderActions
+        actions={[
+          { design: 'cancel', onClick: form.handleCancel, disabled: form.isSaving },
+          {
+            design: 'create',
+            formId: FORM_ID,
+            loading: form.isSaving,
+            menuCode: MENU_CODE.EMPLOYEES,
+          },
+        ]}
+      />
 
       <CreateRoot>
         <CreateForm id={FORM_ID} onSubmit={form.handleSubmit} noValidate>
