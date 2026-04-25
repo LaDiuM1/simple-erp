@@ -33,7 +33,7 @@ public class MenuPermissionEvaluator {
         }
         Long roleId = memberApi.getRoleIdByLoginId(authentication.getName());
         return roleApi.getMenuPermissionsByRoleId(roleId).stream()
-                .filter(p -> p.menuCode().equals(menuCode))
+                .filter(p -> p.menuCode().name().equals(menuCode))
                 .findFirst()
                 .map(check::test)
                 .orElse(false);

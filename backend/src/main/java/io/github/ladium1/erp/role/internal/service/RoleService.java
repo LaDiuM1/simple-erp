@@ -1,8 +1,7 @@
 package io.github.ladium1.erp.role.internal.service;
 
 import io.github.ladium1.erp.global.exception.BusinessException;
-import io.github.ladium1.erp.menu.api.MenuApi;
-import io.github.ladium1.erp.menu.api.dto.MenuInfo;
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.role.api.RoleApi;
 import io.github.ladium1.erp.role.api.dto.MenuPermission;
 import io.github.ladium1.erp.role.api.dto.RoleCreateRequest;
@@ -21,10 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-
-import static java.util.stream.Collectors.toMap;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +29,6 @@ public class RoleService implements RoleApi {
 
     private final RoleRepository roleRepository;
     private final RoleMenuRepository roleMenuRepository;
-    private final MenuApi menuApi;
     private final RoleMapper roleMapper;
 
     @Override
@@ -62,15 +57,15 @@ public class RoleService implements RoleApi {
 
     @Override
     @Transactional
-    public void assignMenuPermissions(Long roleId, List<Long> menuIds) {
+    public void assignMenuPermissions(Long roleId, List<Menu> menus) {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_NOT_FOUND));
 
         // 호출된 권한에 주어진 메뉴에 대한 모든 권한 할당
-        List<RoleMenu> roleMenus = menuIds.stream()
-                .map(menuId -> RoleMenu.builder()
+        List<RoleMenu> roleMenus = menus.stream()
+                .map(menu -> RoleMenu.builder()
                         .role(role)
-                        .menuId(menuId)
+                        .menuCode(menu)
                         .canRead(true)
                         .canWrite(true)
                         .build())
@@ -84,26 +79,8 @@ public class RoleService implements RoleApi {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_NOT_FOUND));
 
-        List<RoleMenu> roleMenus = roleMenuRepository.findAllByRole(role);
-
-        List<Long> menuIds = roleMenus.stream()
-                .map(RoleMenu::getMenuId)
-                .toList();
-
-        Map<Long, MenuInfo> menuInfoMap = menuApi.getByIds(menuIds)
-                .stream()
-                .collect(toMap(MenuInfo::id, menu -> menu));
-
-        return roleMenus.stream()
-                .map(roleMenu -> {
-                    MenuInfo menuInfo = menuInfoMap.get(roleMenu.getMenuId());
-                    return MenuPermission.builder()
-                            .menuId(menuInfo.id())
-                            .menuCode(menuInfo.code())
-                            .canRead(roleMenu.isCanRead())
-                            .canWrite(roleMenu.isCanWrite())
-                            .build();
-                })
+        return roleMenuRepository.findAllByRole(role).stream()
+                .map(rm -> new MenuPermission(rm.getMenuCode(), rm.isCanRead(), rm.isCanWrite()))
                 .toList();
     }
 

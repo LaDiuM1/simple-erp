@@ -1,11 +1,9 @@
 package io.github.ladium1.erp.role.api.dto;
 
-import lombok.Builder;
+import io.github.ladium1.erp.global.menu.Menu;
 
-@Builder
 public record MenuPermission(
-        Long menuId,
-        String menuCode,
+        Menu menuCode,
         boolean canRead,
         boolean canWrite
 ) {

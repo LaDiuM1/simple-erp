@@ -1,10 +1,9 @@
 package io.github.ladium1.erp.member.internal.init;
 
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.member.internal.entity.Member;
 import io.github.ladium1.erp.member.internal.entity.MemberStatus;
 import io.github.ladium1.erp.member.internal.repository.MemberRepository;
-import io.github.ladium1.erp.menu.api.MenuApi;
-import io.github.ladium1.erp.menu.api.dto.MenuInfo;
 import io.github.ladium1.erp.role.api.RoleApi;
 import io.github.ladium1.erp.role.api.dto.RoleCreateRequest;
 import io.github.ladium1.erp.role.api.dto.RoleInfo;
@@ -19,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
@@ -46,7 +46,6 @@ public class DataInitializer implements ApplicationRunner {
 
     private final MemberRepository memberRepository;
     private final RoleApi roleApi;
-    private final MenuApi menuApi;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.admin-login-id}")
@@ -79,10 +78,7 @@ public class DataInitializer implements ApplicationRunner {
                     // 관리자 계정에 모든 메뉴의 권한 할당
                     roleApi.assignMenuPermissions(
                             newRole.id(),
-                            menuApi.getAllMenus()
-                                    .stream()
-                                    .map(MenuInfo::id)
-                                    .toList()
+                            Arrays.asList(Menu.values())
                     );
 
                     return newRole;

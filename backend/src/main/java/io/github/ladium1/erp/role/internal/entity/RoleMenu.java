@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.role.internal.entity;
 
 import io.github.ladium1.erp.global.jpa.BaseEntity;
+import io.github.ladium1.erp.global.menu.Menu;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -9,7 +10,11 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@Table(name = "role_menus")
+@Table(name = "role_menus",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_role_menus_role_menu",
+                columnNames = {"role_id", "menu_code"}
+        ))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RoleMenu extends BaseEntity {
 
@@ -22,10 +27,10 @@ public class RoleMenu extends BaseEntity {
             comment = "권한 외래키")
     private Role role;
 
-    // 메뉴 수정 시 이벤트 리스너 기반 자동 관리
-    @Column(nullable = false,
-            comment = "메뉴 식별자")
-    private Long menuId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "menu_code", nullable = false, length = 50,
+            comment = "메뉴 코드")
+    private Menu menuCode;
 
     @Column(comment = "읽기 권한")
     private boolean canRead;
@@ -34,9 +39,9 @@ public class RoleMenu extends BaseEntity {
     private boolean canWrite;
 
     @Builder
-    public RoleMenu(Role role, Long menuId, boolean canRead, boolean canWrite) {
+    public RoleMenu(Role role, Menu menuCode, boolean canRead, boolean canWrite) {
         this.role = role;
-        this.menuId = menuId;
+        this.menuCode = menuCode;
         this.canRead = canRead;
         this.canWrite = canWrite;
     }
