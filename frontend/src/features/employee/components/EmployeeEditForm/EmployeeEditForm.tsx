@@ -11,6 +11,7 @@ import BasicInfoSection from '../employeeForm/BasicInfoSection';
 import AffiliationSection from '../employeeForm/AffiliationSection';
 import AddressSection from '../employeeForm/AddressSection';
 import { CreateForm, CreateRoot } from '../employeeForm/employeeForm.styles';
+import AccountInfoSection from './AccountInfoSection';
 
 const FORM_ID = 'employee-edit-form';
 
@@ -45,6 +46,7 @@ function EmployeeEditFormBody({ id, detail }: { id: number; detail: EmployeeDeta
 
       <CreateRoot>
         <CreateForm id={FORM_ID} onSubmit={form.handleSubmit} noValidate>
+          <AccountInfoSection form={form} />
           <BasicInfoSection form={form} />
           <AffiliationSection form={form} showStatus />
           <AddressSection form={form} />

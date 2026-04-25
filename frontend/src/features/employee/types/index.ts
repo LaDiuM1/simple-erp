@@ -89,6 +89,8 @@ export interface EmployeeUpdateRequest {
   roleId: number;
   departmentId?: number | null;
   positionId?: number | null;
+  /** 비어있으면 비밀번호 유지. 채워지면 새 비밀번호로 변경. */
+  newPassword?: string | null;
 }
 
 export interface EmployeeSearchParams {
@@ -104,11 +106,6 @@ export interface EmployeeSearchParams {
 
 /** 목록 페이지 필터 state. page/size/sort 는 GenericList 가 관리하므로 제외. */
 export type EmployeeListFilters = Omit<EmployeeSearchParams, 'page' | 'size' | 'sort'>;
-
-/* --------------------------------------------------------------------------
- * Form (등록/수정 페이지) — MUI 호환을 위해 전부 string 보관
- * 숫자/nullable 필드는 서버 전송 시 toCreateRequest / toUpdateRequest 에서 변환.
- * ------------------------------------------------------------------------ */
 
 export interface EmployeeFormValues {
   loginId: string;
@@ -195,6 +192,7 @@ export function employeeFormToUpdateRequest(v: EmployeeFormValues): EmployeeUpda
     roleId: Number(v.roleId),
     departmentId: v.departmentId === '' ? null : Number(v.departmentId),
     positionId: v.positionId === '' ? null : Number(v.positionId),
+    newPassword: v.password === '' ? null : v.password,
   };
 }
 

@@ -33,6 +33,19 @@ export const employeeCreateValidators: ValidatorMap<EmployeeFormValues> = {
     v !== all.password ? '비밀번호가 일치하지 않습니다.' : null,
 };
 
+/**
+ * edit 페이지 전용 — 비밀번호는 옵셔널 (비워두면 변경 안 함, 채우면 4자 이상).
+ * 확인 필드는 password / passwordConfirm 한쪽이라도 채워졌을 때만 일치 검증.
+ */
+export const employeeEditValidators: ValidatorMap<EmployeeFormValues> = {
+  ...employeeBaseValidators,
+  password: (v) => (v !== '' && v.length < 4 ? '비밀번호는 4자 이상이어야 합니다.' : null),
+  passwordConfirm: (v, all) => {
+    if (all.password === '' && v === '') return null;
+    return v !== all.password ? '비밀번호가 일치하지 않습니다.' : null;
+  },
+};
+
 export function loginIdStatusText(status: LoginIdStatus): string | undefined {
   switch (status) {
     case 'checking':

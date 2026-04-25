@@ -12,7 +12,7 @@ import {
   type EmployeeDetail,
   type EmployeeFormValues,
 } from '@/features/employee/types';
-import { employeeBaseValidators } from '@/features/employee/validation/employeeFormValidation';
+import { employeeEditValidators } from '@/features/employee/validation/employeeFormValidation';
 import type { ApiError } from '@/shared/types/api';
 import type { EmployeeFormStateBase } from './employeeFormState';
 
@@ -47,7 +47,7 @@ export function useEmployeeEditForm(
   const update = <K extends keyof EmployeeFormValues>(key: K, v: EmployeeFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));
 
-  const validation = useFieldValidation(values, employeeBaseValidators);
+  const validation = useFieldValidation(values, employeeEditValidators);
 
   const handleAddressSearch = () => {
     openPostcode((data) => {
