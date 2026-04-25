@@ -101,6 +101,15 @@ const theme = createTheme({
         root: { borderRadius: '6px' },
       },
     },
+    MuiFormLabel: {
+      styleOverrides: {
+        asterisk: ({ theme: t }) => ({
+          color: t.palette.error.main,
+          fontWeight: 700,
+          marginLeft: '0.125rem',
+        }),
+      },
+    },
   },
 });
 

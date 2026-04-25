@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum Menu {
 
-    MDM_HRM("직원 관리");
+    EMPLOYEES("직원 관리");
 
     private final String label;
 }

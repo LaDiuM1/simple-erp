@@ -1,4 +1,4 @@
-import { useGetMyProfileQuery } from '@/features/member/api/memberApi';
+import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 
 export interface MenuPermissionState {
   canRead: boolean;

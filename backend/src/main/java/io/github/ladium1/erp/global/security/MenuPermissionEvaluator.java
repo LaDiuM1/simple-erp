@@ -1,6 +1,6 @@
 package io.github.ladium1.erp.global.security;
 
-import io.github.ladium1.erp.member.api.MemberApi;
+import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.role.api.RoleApi;
 import io.github.ladium1.erp.role.api.dto.MenuPermission;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MenuPermissionEvaluator {
 
-    private final MemberApi memberApi;
+    private final EmployeeApi employeeApi;
     private final RoleApi roleApi;
 
     public boolean canRead(Authentication authentication, String menuCode) {
@@ -31,7 +31,7 @@ public class MenuPermissionEvaluator {
         if (authentication == null || !authentication.isAuthenticated()) {
             return false;
         }
-        Long roleId = memberApi.getRoleIdByLoginId(authentication.getName());
+        Long roleId = employeeApi.getRoleIdByLoginId(authentication.getName());
         return roleApi.getMenuPermissionsByRoleId(roleId).stream()
                 .filter(p -> p.menuCode().name().equals(menuCode))
                 .findFirst()

@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
-import { useGetMyProfileQuery } from '@/features/member/api/memberApi';
+import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 import type { ApiError } from '@/shared/types/api';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';

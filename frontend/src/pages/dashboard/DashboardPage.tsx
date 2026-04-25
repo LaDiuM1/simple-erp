@@ -4,13 +4,13 @@ import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
-import { useGetMyProfileQuery } from '@/features/member/api/memberApi';
+import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 import { MENU_CONFIG } from '@/shared/config/menuConfig';
 import Muted from '@/shared/ui/atoms/Muted';
 import type {
-  MemberProfileResponse,
+  EmployeeProfileResponse,
   MenuPermission,
-} from '@/features/member/types';
+} from '@/features/employee/types';
 import {
   DashboardRoot,
   ProfileGrid,
@@ -37,7 +37,7 @@ import {
 } from './DashboardPage.styles';
 
 const SHORTCUT_ICONS: Record<string, ReactNode> = {
-  MDM_HRM: <GroupsRoundedIcon sx={{ fontSize: 20 }} />,
+  EMPLOYEES: <GroupsRoundedIcon sx={{ fontSize: 20 }} />,
 };
 
 const DEFAULT_SHORTCUT_ICON = <DashboardRoundedIcon sx={{ fontSize: 20 }} />;
@@ -58,11 +58,7 @@ export default function DashboardPage() {
   );
 }
 
-/* --------------------------------------------------------------------------
- * Welcome
- * ------------------------------------------------------------------------ */
-
-function WelcomeSection({ profile }: { profile: MemberProfileResponse }) {
+function WelcomeSection({ profile }: { profile: EmployeeProfileResponse }) {
   const today = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'long',
@@ -86,11 +82,7 @@ function WelcomeSection({ profile }: { profile: MemberProfileResponse }) {
   );
 }
 
-/* --------------------------------------------------------------------------
- * Profile summary
- * ------------------------------------------------------------------------ */
-
-function ProfileSection({ profile }: { profile: MemberProfileResponse }) {
+function ProfileSection({ profile }: { profile: EmployeeProfileResponse }) {
   return (
     <SectionSurface>
       <SectionHeader>
@@ -117,10 +109,6 @@ function ProfileSection({ profile }: { profile: MemberProfileResponse }) {
     </SectionSurface>
   );
 }
-
-/* --------------------------------------------------------------------------
- * Shortcuts (권한 기반 바로가기)
- * ------------------------------------------------------------------------ */
 
 interface Shortcut {
   code: string;

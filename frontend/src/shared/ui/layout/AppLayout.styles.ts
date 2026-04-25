@@ -8,18 +8,17 @@ export const SIDEBAR_WIDTH = 240;
 export const LayoutRoot = styled(Box)({
   display: 'flex',
   flexDirection: 'column',
-  minHeight: '100vh',
+  height: '100vh',
+  overflow: 'hidden',
 });
 
 export const StyledAppBar = styled(AppBar)(({ theme }) => ({
   height: HEADER_HEIGHT,
+  flexShrink: 0,
   backgroundColor: '#FFFFFF',
   color: theme.palette.text.primary,
   borderBottom: `1px solid ${theme.palette.divider}`,
   boxShadow: '0 2px 6px -1px rgba(15, 23, 42, 0.06)',
-  position: 'sticky',
-  top: 0,
-  zIndex: theme.zIndex.appBar,
 }));
 
 export const AppBarInner = styled(Box)({

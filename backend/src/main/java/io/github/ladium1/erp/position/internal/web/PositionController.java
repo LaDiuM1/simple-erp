@@ -16,7 +16,7 @@ import java.util.List;
 public class PositionController {
 
     // 직원 관리 페이지에서 직책 드롭다운/필터로 소비되므로 동일한 메뉴 권한으로 묶는다.
-    private static final String MENU_CODE = "MDM_HRM";
+    private static final String MENU_CODE = "EMPLOYEES";
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
 
     private final PositionApi positionApi;

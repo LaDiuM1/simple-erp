@@ -8,7 +8,7 @@ import Typography from '@mui/material/Typography';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { useAppDispatch } from '@/app/hooks';
 import { logout } from '@/features/auth/store/authSlice';
-import { useGetMyProfileQuery } from '@/features/member/api/memberApi';
+import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 import { MENU_CONFIG } from '@/shared/config/menuConfig';
 import { getPageTitle } from '@/app/pageTitles';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
@@ -81,7 +81,7 @@ export default function AppLayout() {
 
   return (
     <LayoutRoot>
-      <StyledAppBar>
+      <StyledAppBar position="static">
         <AppBarInner>
           <HamburgerButton
             role="button"
@@ -101,7 +101,7 @@ export default function AppLayout() {
           </BrandLink>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
-            {profile && <ProfileLink profile={profile} onClick={() => navigate('/member/me')} />}
+            {profile && <ProfileLink profile={profile} onClick={() => navigate('/employee/me')} />}
             <Button
               variant="outlined"
               size="small"
@@ -202,7 +202,7 @@ export default function AppLayout() {
 
 /**
  * 헤더 우측에 노출되는 클릭 가능한 사용자 정보 영역.
- * 클릭 시 /member/me로 이동. 아이콘 없이 타이포그래피로만 정보 위계 표현.
+ * 클릭 시 /employee/me로 이동. 아이콘 없이 타이포그래피로만 정보 위계 표현.
  */
 function ProfileLink({ profile, onClick }: { profile: ProfileSummary; onClick: () => void }) {
   return (
