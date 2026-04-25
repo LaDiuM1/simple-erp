@@ -1,5 +1,6 @@
 import DownloadIcon from '@mui/icons-material/FileDownloadOutlined';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
+import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import type { ApiError } from '@/shared/types/api';
 import ListSearchFilter from './ListSearchFilter';
 import ListTable from './ListTable';
@@ -18,6 +19,9 @@ import type {
   SortState,
   UseExcelDownload,
 } from './types';
+
+const DEFAULT_DELETE_SUCCESS = '삭제되었습니다.';
+const DEFAULT_DELETE_ERROR = '삭제 중 오류가 발생했습니다.';
 
 export interface GenericListProps<TRow, TFilters extends object> {
   api: ListApiConfig<TRow, TFilters>;
@@ -39,13 +43,20 @@ export default function GenericList<TRow, TFilters extends object>({
     column,
     pageSize: api.pageSize,
   });
+  const snackbar = useSnackbar();
 
   const query = api.useList(state.queryParams);
   const [deleteFn] = api.useDelete();
   const { data, isFetching, isError, error, refetch } = query;
 
   const handleDelete = async (row: TRow) => {
-    await deleteFn(api.rowKey(row)).unwrap();
+    try {
+      await deleteFn(api.rowKey(row)).unwrap();
+      snackbar.success(api.successMessages?.delete ?? DEFAULT_DELETE_SUCCESS);
+    } catch (err) {
+      snackbar.error((err as ApiError)?.message ?? DEFAULT_DELETE_ERROR);
+      throw err;
+    }
   };
 
   if (isError) {

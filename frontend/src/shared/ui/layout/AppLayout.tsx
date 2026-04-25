@@ -12,6 +12,7 @@ import { useGetMyProfileQuery } from '@/features/member/api/memberApi';
 import { MENU_CONFIG } from '@/shared/config/menuConfig';
 import { getPageTitle } from '@/app/pageTitles';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
+import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import PageHeader from './PageHeader';
 import {
   AppBarInner,
@@ -48,6 +49,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const location = useLocation();
+  const snackbar = useSnackbar();
   const { data: profile } = useGetMyProfileQuery();
 
   const toggleGroup = (code: string) => {
@@ -66,6 +68,7 @@ export default function AppLayout() {
   const pageTitle = getPageTitle(location.pathname);
 
   const handleLogout = () => {
+    snackbar.success('로그아웃되었습니다.');
     dispatch(logout());
     navigate('/login');
   };

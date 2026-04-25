@@ -1,10 +1,11 @@
-import { useState, type FormEventHandler } from 'react';
+import { type FormEventHandler } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
+import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { PrimaryPageHeaderButton } from '@/shared/ui/layout/PageHeaderButton';
 import PermissionGate from '@/shared/ui/layout/PermissionGate';
@@ -12,7 +13,6 @@ import type { ApiError } from '@/shared/types/api';
 import FormField from './FormField';
 import {
   CancelHeaderButton,
-  ErrorBox,
   FormGrid,
   FormRoot,
   FormSurface,
@@ -22,6 +22,10 @@ import type { FieldConfig, FormApiConfig, FormState } from './types';
 
 /** PageHeader 의 저장 버튼이 portal 을 넘어 form 을 연결할 때 쓰는 id. */
 const FORM_ID = 'generic-form';
+
+const DEFAULT_CREATE_SUCCESS = '등록되었습니다.';
+const DEFAULT_EDIT_SUCCESS = '저장되었습니다.';
+const DEFAULT_SAVE_ERROR = '저장 중 오류가 발생했습니다.';
 
 export interface GenericFormProps<
   TValues extends object,
@@ -72,19 +76,19 @@ function CreateForm<
   fields: FieldConfig<TValues>[];
 }) {
   const navigate = useNavigate();
+  const snackbar = useSnackbar();
   const formState = useFormState<TValues>(api.emptyValues);
   const [createFn, { isLoading: isSaving }] = api.useCreate();
-  const [error, setError] = useState<string | null>(null);
 
   const visibleFields = fields.filter((f) => !f.hideOnCreate);
 
   const handleSubmit = async () => {
-    setError(null);
     try {
       await createFn(api.toCreateRequest(formState.values)).unwrap();
+      snackbar.success(api.successMessages?.create ?? DEFAULT_CREATE_SUCCESS);
       navigate(api.listPath);
     } catch (err) {
-      setError((err as ApiError)?.message ?? '저장 중 오류가 발생했습니다.');
+      snackbar.error((err as ApiError)?.message ?? DEFAULT_SAVE_ERROR);
     }
   };
 
@@ -94,7 +98,6 @@ function CreateForm<
       fields={visibleFields}
       formState={formState}
       isSaving={isSaving}
-      error={error}
       mode="create"
       onSubmit={handleSubmit}
       onCancel={() => navigate(api.listPath)}
@@ -153,19 +156,19 @@ function EditFormBody<
   detail: TDetail;
 }) {
   const navigate = useNavigate();
+  const snackbar = useSnackbar();
   const formState = useFormState<TValues>(api.toValues(detail));
   const [updateFn, { isLoading: isSaving }] = api.useUpdate();
-  const [error, setError] = useState<string | null>(null);
 
   const visibleFields = fields.filter((f) => !f.hideOnEdit);
 
   const handleSubmit = async () => {
-    setError(null);
     try {
       await updateFn({ id, body: api.toUpdateRequest(formState.values) }).unwrap();
+      snackbar.success(api.successMessages?.edit ?? DEFAULT_EDIT_SUCCESS);
       navigate(api.listPath);
     } catch (err) {
-      setError((err as ApiError)?.message ?? '저장 중 오류가 발생했습니다.');
+      snackbar.error((err as ApiError)?.message ?? DEFAULT_SAVE_ERROR);
     }
   };
 
@@ -175,7 +178,6 @@ function EditFormBody<
       fields={visibleFields}
       formState={formState}
       isSaving={isSaving}
-      error={error}
       mode="edit"
       onSubmit={handleSubmit}
       onCancel={() => navigate(api.listPath)}
@@ -184,7 +186,7 @@ function EditFormBody<
 }
 
 /* --------------------------------------------------------------------------
- * Shared body (그리드 + 제출/취소 + 에러)
+ * Shared body (그리드 + 제출/취소)
  * ------------------------------------------------------------------------ */
 
 interface FormBodyProps<TValues extends object> {
@@ -192,7 +194,6 @@ interface FormBodyProps<TValues extends object> {
   fields: FieldConfig<TValues>[];
   formState: FormState<TValues>;
   isSaving: boolean;
-  error: string | null;
   mode: 'create' | 'edit';
   onSubmit: () => void;
   onCancel: () => void;
@@ -203,7 +204,6 @@ function FormBody<TValues extends object>({
   fields,
   formState,
   isSaving,
-  error,
   mode,
   onSubmit,
   onCancel,
@@ -262,8 +262,6 @@ function FormBody<TValues extends object>({
               />
             ))}
           </FormGrid>
-
-          {error && <ErrorBox>{error}</ErrorBox>}
         </FormSurface>
       </FormRoot>
     </>

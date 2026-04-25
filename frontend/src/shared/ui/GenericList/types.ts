@@ -109,6 +109,11 @@ export interface DeleteConfirmMessages {
   message: string;
 }
 
+/** 목록 화면에서 성공 이벤트 발생 시 스낵바로 노출할 메시지 오버라이드. */
+export interface ListSuccessMessages {
+  delete?: string;
+}
+
 export interface ListApiConfig<TRow, TFilters extends object> {
   menuCode: string;
 
@@ -124,6 +129,8 @@ export interface ListApiConfig<TRow, TFilters extends object> {
 
   emptyMessage?: string;
   deleteConfirm?: DeleteConfirmMessages;
+  /** 삭제 성공 토스트 메시지 오버라이드 */
+  successMessages?: ListSuccessMessages;
   pageSize?: number;
 }
 

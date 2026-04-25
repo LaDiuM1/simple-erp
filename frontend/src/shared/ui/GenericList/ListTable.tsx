@@ -99,9 +99,11 @@ export default function ListTable<TRow>({
     setIsDeleting(true);
     try {
       await onDelete(deletingRow);
-      setDeletingRow(null);
+    } catch {
+      // GenericList 가 이미 스낵바로 에러를 노출한다. 모달은 닫고 재시도는 사용자 재클릭으로 유도.
     } finally {
       setIsDeleting(false);
+      setDeletingRow(null);
     }
   };
 

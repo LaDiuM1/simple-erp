@@ -4,6 +4,7 @@ import Collapse from '@mui/material/Collapse';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { useLoginMutation } from '@/features/auth/api/authApi';
 import { setToken } from '@/features/auth/store/authSlice';
+import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import type { ApiError } from '@/shared/types/api';
 import {
   AppSubtitle,
@@ -23,6 +24,7 @@ import {
 export default function LoginPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const snackbar = useSnackbar();
   const accessToken = useAppSelector((s) => s.auth.accessToken);
 
   const [loginId, setLoginId] = useState('');
@@ -38,6 +40,7 @@ export default function LoginPage() {
     const result = await login({ loginId, password });
     if ('data' in result && result.data) {
       dispatch(setToken(result.data.accessToken));
+      snackbar.success('로그인되었습니다.');
       navigate('/');
     }
   };

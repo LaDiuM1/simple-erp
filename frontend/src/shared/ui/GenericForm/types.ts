@@ -102,6 +102,12 @@ export interface FormTitles {
   edit?: string;
 }
 
+/** 저장 성공 시 스낵바로 노출할 메시지. 미지정 시 공용 기본 문구 사용. */
+export interface FormSuccessMessages {
+  create?: string;
+  edit?: string;
+}
+
 export interface FormApiConfig<
   TValues extends object,
   TDetail,
@@ -133,6 +139,9 @@ export interface FormApiConfig<
 
   /** 페이지 헤더 타이틀. 미지정 시 label 미노출 (AppLayout 이 라우트 매핑에서 결정) */
   titles?: FormTitles;
+
+  /** 저장 성공 토스트 메시지 오버라이드 */
+  successMessages?: FormSuccessMessages;
 }
 
 /* --------------------------------------------------------------------------

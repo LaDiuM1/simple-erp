@@ -41,23 +41,6 @@ export const FormGrid = styled(Box)(({ theme }) => ({
   },
 }));
 
-/** 저장 중 인라인 에러 박스 (서버 응답 메시지 노출). */
-export const ErrorBox = styled(Box)(({ theme }) => ({
-  padding: '0.6875rem 0.875rem',
-  backgroundColor: theme.palette.error.light,
-  border: `1px solid ${theme.palette.errorBorder}`,
-  borderRadius: 4,
-  color: theme.palette.error.main,
-  fontSize: '0.875rem',
-}));
-
-/** 로딩 영역 (수정 모드에서 상세 조회 중). */
-export const LoadingCenter = styled(Box)({
-  display: 'flex',
-  justifyContent: 'center',
-  padding: '4rem 0',
-});
-
 /** PageHeader 에 주입되는 취소 버튼. */
 export const CancelHeaderButton = styled(Button)(({ theme }) => ({
   height: 34,
