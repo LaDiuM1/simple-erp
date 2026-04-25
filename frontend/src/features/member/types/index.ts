@@ -1,5 +1,4 @@
 export interface MenuPermission {
-  menuId: number;
   menuCode: string;
   canRead: boolean;
   canWrite: boolean;

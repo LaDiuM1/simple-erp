@@ -46,7 +46,7 @@ export default function MemberProfileCard({ profile }: Props) {
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {profile.menuPermissions.map((p) => (
-              <PermItem key={p.menuId}>
+              <PermItem key={p.menuCode}>
                 <Typography sx={{ fontSize: '0.875rem', fontWeight: 500, color: 'text.primary' }}>
                   {p.menuCode}
                 </Typography>
