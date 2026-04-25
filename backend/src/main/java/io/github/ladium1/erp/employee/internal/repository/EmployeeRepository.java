@@ -20,4 +20,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, Emplo
 
     boolean existsByLoginId(String loginId);
 
+    boolean existsByDepartmentId(Long departmentId);
+
 }

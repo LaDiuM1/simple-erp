@@ -3,6 +3,7 @@ package io.github.ladium1.erp.department.internal.entity;
 import io.github.ladium1.erp.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -29,4 +30,15 @@ public class Department extends BaseEntity {
             comment = "상위 부서 외래키")
     private Department parent;
 
+    @Builder
+    Department(String code, String name, Department parent) {
+        this.code = code;
+        this.name = name;
+        this.parent = parent;
+    }
+
+    public void update(String name, Department parent) {
+        this.name = name;
+        this.parent = parent;
+    }
 }

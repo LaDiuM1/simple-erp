@@ -6,6 +6,7 @@ import lombok.Builder;
 public record DepartmentInfo(
         Long id,
         String code,
-        String name
+        String name,
+        Long parentId
 ) {
 }
