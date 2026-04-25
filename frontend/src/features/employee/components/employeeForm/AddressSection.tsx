@@ -26,7 +26,7 @@ export default function AddressSection({ form }: { form: EmployeeFormStateBase }
             label="우편번호"
             value={values.zipCode}
             placeholder="00000"
-            slotProps={{ input: { readOnly: true } }}
+            disabled
             sx={{ flex: 1 }}
           />
           <AddressSearchButton
@@ -44,7 +44,7 @@ export default function AddressSection({ form }: { form: EmployeeFormStateBase }
             size="small"
             label="기본 주소"
             value={values.roadAddress}
-            slotProps={{ input: { readOnly: true } }}
+            disabled
           />
         </FieldFull>
         <FieldFull>

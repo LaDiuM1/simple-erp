@@ -27,7 +27,7 @@ export default function AccountSection({ form }: { form: EmployeeCreateFormState
           onBlur={validation.onBlur('loginId')}
           error={validation.isInvalid('loginId') || loginIdStatus === 'taken'}
           helperText={validation.errorMessage('loginId') ?? loginIdStatusText(loginIdStatus)}
-          placeholder="employee01"
+          placeholder="3자리 이상 입력"
           slotProps={{
             input: { endAdornment: renderLoginIdStatusIcon(loginIdStatus) },
           }}
@@ -37,11 +37,12 @@ export default function AccountSection({ form }: { form: EmployeeCreateFormState
           type="password"
           label="비밀번호"
           required
+          placeholder="4자리 이상 입력"
           value={values.password}
           onChange={(e) => update('password', e.target.value)}
           onBlur={validation.onBlur('password')}
           error={validation.isInvalid('password')}
-          helperText={validation.errorMessage('password') ?? '4자 이상'}
+          helperText={validation.errorMessage('password')}
           slotProps={{ htmlInput: { minLength: 4 } }}
         />
         <FieldCol2>
