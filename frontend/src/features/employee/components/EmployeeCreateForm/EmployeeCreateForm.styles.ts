@@ -4,7 +4,7 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
 /* --------------------------------------------------------------------------
- * Page outer
+ * Form outer
  * ------------------------------------------------------------------------ */
 
 export const CreateRoot = styled(Box)(({ theme }) => ({
@@ -190,14 +190,12 @@ export const FieldCol2 = styled(Box)(({ theme }) => ({
  * Address search (zipCode + 검색 버튼)
  * ------------------------------------------------------------------------ */
 
-/** 우편번호 input + 주소 검색 버튼을 가로로 묶는 행. */
 export const AddressSearchRow = styled(Box)({
   display: 'flex',
   gap: '0.5rem',
   alignItems: 'stretch',
 });
 
-/** TextField size="small" 와 높이 정렬된 outlined 버튼. */
 export const AddressSearchButton = styled(Button)(({ theme }) => ({
   height: 40,
   paddingLeft: '0.875rem',
