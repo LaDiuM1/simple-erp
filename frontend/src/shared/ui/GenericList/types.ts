@@ -145,6 +145,7 @@ export interface ListState<TFilters> {
 
   page: number;
   setPage: (page: number) => void;
+  pageSize: number;
 
   sort: SortState;
   setSort: (sort: SortState) => void;

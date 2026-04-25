@@ -61,6 +61,7 @@ export function useListState<TFilters extends object>({
     resetFilters,
     page,
     setPage,
+    pageSize,
     sort,
     setSort,
     queryParams,

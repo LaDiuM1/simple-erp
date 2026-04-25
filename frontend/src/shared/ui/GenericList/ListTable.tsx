@@ -47,6 +47,8 @@ interface Props<TRow> {
   columns: ColumnConfig<TRow>[];
   rows: TRow[];
   rowKey: (row: TRow) => string | number;
+  page: number;
+  pageSize: number;
   sort: SortState;
   onSortChange: (sort: SortState) => void;
   isLoading?: boolean;
@@ -55,6 +57,9 @@ interface Props<TRow> {
   onDelete?: (row: TRow) => Promise<void> | void;
   deleteConfirm?: DeleteConfirmMessages;
 }
+
+/** 데이터 전체 순번 = 현재 페이지 인덱스 × size + 행 인덱스 + 1. */
+const NO_COL_WIDTH = 64;
 
 /**
  * 표 영역. 데스크탑은 Table, 모바일은 카드 리스트.
@@ -65,6 +70,8 @@ export default function ListTable<TRow>({
   columns,
   rows,
   rowKey,
+  page,
+  pageSize,
   sort,
   onSortChange,
   isLoading = false,
@@ -157,6 +164,8 @@ export default function ListTable<TRow>({
             rows={rows}
             rowKey={rowKey}
             rowActions={rowActions}
+            page={page}
+            pageSize={pageSize}
             sort={sort}
             onSortClick={handleSortClick}
             emptyMessage={emptyMessage}
@@ -194,19 +203,22 @@ interface DesktopProps<TRow> {
   rows: TRow[];
   rowKey: (row: TRow) => string | number;
   rowActions?: (row: TRow) => ReactNode;
+  page: number;
+  pageSize: number;
   sort: SortState;
   onSortClick: (col: ColumnConfig<TRow>) => void;
   emptyMessage: string;
 }
 
 function DesktopTable<TRow>({
-  columns, rows, rowKey, rowActions, sort, onSortClick, emptyMessage,
+  columns, rows, rowKey, rowActions, page, pageSize, sort, onSortClick, emptyMessage,
 }: DesktopProps<TRow>) {
   return (
     <StyledTableContainer>
       <Table size="small" sx={{ minWidth: 720 }}>
         <TableHead>
           <TableRow>
+            <HeaderCell align="center" sx={{ width: NO_COL_WIDTH }}>No</HeaderCell>
             {columns.map((col) => (
               <HeaderCell
                 key={col.key}
@@ -232,15 +244,18 @@ function DesktopTable<TRow>({
           {rows.length === 0 ? (
             <TableRow>
               <BodyCell
-                colSpan={columns.length + (rowActions ? 1 : 0)}
+                colSpan={columns.length + 1 + (rowActions ? 1 : 0)}
                 sx={{ p: 0 }}
               >
                 <EmptyState message={emptyMessage} />
               </BodyCell>
             </TableRow>
           ) : (
-            rows.map((row) => (
+            rows.map((row, idx) => (
               <BodyRow key={rowKey(row)}>
+                <BodyCell align="center" sx={{ color: 'text.secondary', width: NO_COL_WIDTH }}>
+                  {page * pageSize + idx + 1}
+                </BodyCell>
                 {columns.map((col) => (
                   <BodyCell key={col.key} align={col.align ?? 'left'}>
                     {renderCell(col, row)}

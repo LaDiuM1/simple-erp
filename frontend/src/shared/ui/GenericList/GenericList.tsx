@@ -91,6 +91,8 @@ export default function GenericList<TRow, TFilters extends object>({
           columns={column}
           rows={data?.content ?? []}
           rowKey={api.rowKey}
+          page={state.page}
+          pageSize={state.pageSize}
           sort={state.sort}
           onSortChange={state.setSort}
           isLoading={isFetching}
