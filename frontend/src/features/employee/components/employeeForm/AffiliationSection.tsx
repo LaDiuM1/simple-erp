@@ -2,16 +2,16 @@ import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
 import {
-  useGetDepartmentsQuery,
   useGetPositionsQuery,
   useGetRolesQuery,
 } from '@/features/reference/api/referenceApi';
+import DepartmentSelectField from '@/features/department/components/DepartmentSelectField';
 import {
   EMPLOYEE_STATUS_OPTIONS,
   type EmployeeStatus,
 } from '@/features/employee/types';
 import type { EmployeeFormStateBase } from '@/features/employee/hooks/employeeFormState';
-import FormSection from './FormSection';
+import { FormSection } from '@/shared/ui/GenericForm';
 import { FieldGrid } from './employeeForm.styles';
 
 interface Props {
@@ -24,12 +24,11 @@ export default function AffiliationSection({ form, showStatus = false }: Props) 
   const { values, update, validation } = form;
 
   const { data: roles } = useGetRolesQuery();
-  const { data: departments } = useGetDepartmentsQuery();
   const { data: positions } = useGetPositionsQuery();
 
   const description = showStatus
     ? '권한과 부서 / 직책 / 재직 상태를 지정합니다.'
-    : '권한과 부서 / 직책을 지정합니다. 재직 상태는 등록 시 ACTIVE 로 시작됩니다.';
+    : '권한과 부서 / 직책을 지정합니다.'
 
   return (
     <FormSection
@@ -55,20 +54,10 @@ export default function AffiliationSection({ form, showStatus = false }: Props) 
             </MenuItem>
           ))}
         </TextField>
-        <TextField
-          select
-          size="small"
-          label="부서"
+        <DepartmentSelectField
           value={values.departmentId}
-          onChange={(e) => update('departmentId', e.target.value)}
-        >
-          <MenuItem value="">-</MenuItem>
-          {(departments ?? []).map((d) => (
-            <MenuItem key={d.id} value={String(d.id)}>
-              {d.name}
-            </MenuItem>
-          ))}
-        </TextField>
+          onChange={(v) => update('departmentId', v)}
+        />
         <TextField
           select
           size="small"
