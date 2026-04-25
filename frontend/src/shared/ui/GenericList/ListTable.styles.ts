@@ -27,7 +27,7 @@ export const StyledTableContainer = styled(TableContainer)({
   overflow: 'visible',
 });
 
-/** sticky 헤더 셀 (정렬 컬럼 + 행 액션 헤더 공용). */
+/** sticky 헤더 셀 (정렬 컬럼 + 행 액션 헤더 공용). 사이드바와 동일한 표준 회색 톤. */
 export const HeaderCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.8125rem',
   fontWeight: 600,
@@ -35,7 +35,7 @@ export const HeaderCell = styled(TableCell)(({ theme }) => ({
   whiteSpace: 'nowrap',
   borderBottom: `1px solid ${theme.palette.divider}`,
   padding: '0.625rem 1.25rem',
-  backgroundColor: theme.palette.background.default,
+  backgroundColor: '#F8FAFC',
   position: 'sticky',
   top: 0,
   zIndex: 2,

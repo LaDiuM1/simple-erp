@@ -1,4 +1,10 @@
-import { createTheme, type Shadows } from '@mui/material/styles';
+import { createElement } from 'react';
+import { alpha, createTheme, type Shadows } from '@mui/material/styles';
+import {
+  ThinCheckedIcon,
+  ThinIndeterminateIcon,
+  ThinUncheckedIcon,
+} from './checkboxIcons';
 
 const shadows: Shadows = [
   'none',
@@ -39,7 +45,7 @@ const theme = createTheme({
     primarySubtle: '#EFF6FF',
     primaryLight: '#DBEAFE',
     background: {
-      default: '#F8FAFC',
+      default: '#FFFFFF',
       paper: '#FFFFFF',
     },
     text: {
@@ -57,7 +63,7 @@ const theme = createTheme({
     errorBg: '#FEF2F2',
     errorBorder: '#FECACA',
     success: {
-      main: '#10B981',
+      main: '#0f903a',
     },
   },
   shape: {
@@ -80,7 +86,7 @@ const theme = createTheme({
       styleOverrides: {
         'html, body, #root': { height: '100%' },
         body: {
-          backgroundColor: '#F8FAFC',
+          backgroundColor: '#FFFFFF',
           color: '#1E293B',
           lineHeight: 1.5,
           WebkitFontSmoothing: 'antialiased',
@@ -96,9 +102,103 @@ const theme = createTheme({
         root: { textTransform: 'none', borderRadius: '6px' },
       },
     },
+    /**
+     * 폼 입력창의 기본 variant — filled. (필터바의 SearchTextField 는 사용처에서 explicit
+     * variant="outlined" 로 override 하여 컴팩트한 검색 톤 유지)
+     */
+    MuiTextField: {
+      defaultProps: { variant: 'filled' },
+    },
+    /**
+     * Filled 변형의 모던 스타일 (직사각형 / white bg / 옅은 보더).
+     * - bg: 항상 white (lift 없음 — 처음부터 깔끔한 흰색)
+     * - 보더: inset box-shadow 로 1px 라인 (filled 에는 notchedOutline 이 없음)
+     *   - idle: divider (매우 옅음)
+     *   - hover: text.disabled (한 단계 darken)
+     *   - focus: primary 1px + outer glow ring
+     * - radius: 0 — rectangular
+     * - underline: 제거 (defaultProps)
+     */
+    MuiFilledInput: {
+      defaultProps: { disableUnderline: true },
+      styleOverrides: {
+        root: ({ theme: t }) => ({
+          borderRadius: 0,
+          backgroundColor: t.palette.background.paper,
+          transition: 'box-shadow 0.15s ease',
+          boxShadow: `inset 0 0 0 1px ${t.palette.divider}`,
+          '&:hover:not(.Mui-disabled):not(.Mui-error):not(.Mui-focused)': {
+            boxShadow: `inset 0 0 0 1px ${t.palette.text.disabled}`,
+          },
+          '&.Mui-focused': {
+            boxShadow: `inset 0 0 0 1px ${t.palette.primary.main}, 0 0 0 3px ${alpha(t.palette.primary.main, 0.12)}`,
+          },
+          '&.Mui-error': {
+            boxShadow: `inset 0 0 0 1px ${t.palette.error.main}`,
+          },
+          '&.Mui-error.Mui-focused': {
+            boxShadow: `inset 0 0 0 1px ${t.palette.error.main}, 0 0 0 3px ${alpha(t.palette.error.main, 0.12)}`,
+          },
+          '&.Mui-disabled': {
+            backgroundColor: alpha(t.palette.text.primary, 0.02),
+          },
+        }),
+      },
+    },
+    /**
+     * Outlined 입력창 톤 (필터바에서만 사용).
+     * - idle: 매우 옅은 divider 라인 — 백그라운드와 자연스럽게 어울림
+     * - hover: text.disabled 로 한 단계 darkening (subtle)
+     * - focus: primary blue 1px 라인 (layout shift 방지) + 옅은 outer glow ring
+     * - 전환은 smooth — modern admin UI 느낌
+     */
     MuiOutlinedInput: {
       styleOverrides: {
-        root: { borderRadius: '6px' },
+        root: ({ theme: t }) => ({
+          borderRadius: '6px',
+          transition: 'box-shadow 0.15s ease',
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: t.palette.divider,
+            transition: 'border-color 0.15s ease',
+          },
+          '&:hover:not(.Mui-disabled):not(.Mui-error) .MuiOutlinedInput-notchedOutline': {
+            borderColor: t.palette.text.disabled,
+          },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: t.palette.primary.main,
+            borderWidth: '1px',
+          },
+          '&.Mui-focused:not(.Mui-error)': {
+            boxShadow: `0 0 0 3px ${alpha(t.palette.primary.main, 0.12)}`,
+          },
+          '&.Mui-error.Mui-focused': {
+            boxShadow: `0 0 0 3px ${alpha(t.palette.error.main, 0.12)}`,
+          },
+          '&.Mui-disabled': {
+            backgroundColor: alpha(t.palette.text.primary, 0.02),
+          },
+        }),
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: ({ theme: t }) => ({
+          color: t.palette.text.secondary,
+          fontWeight: 500,
+          '&.Mui-focused': {
+            color: t.palette.primary.main,
+          },
+        }),
+      },
+    },
+    MuiFormHelperText: {
+      styleOverrides: {
+        root: {
+          fontSize: '0.75rem',
+          marginTop: '0.375rem',
+          /** filled input 의 내부 padding-left (12px) 와 세로 기준선 정렬 */
+          marginLeft: '12px',
+        },
       },
     },
     MuiFormLabel: {
@@ -108,6 +208,17 @@ const theme = createTheme({
           fontWeight: 700,
           marginLeft: '0.125rem',
         }),
+      },
+    },
+    /**
+     * 체크박스 아이콘을 1px border + 옅은 톤의 커스텀 Box 로 교체.
+     * MUI 기본 SVG 는 2px stroke 라 시각적으로 무거움.
+     */
+    MuiCheckbox: {
+      defaultProps: {
+        icon: createElement(ThinUncheckedIcon),
+        checkedIcon: createElement(ThinCheckedIcon),
+        indeterminateIcon: createElement(ThinIndeterminateIcon),
       },
     },
   },

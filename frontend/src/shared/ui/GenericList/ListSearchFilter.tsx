@@ -80,10 +80,6 @@ export default function ListSearchFilter({
   );
 }
 
-/* --------------------------------------------------------------------------
- * Per-item dispatcher (search 제외한 select/custom)
- * ------------------------------------------------------------------------ */
-
 function FilterItemRenderer({
   item,
   value,
@@ -98,10 +94,6 @@ function FilterItemRenderer({
   }
   return <CustomField item={item} value={value} onChange={onChange} />;
 }
-
-/* --------------------------------------------------------------------------
- * SelectField — useOptions 유무에 따라 컴포넌트 자체 분리 (rules-of-hooks)
- * ------------------------------------------------------------------------ */
 
 function SelectField({
   item,
@@ -180,10 +172,6 @@ function CustomField({
   return <>{item.render({ value, onChange })}</>;
 }
 
-/* --------------------------------------------------------------------------
- * Search input (debounced)
- * ------------------------------------------------------------------------ */
-
 function SearchField({
   value,
   onChange,
@@ -210,6 +198,7 @@ function SearchField({
   return (
     <SearchTextField
       size="small"
+      variant="outlined"
       value={input}
       onChange={(e) => setInput(e.target.value)}
       placeholder={placeholder ?? '검색어를 입력하세요'}
