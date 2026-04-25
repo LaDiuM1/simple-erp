@@ -159,6 +159,11 @@ public class EmployeeService implements EmployeeApi {
                 request.departmentId(),
                 request.positionId()
         );
+
+        // newPassword 가 채워진 경우에만 비밀번호 변경 (null/빈 값이면 기존 유지)
+        if (request.newPassword() != null && !request.newPassword().isEmpty()) {
+            employee.changePassword(passwordEncoder.encode(request.newPassword()));
+        }
     }
 
     @Transactional

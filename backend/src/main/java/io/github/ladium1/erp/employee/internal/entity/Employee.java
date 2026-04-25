@@ -105,4 +105,8 @@ public class Employee extends BaseEntity {
         this.departmentId = departmentId;
         this.positionId = positionId;
     }
+
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
 }

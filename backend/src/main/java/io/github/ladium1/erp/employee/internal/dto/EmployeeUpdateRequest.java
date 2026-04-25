@@ -37,6 +37,10 @@ public record EmployeeUpdateRequest(
 
         Long departmentId,
 
-        Long positionId
+        Long positionId,
+
+        /** 비어있으면 (null) 비밀번호 유지. 입력되면 4자 이상이어야 함. */
+        @Size(min = 4, max = 100)
+        String newPassword
 ) {
 }
