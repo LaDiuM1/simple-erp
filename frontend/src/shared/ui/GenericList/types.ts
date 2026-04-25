@@ -1,24 +1,12 @@
 import type { ReactNode } from 'react';
 import type { PageResponse } from '@/shared/types/api';
 
-/* --------------------------------------------------------------------------
- * Sort
- * ------------------------------------------------------------------------ */
-
 export type SortDirection = 'asc' | 'desc';
 
 export interface SortState {
   key: string;
   direction: SortDirection;
 }
-
-/* --------------------------------------------------------------------------
- * Column
- *
- * Discriminated union:
- *   - 비정렬: sortable 생략 또는 false. sortDirection/defaultSort 작성 불가.
- *   - 정렬: sortable: true 면 sortDirection 필수. defaultSort 는 initial sort 지정용 boolean.
- * ------------------------------------------------------------------------ */
 
 interface BaseColumn<TRow> {
   key: string;
@@ -30,15 +18,16 @@ interface BaseColumn<TRow> {
   render?: (row: TRow) => ReactNode;
 }
 
+/**
+ * Discriminated union:
+ *   - 비정렬: sortable 생략 또는 false. sortDirection/defaultSort 작성 불가.
+ *   - 정렬: sortable: true 면 sortDirection 필수. defaultSort 는 initial sort 지정용 boolean.
+ */
 export type ColumnConfig<TRow> = BaseColumn<TRow> &
   (
     | { sortable?: false; sortDirection?: never; defaultSort?: never }
     | { sortable: true; sortDirection: SortDirection; defaultSort?: boolean }
   );
-
-/* --------------------------------------------------------------------------
- * Query result
- * ------------------------------------------------------------------------ */
 
 export interface QueryState<T> {
   data?: PageResponse<T>;
@@ -47,10 +36,6 @@ export interface QueryState<T> {
   error?: unknown;
   refetch: () => void;
 }
-
-/* --------------------------------------------------------------------------
- * Filter config
- * ------------------------------------------------------------------------ */
 
 export interface FilterOption<V extends string | number = string | number> {
   value: V;
@@ -80,10 +65,6 @@ export interface CustomFilterItem {
 }
 
 export type FilterConfig = SearchFilterItem | SelectFilterItem | CustomFilterItem;
-
-/* --------------------------------------------------------------------------
- * API config
- * ------------------------------------------------------------------------ */
 
 export interface ListQueryParamsBase {
   page: number;
@@ -128,16 +109,18 @@ export interface ListApiConfig<TRow, TFilters extends object> {
   /** 행 수정 핸들러. 지정 시 행 수정 아이콘 노출. 수정 페이지로 navigate 용도. */
   onEdit?: (row: TRow) => void;
 
+  /**
+   * true 면 No 컬럼 왼쪽에 체크박스 열 노출 (canWrite 일 때만).
+   * 사용 시 GenericList 의 selection prop 도 함께 전달해야 한다.
+   */
+  checkBox?: boolean;
+
   emptyMessage?: string;
   deleteConfirm?: DeleteConfirmMessages;
   /** 삭제 성공 토스트 메시지 오버라이드 */
   successMessages?: ListSuccessMessages;
   pageSize?: number;
 }
-
-/* --------------------------------------------------------------------------
- * List state (GenericList 내부 전용)
- * ------------------------------------------------------------------------ */
 
 export interface ListState<TFilters> {
   filters: TFilters;

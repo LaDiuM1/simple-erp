@@ -5,6 +5,7 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import { styled } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SaveIcon from '@mui/icons-material/Save';
 import PermissionGate from './PermissionGate';
 
@@ -51,12 +52,21 @@ export type PageHeaderAction =
       label?: string;
       onClick: () => void;
       disabled?: boolean;
+    }
+  | {
+      design: 'delete';
+      label?: string;
+      menuCode?: string;
+      loading?: boolean;
+      disabled?: boolean;
+      onClick: () => void;
     };
 
 const DEFAULT_LABEL = {
   create: '등록',
   save: '저장',
   cancel: '취소',
+  delete: '삭제',
 } as const;
 
 const PRIMARY_ICON = {
@@ -67,10 +77,38 @@ const PRIMARY_ICON = {
 function renderAction(action: PageHeaderAction): ReactNode {
   if (action.design === 'cancel') {
     return (
-      <CancelButton type="button" onClick={action.onClick} disabled={action.disabled}>
+      <CancelButton
+        type="button"
+        onClick={action.onClick}
+        disabled={action.disabled}
+      >
         {action.label ?? DEFAULT_LABEL.cancel}
       </CancelButton>
     );
+  }
+
+  if (action.design === 'delete') {
+    const startIcon = action.loading
+      ? <CircularProgress size={14} color="inherit" />
+      : <DeleteOutlineIcon />;
+    const button = (
+      <DangerButton
+        type="button"
+        onClick={action.onClick}
+        disabled={action.disabled || action.loading}
+        startIcon={startIcon}
+      >
+        {action.label ?? DEFAULT_LABEL.delete}
+      </DangerButton>
+    );
+    if (action.menuCode) {
+      return (
+        <PermissionGate menuCode={action.menuCode} action="write">
+          {button}
+        </PermissionGate>
+      );
+    }
+    return button;
   }
 
   const startIcon = action.loading
@@ -148,5 +186,22 @@ const CancelButton = styled(Button)(({ theme }) => ({
   '&.Mui-disabled': {
     color: theme.palette.text.disabled,
     borderColor: theme.palette.divider,
+  },
+}));
+
+const DangerButton = styled(Button)(({ theme }) => ({
+  ...buttonBase,
+  backgroundColor: 'transparent',
+  color: theme.palette.error.main,
+  border: `1px solid ${theme.palette.errorBorder}`,
+  '&:hover': {
+    backgroundColor: theme.palette.errorBg,
+    borderColor: theme.palette.error.main,
+    color: theme.palette.error.dark,
+  },
+  '&.Mui-disabled': {
+    color: theme.palette.error.main,
+    borderColor: theme.palette.errorBorder,
+    opacity: 0.5,
   },
 }));

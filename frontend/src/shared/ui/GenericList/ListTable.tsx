@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
@@ -34,6 +35,7 @@ import {
   TableWrapper,
 } from './ListTable.styles';
 import type { ColumnConfig, DeleteConfirmMessages, SortState } from './types';
+import type { ListSelectionState } from './useListSelection';
 
 const DEFAULT_DELETE_CONFIRM: DeleteConfirmMessages = {
   title: '항목 삭제',
@@ -46,7 +48,7 @@ interface Props<TRow> {
   menuCode: string;
   columns: ColumnConfig<TRow>[];
   rows: TRow[];
-  rowKey: (row: TRow) => string | number;
+  rowKey: (row: TRow) => number;
   page: number;
   pageSize: number;
   sort: SortState;
@@ -56,10 +58,17 @@ interface Props<TRow> {
   onEdit?: (row: TRow) => void;
   onDelete?: (row: TRow) => Promise<void> | void;
   deleteConfirm?: DeleteConfirmMessages;
+  /** 체크박스 열 노출 여부. canWrite 게이트는 본 컴포넌트가 추가로 적용. */
+  checkBox?: boolean;
+  selection?: ListSelectionState;
+  allVisibleSelected?: boolean;
+  someVisibleSelected?: boolean;
+  onToggleAll?: () => void;
 }
 
 /** 데이터 전체 순번 = 현재 페이지 인덱스 × size + 행 인덱스 + 1. */
 const NO_COL_WIDTH = 64;
+const CHECKBOX_COL_WIDTH = 48;
 
 /**
  * 표 영역. 데스크탑은 Table, 모바일은 카드 리스트.
@@ -79,10 +88,18 @@ export default function ListTable<TRow>({
   onEdit,
   onDelete,
   deleteConfirm,
+  checkBox,
+  selection,
+  allVisibleSelected,
+  someVisibleSelected,
+  onToggleAll,
 }: Props<TRow>) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { canWrite } = usePermission(menuCode);
+
+  /** 권한 게이트 — 체크박스 열은 옵션 + 쓰기 권한이 모두 만족될 때만 노출. */
+  const showCheckboxCol = !!checkBox && canWrite && !!selection && !isMobile;
 
   const [deletingTarget, setDeletingTarget] = useState<{ row: TRow; no: number } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -177,6 +194,11 @@ export default function ListTable<TRow>({
             sort={sort}
             onSortClick={handleSortClick}
             emptyMessage={emptyMessage}
+            showCheckboxCol={showCheckboxCol}
+            selection={selection}
+            allVisibleSelected={allVisibleSelected}
+            someVisibleSelected={someVisibleSelected}
+            onToggleAll={onToggleAll}
           />
         )}
       </TableScrollArea>
@@ -202,30 +224,56 @@ export default function ListTable<TRow>({
   );
 }
 
-/* --------------------------------------------------------------------------
- * Desktop
- * ------------------------------------------------------------------------ */
-
 interface DesktopProps<TRow> {
   columns: ColumnConfig<TRow>[];
   rows: TRow[];
-  rowKey: (row: TRow) => string | number;
+  rowKey: (row: TRow) => number;
   rowActions?: (row: TRow, idx: number) => ReactNode;
   page: number;
   pageSize: number;
   sort: SortState;
   onSortClick: (col: ColumnConfig<TRow>) => void;
   emptyMessage: string;
+  showCheckboxCol?: boolean;
+  selection?: ListSelectionState;
+  allVisibleSelected?: boolean;
+  someVisibleSelected?: boolean;
+  onToggleAll?: () => void;
 }
 
 function DesktopTable<TRow>({
-  columns, rows, rowKey, rowActions, page, pageSize, sort, onSortClick, emptyMessage,
+  columns,
+  rows,
+  rowKey,
+  rowActions,
+  page,
+  pageSize,
+  sort,
+  onSortClick,
+  emptyMessage,
+  showCheckboxCol,
+  selection,
+  allVisibleSelected,
+  someVisibleSelected,
+  onToggleAll,
 }: DesktopProps<TRow>) {
+  const extraColCount = (showCheckboxCol ? 1 : 0) + 1 + (rowActions ? 1 : 0); // checkbox + No + actions
   return (
     <StyledTableContainer>
       <Table size="small" sx={{ minWidth: 720 }}>
         <TableHead>
           <TableRow>
+            {showCheckboxCol && (
+              <HeaderCell align="center" padding="checkbox" sx={{ width: CHECKBOX_COL_WIDTH }}>
+                <Checkbox
+                  size="small"
+                  checked={!!allVisibleSelected}
+                  indeterminate={!allVisibleSelected && !!someVisibleSelected}
+                  onChange={onToggleAll}
+                  inputProps={{ 'aria-label': '현재 페이지 전체 선택' }}
+                />
+              </HeaderCell>
+            )}
             <HeaderCell align="center" sx={{ width: NO_COL_WIDTH }}>No</HeaderCell>
             {columns.map((col) => (
               <HeaderCell
@@ -252,40 +300,50 @@ function DesktopTable<TRow>({
           {rows.length === 0 ? (
             <TableRow>
               <BodyCell
-                colSpan={columns.length + 1 + (rowActions ? 1 : 0)}
+                colSpan={columns.length + extraColCount}
                 sx={{ p: 0 }}
               >
                 <EmptyState message={emptyMessage} />
               </BodyCell>
             </TableRow>
           ) : (
-            rows.map((row, idx) => (
-              <BodyRow key={rowKey(row)}>
-                <BodyCell align="center" sx={{ color: 'text.secondary', width: NO_COL_WIDTH }}>
-                  {page * pageSize + idx + 1}
-                </BodyCell>
-                {columns.map((col) => (
-                  <BodyCell key={col.key} align={col.align ?? 'left'}>
-                    {renderCell(col, row)}
+            rows.map((row, idx) => {
+              const id = rowKey(row);
+              const checked = !!selection?.isSelected(id);
+              return (
+                <BodyRow key={id}>
+                  {showCheckboxCol && (
+                    <BodyCell align="center" padding="checkbox" sx={{ width: CHECKBOX_COL_WIDTH }}>
+                      <Checkbox
+                        size="small"
+                        checked={checked}
+                        onChange={() => selection?.toggle(id)}
+                        inputProps={{ 'aria-label': `${id} 행 선택` }}
+                      />
+                    </BodyCell>
+                  )}
+                  <BodyCell align="center" sx={{ color: 'text.secondary', width: NO_COL_WIDTH }}>
+                    {page * pageSize + idx + 1}
                   </BodyCell>
-                ))}
-                {rowActions && (
-                  <RowActionsCell align="right" className="row-actions">
-                    {rowActions(row, idx)}
-                  </RowActionsCell>
-                )}
-              </BodyRow>
-            ))
+                  {columns.map((col) => (
+                    <BodyCell key={col.key} align={col.align ?? 'left'}>
+                      {renderCell(col, row)}
+                    </BodyCell>
+                  ))}
+                  {rowActions && (
+                    <RowActionsCell align="right" className="row-actions">
+                      {rowActions(row, idx)}
+                    </RowActionsCell>
+                  )}
+                </BodyRow>
+              );
+            })
           )}
         </TableBody>
       </Table>
     </StyledTableContainer>
   );
 }
-
-/* --------------------------------------------------------------------------
- * Mobile
- * ------------------------------------------------------------------------ */
 
 interface MobileProps<TRow> {
   columns: ColumnConfig<TRow>[];
@@ -326,10 +384,6 @@ function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage }: 
     </>
   );
 }
-
-/* --------------------------------------------------------------------------
- * Helpers
- * ------------------------------------------------------------------------ */
 
 function EmptyState({ message }: { message: string }) {
   return (

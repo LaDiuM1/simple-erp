@@ -19,6 +19,7 @@ import type {
   SortState,
   UseExcelDownload,
 } from './types';
+import type { ListSelectionState } from './useListSelection';
 
 const DEFAULT_DELETE_SUCCESS = '삭제되었습니다.';
 const DEFAULT_DELETE_ERROR = '삭제 중 오류가 발생했습니다.';
@@ -27,6 +28,11 @@ export interface GenericListProps<TRow, TFilters extends object> {
   api: ListApiConfig<TRow, TFilters>;
   searchFilter: FilterConfig[];
   column: ColumnConfig<TRow>[];
+  /**
+   * 행 선택 상태. api.checkBox 가 true 일 때 함께 전달해야 체크박스가 렌더된다.
+   * 페이지가 useListSelection() 으로 생성하여 일괄 액션 버튼과 공유.
+   */
+  selection?: ListSelectionState;
 }
 
 /**
@@ -37,6 +43,7 @@ export default function GenericList<TRow, TFilters extends object>({
   api,
   searchFilter,
   column,
+  selection,
 }: GenericListProps<TRow, TFilters>) {
   const state = useListState<TFilters>({
     searchFilter,
@@ -51,8 +58,13 @@ export default function GenericList<TRow, TFilters extends object>({
 
   const handleDelete = async (row: TRow) => {
     try {
-      await deleteFn(api.rowKey(row)).unwrap();
+      const id = api.rowKey(row);
+      await deleteFn(id).unwrap();
       snackbar.success(api.successMessages?.delete ?? DEFAULT_DELETE_SUCCESS);
+      // 행 단건 삭제 후, 일괄 선택 목록에 남아있던 경우 자동 정리.
+      if (selection?.isSelected(id)) {
+        selection.toggle(id);
+      }
     } catch (err) {
       snackbar.error((err as ApiError)?.message ?? DEFAULT_DELETE_ERROR);
       throw err;
@@ -62,6 +74,25 @@ export default function GenericList<TRow, TFilters extends object>({
   if (isError) {
     return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
   }
+
+  // 체크박스 활성화 여부 — api.checkBox 가 true 이고 selection prop 이 전달된 경우.
+  const checkboxEnabled = api.checkBox === true && selection !== undefined;
+  const visibleIds = (data?.content ?? []).map(api.rowKey);
+  const allVisibleSelected =
+    checkboxEnabled && visibleIds.length > 0
+      && visibleIds.every((id) => selection!.isSelected(id));
+  const someVisibleSelected =
+    checkboxEnabled && visibleIds.some((id) => selection!.isSelected(id));
+
+  const handleToggleAll = () => {
+    if (!selection) return;
+    if (allVisibleSelected) {
+      selection.setIds(selection.selectedIds.filter((id) => !visibleIds.includes(id)));
+    } else {
+      const merged = Array.from(new Set([...selection.selectedIds, ...visibleIds]));
+      selection.setIds(merged);
+    }
+  };
 
   return (
     <ListRoot>
@@ -100,6 +131,11 @@ export default function GenericList<TRow, TFilters extends object>({
           onEdit={api.onEdit}
           onDelete={handleDelete}
           deleteConfirm={api.deleteConfirm}
+          checkBox={checkboxEnabled}
+          selection={selection}
+          allVisibleSelected={allVisibleSelected}
+          someVisibleSelected={someVisibleSelected}
+          onToggleAll={handleToggleAll}
         />
 
         <ListPagination
@@ -112,10 +148,6 @@ export default function GenericList<TRow, TFilters extends object>({
     </ListRoot>
   );
 }
-
-/* --------------------------------------------------------------------------
- * Excel button — api.useExcel 이 있을 때만 렌더되므로 hook 은 unconditional.
- * ------------------------------------------------------------------------ */
 
 function ExcelButton<TFilters extends object>({
   useHook,

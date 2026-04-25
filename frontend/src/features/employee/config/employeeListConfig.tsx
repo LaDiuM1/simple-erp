@@ -68,5 +68,6 @@ export function useEmployeeListApi(): ListApiConfig<EmployeeSummary, EmployeeLis
     useExcel: useDownloadEmployeesExcel,
     rowKey: (m) => m.id,
     onEdit: (m) => navigate(`/employees/${m.id}/edit`),
+    checkBox: true,
   };
 }
