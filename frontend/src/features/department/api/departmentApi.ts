@@ -46,6 +46,13 @@ const departmentApi = api.injectEndpoints({
       query: (id) => ({ url: `/api/v1/departments/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Department', id: 'LIST' }],
     }),
+    checkDepartmentCodeAvailability: builder.query<{ available: boolean }, string>({
+      query: (code) => ({
+        url: '/api/v1/departments/code-availability',
+        method: 'GET',
+        params: { code },
+      }),
+    }),
   }),
 });
 
@@ -55,4 +62,5 @@ export const {
   useCreateDepartmentMutation,
   useUpdateDepartmentMutation,
   useDeleteDepartmentMutation,
+  useCheckDepartmentCodeAvailabilityQuery,
 } = departmentApi;

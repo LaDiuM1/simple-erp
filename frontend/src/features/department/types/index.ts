@@ -14,7 +14,8 @@ export interface DepartmentDetail {
 }
 
 export interface DepartmentCreateRequest {
-  code: string;
+  /** null/빈 문자열 = 채번 규칙의 inputMode 가 AUTO 또는 AUTO_OR_MANUAL 일 때 시스템이 자동 생성. */
+  code: string | null;
   name: string;
   parentId?: number | null;
 }
@@ -33,11 +34,6 @@ export interface DepartmentSearchParams {
 
 /** 목록 페이지 필터 state. page/size/sort 는 GenericList 가 관리하므로 제외. */
 export type DepartmentListFilters = Omit<DepartmentSearchParams, 'page' | 'size' | 'sort'>;
-
-/* --------------------------------------------------------------------------
- * Form (등록/수정 페이지) — MUI 호환을 위해 숫자/nullable 도 string 보관.
- * 서버 전송 시 toCreateRequest / toUpdateRequest 에서 변환.
- * ------------------------------------------------------------------------ */
 
 export interface DepartmentFormValues {
   code: string;
@@ -61,8 +57,9 @@ export function departmentDetailToFormValues(d: DepartmentDetail): DepartmentFor
 }
 
 export function departmentFormToCreateRequest(v: DepartmentFormValues): DepartmentCreateRequest {
+  const trimmedCode = v.code.trim();
   return {
-    code: v.code.trim(),
+    code: trimmedCode === '' ? null : trimmedCode,
     name: v.name.trim(),
     parentId: v.parentId === '' ? null : Number(v.parentId),
   };

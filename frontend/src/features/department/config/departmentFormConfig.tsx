@@ -2,10 +2,13 @@ import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import type { FieldConfig, FieldOption, FormApiConfig } from '@/shared/ui/GenericForm';
 import {
+  useCheckDepartmentCodeAvailabilityQuery,
   useCreateDepartmentMutation,
   useGetDepartmentQuery,
   useUpdateDepartmentMutation,
 } from '@/features/department/api/departmentApi';
+import CodeField from '@/features/codeRule/components/CodeField/CodeField';
+import { CODE_RULE_TARGET } from '@/features/codeRule/types';
 import { useGetDepartmentsQuery } from '@/features/reference/api/referenceApi';
 import type { DepartmentInfo } from '@/features/reference/types';
 import {
@@ -31,13 +34,21 @@ export const departmentFormFields: FieldConfig<DepartmentFormValues>[] = [
   {
     key: 'code',
     label: '부서 코드',
-    type: 'text',
-    required: true,
+    type: 'custom',
     fullWidth: true,
-    maxLength: 50,
     /** 코드는 식별자라 수정 시 변경 불가. 값은 보이도록 유지. */
     disabledOnEdit: true,
-    helperText: '예: HR, IT, SALES',
+    render: ({ value, onChange, mode, disabled }) => (
+      <CodeField
+        target={CODE_RULE_TARGET.DEPARTMENT}
+        value={(value as string) ?? ''}
+        onChange={(v) => onChange(v)}
+        mode={mode}
+        disabled={disabled}
+        label="부서 코드"
+        useCheckAvailability={useCheckDepartmentCodeAvailabilityQuery}
+      />
+    ),
   },
   {
     key: 'name',
