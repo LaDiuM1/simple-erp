@@ -10,6 +10,8 @@ import DepartmentListPage from '@/pages/department/DepartmentListPage';
 import DepartmentCreatePage from '@/pages/department/DepartmentCreatePage';
 import DepartmentEditPage from '@/pages/department/DepartmentEditPage';
 import DepartmentHierarchyPage from '@/pages/department/DepartmentHierarchyPage';
+import CodeRuleListPage from '@/pages/codeRule/CodeRuleListPage';
+import CodeRuleEditPage from '@/pages/codeRule/CodeRuleEditPage';
 
 export default function AppRoutes() {
   return (
@@ -25,6 +27,8 @@ export default function AppRoutes() {
         <Route path="/departments/hierarchy" element={<DepartmentHierarchyPage />} />
         <Route path="/departments/new" element={<DepartmentCreatePage />} />
         <Route path="/departments/:id/edit" element={<DepartmentEditPage />} />
+        <Route path="/code-rules" element={<CodeRuleListPage />} />
+        <Route path="/code-rules/:target/edit" element={<CodeRuleEditPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

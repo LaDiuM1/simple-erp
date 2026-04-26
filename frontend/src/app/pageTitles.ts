@@ -11,6 +11,7 @@ const STATIC_TITLES: Record<string, string> = {
   '/departments': '부서 목록',
   '/departments/new': '부서 등록',
   '/departments/hierarchy': '부서 계층 관리',
+  '/code-rules': '코드 채번 규칙',
 };
 
 interface DynamicRule {
@@ -21,6 +22,7 @@ interface DynamicRule {
 const DYNAMIC_RULES: DynamicRule[] = [
   { test: (p) => /^\/employees\/\d+\/edit$/.test(p), title: '직원 수정' },
   { test: (p) => /^\/departments\/\d+\/edit$/.test(p), title: '부서 수정' },
+  { test: (p) => /^\/code-rules\/[^/]+\/edit$/.test(p), title: '코드 채번 규칙 수정' },
 ];
 
 export function getPageTitle(pathname: string): string {
