@@ -60,7 +60,15 @@ export default function ConfirmModal({
       <DialogTitle sx={{ p: 0, fontSize: '1rem', fontWeight: 600 }}>{title}</DialogTitle>
       {message && (
         <DialogContent sx={{ p: 0 }}>
-          <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary', lineHeight: 1.6 }}>
+          <Typography
+            sx={{
+              fontSize: '0.875rem',
+              color: 'text.secondary',
+              lineHeight: 1.6,
+              // 메시지 문자열의 `\n` 을 줄바꿈으로 렌더 (공백 1개로 합쳐지지 않음)
+              whiteSpace: 'pre-line',
+            }}
+          >
             {message}
           </Typography>
         </DialogContent>
