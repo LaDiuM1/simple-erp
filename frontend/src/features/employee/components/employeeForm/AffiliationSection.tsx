@@ -1,9 +1,9 @@
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
-import { useGetRolesQuery } from '@/features/reference/api/referenceApi';
 import DepartmentSelectField from '@/features/department/components/DepartmentSelectField';
 import PositionSelectField from '@/features/position/components/PositionSelectField';
+import RoleSelectField from '@/features/role/components/RoleSelectField';
 import {
   EMPLOYEE_STATUS_OPTIONS,
   type EmployeeStatus,
@@ -21,8 +21,6 @@ interface Props {
 export default function AffiliationSection({ form, showStatus = false }: Props) {
   const { values, update, validation } = form;
 
-  const { data: roles } = useGetRolesQuery();
-
   const description = showStatus
     ? '권한과 부서 / 직책 / 재직 상태를 지정합니다.'
     : '권한과 부서 / 직책을 지정합니다.';
@@ -34,23 +32,12 @@ export default function AffiliationSection({ form, showStatus = false }: Props) 
       description={description}
     >
       <FieldGrid>
-        <TextField
-          select
-          size="small"
-          label="권한"
-          required
+        <RoleSelectField
           value={values.roleId}
-          onChange={(e) => update('roleId', e.target.value)}
-          onBlur={validation.onBlur('roleId')}
-          error={validation.isInvalid('roleId')}
+          onChange={(v) => update('roleId', v)}
+          required
           helperText={validation.errorMessage('roleId')}
-        >
-          {(roles ?? []).map((r) => (
-            <MenuItem key={r.id} value={String(r.id)}>
-              {r.name}
-            </MenuItem>
-          ))}
-        </TextField>
+        />
         <DepartmentSelectField
           value={values.departmentId}
           onChange={(v) => update('departmentId', v)}
