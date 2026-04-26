@@ -42,6 +42,8 @@ export type PageHeaderAction =
       /** 있으면 type=submit + form 속성으로 폼 포털 연결. 없으면 onClick 사용. */
       formId?: string;
       onClick?: () => void;
+      /** 기본 아이콘 (Add/Save) 대신 표시할 시작 아이콘. 라벨만 다르고 톤은 동일한 보조 액션용 (예: 상세에서 "수정" 진입). */
+      icon?: ReactNode;
     }
   | {
       design: 'cancel';
@@ -112,7 +114,7 @@ function renderAction(action: PageHeaderAction): ReactNode {
 
   const startIcon = action.loading
     ? <CircularProgress size={14} color="inherit" />
-    : PRIMARY_ICON[action.design];
+    : (action.icon ?? PRIMARY_ICON[action.design]);
 
   const button = (
     <PrimaryButton
