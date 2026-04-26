@@ -26,7 +26,8 @@ export interface DepartmentUpdateRequest {
 }
 
 export interface DepartmentSearchParams {
-  keyword?: string | null;
+  codeKeyword?: string | null;
+  nameKeyword?: string | null;
   page: number;
   size?: number;
   sort?: string;

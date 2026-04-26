@@ -34,7 +34,8 @@ export const departmentColumn: ColumnConfig<DepartmentSummary>[] = [
 ];
 
 export const departmentSearchFilter: FilterConfig[] = [
-  { type: 'search', key: 'keyword', placeholder: '부서 코드 또는 부서명 검색' },
+  { type: 'search', key: 'codeKeyword', placeholder: '부서 코드 검색' },
+  { type: 'search', key: 'nameKeyword', placeholder: '부서명 검색' },
 ];
 
 /**
