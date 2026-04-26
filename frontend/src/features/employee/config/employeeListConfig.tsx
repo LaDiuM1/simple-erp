@@ -48,7 +48,8 @@ export const employeeColumn: ColumnConfig<EmployeeSummary>[] = [
 ];
 
 export const employeeSearchFilter: FilterConfig[] = [
-  { type: 'search', key: 'keyword', placeholder: '이름 또는 로그인 ID 검색' },
+  { type: 'search', key: 'loginIdKeyword', placeholder: '로그인 ID 검색' },
+  { type: 'search', key: 'nameKeyword', placeholder: '이름 검색' },
   { type: 'select', key: 'departmentId', label: '부서', useOptions: useGetDepartmentsQuery, mapOptions: mapIdName },
   { type: 'select', key: 'positionId', label: '직책', useOptions: useGetPositionsQuery, mapOptions: mapIdName },
   { type: 'select', key: 'roleId', label: '권한', useOptions: useGetRolesQuery, mapOptions: mapIdName },

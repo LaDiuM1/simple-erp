@@ -94,7 +94,8 @@ export interface EmployeeUpdateRequest {
 }
 
 export interface EmployeeSearchParams {
-  keyword?: string | null;
+  loginIdKeyword?: string | null;
+  nameKeyword?: string | null;
   departmentId?: number | null;
   positionId?: number | null;
   roleId?: number | null;
