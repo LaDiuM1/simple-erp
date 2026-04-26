@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -25,9 +24,4 @@ public interface SalesActivityRepository extends JpaRepository<SalesActivity, Lo
             group by a.customerId
             """)
     List<AggregatedActivityCount> aggregateByCustomerIds(@Param("customerIds") Collection<Long> customerIds);
-
-    /**
-     * 활동 카운트 + 마지막 활동일 집계용 record. JPQL constructor expression 으로 생성.
-     */
-    record AggregatedActivityCount(Long customerId, long count, LocalDateTime lastActivityDate) {}
 }
