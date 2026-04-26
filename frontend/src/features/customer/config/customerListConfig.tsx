@@ -67,6 +67,10 @@ export const customerSearchFilter: FilterConfig[] = [
   { type: 'select', key: 'status', label: '상태', options: CUSTOMER_STATUS_OPTIONS, minWidth: 120 },
 ];
 
+/**
+ * 행 클릭 = 상세 페이지 (읽기 권한). 편집 아이콘 = 수정 페이지 (쓰기 권한).
+ * 권한 관리 목록과 동일한 진입 패턴 — GenericList 가 propagation 차단으로 두 액션이 경쟁하지 않게 처리.
+ */
 export function useCustomerListApi(): ListApiConfig<CustomerSummary, CustomerListFilters> {
   const navigate = useNavigate();
   return {
@@ -76,5 +80,6 @@ export function useCustomerListApi(): ListApiConfig<CustomerSummary, CustomerLis
     useExcel: useDownloadCustomersExcel,
     rowKey: (m) => m.id,
     onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.CUSTOMERS]}/${m.id}/edit`),
+    onRowClick: (m) => navigate(`${MENU_PATH[MENU_CODE.CUSTOMERS]}/${m.id}`),
   };
 }

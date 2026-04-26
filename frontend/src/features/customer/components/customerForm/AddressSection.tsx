@@ -11,14 +11,20 @@ import {
   FieldGrid,
 } from './customerForm.styles';
 
-export default function AddressSection({ form }: { form: CustomerFormStateBase }) {
+interface Props {
+  form: CustomerFormStateBase;
+  /** 상세 페이지용 — 주소 검색 버튼 숨김 + 모든 입력 컨트롤 disabled. */
+  readOnly?: boolean;
+}
+
+export default function AddressSection({ form, readOnly = false }: Props) {
   const { values, update, handleAddressSearch } = form;
 
   return (
     <FormSection
       icon={<PlaceRoundedIcon sx={{ fontSize: 18 }} />}
       title="주소 / 비고"
-      description="사업장 주소와 자유 메모를 입력합니다."
+      description="사업장 주소와 자유 메모."
     >
       <FieldGrid>
         <AddressSearchRow>
@@ -30,14 +36,16 @@ export default function AddressSection({ form }: { form: CustomerFormStateBase }
             disabled
             sx={{ flex: 1 }}
           />
-          <AddressSearchButton
-            type="button"
-            variant="outlined"
-            startIcon={<SearchRoundedIcon sx={{ fontSize: 18 }} />}
-            onClick={handleAddressSearch}
-          >
-            주소 검색
-          </AddressSearchButton>
+          {!readOnly && (
+            <AddressSearchButton
+              type="button"
+              variant="outlined"
+              startIcon={<SearchRoundedIcon sx={{ fontSize: 18 }} />}
+              onClick={handleAddressSearch}
+            >
+              주소 검색
+            </AddressSearchButton>
+          )}
         </AddressSearchRow>
         <FieldFull>
           <TextField
@@ -55,6 +63,7 @@ export default function AddressSection({ form }: { form: CustomerFormStateBase }
             label="상세 주소"
             value={values.detailAddress}
             onChange={(e) => update('detailAddress', e.target.value)}
+            disabled={readOnly}
           />
         </FieldFull>
         <FieldFull>
@@ -66,6 +75,7 @@ export default function AddressSection({ form }: { form: CustomerFormStateBase }
             label="비고"
             value={values.note}
             onChange={(e) => update('note', e.target.value)}
+            disabled={readOnly}
             slotProps={{
               input: {
                 startAdornment: (

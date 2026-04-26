@@ -23,6 +23,7 @@ import CodeRuleEditPage from '@/pages/codeRule/CodeRuleEditPage';
 import CustomerListPage from '@/pages/customer/CustomerListPage';
 import CustomerCreatePage from '@/pages/customer/CustomerCreatePage';
 import CustomerEditPage from '@/pages/customer/CustomerEditPage';
+import CustomerDetailPage from '@/pages/customer/CustomerDetailPage';
 import SalesCustomerListPage from '@/pages/salesCustomer/SalesCustomerListPage';
 import SalesCustomerDetailPage from '@/pages/salesCustomer/SalesCustomerDetailPage';
 
@@ -53,6 +54,7 @@ export default function AppRoutes() {
         <Route path="/customers" element={<CustomerListPage />} />
         <Route path="/customers/new" element={<CustomerCreatePage />} />
         <Route path="/customers/:id/edit" element={<CustomerEditPage />} />
+        <Route path="/customers/:id" element={<CustomerDetailPage />} />
         <Route path="/sales-customers" element={<SalesCustomerListPage />} />
         <Route path="/sales-customers/:customerId" element={<SalesCustomerDetailPage />} />
       </Route>

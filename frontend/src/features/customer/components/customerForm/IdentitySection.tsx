@@ -13,26 +13,29 @@ import { FieldGrid } from './customerForm.styles';
 
 interface Props {
   form: CustomerFormStateBase;
-  /** 'create' 면 CodeField 가 채번 규칙 기반으로 표시. 'edit' 면 단순 readonly. */
-  mode: 'create' | 'edit';
+  /** 'create' 면 CodeField 가 채번 규칙 기반으로 표시. 'edit' / 'detail' 이면 단순 readonly. */
+  mode: 'create' | 'edit' | 'detail';
+  /** 상세 페이지용 — 모든 입력 컨트롤을 disabled 처리하여 읽기 전용 표시. */
+  readOnly?: boolean;
 }
 
-export default function IdentitySection({ form, mode }: Props) {
+export default function IdentitySection({ form, mode, readOnly = false }: Props) {
   const { values, update, validation, bizRegNoStatus } = form;
+  const codeFieldMode = mode === 'create' ? 'create' : 'edit';
 
   return (
     <FormSection
       icon={<BusinessRoundedIcon sx={{ fontSize: 18 }} />}
       title="기본 정보"
-      description="고객사 식별 정보 — 코드 / 명칭 / 사업자 정보를 입력합니다."
+      description="고객사 식별 정보 — 코드 / 명칭 / 사업자 정보."
     >
       <FieldGrid>
         <CodeField
           target={CODE_RULE_TARGET.CUSTOMER}
           value={values.code}
           onChange={(v) => update('code', v)}
-          mode={mode}
-          disabled={mode === 'edit'}
+          mode={codeFieldMode}
+          disabled={mode !== 'create'}
           label="고객사 코드"
           useCheckAvailability={useCheckCustomerCodeAvailabilityQuery}
         />
@@ -43,8 +46,9 @@ export default function IdentitySection({ form, mode }: Props) {
           value={values.name}
           onChange={(e) => update('name', e.target.value)}
           onBlur={validation.onBlur('name')}
-          error={validation.isInvalid('name')}
-          helperText={validation.errorMessage('name')}
+          error={!readOnly && validation.isInvalid('name')}
+          helperText={!readOnly ? validation.errorMessage('name') : undefined}
+          disabled={readOnly}
         />
         <TextField
           size="small"
@@ -52,12 +56,14 @@ export default function IdentitySection({ form, mode }: Props) {
           value={values.nameEn}
           onChange={(e) => update('nameEn', e.target.value)}
           placeholder="Daesung Co., Ltd."
+          disabled={readOnly}
         />
         <TextField
           size="small"
           label="대표자명"
           value={values.representative}
           onChange={(e) => update('representative', e.target.value)}
+          disabled={readOnly}
         />
         <TextField
           size="small"
@@ -65,14 +71,17 @@ export default function IdentitySection({ form, mode }: Props) {
           value={values.bizRegNo}
           onChange={(e) => update('bizRegNo', e.target.value)}
           onBlur={validation.onBlur('bizRegNo')}
-          error={validation.isInvalid('bizRegNo') || bizRegNoStatus === 'taken'}
+          error={!readOnly && (validation.isInvalid('bizRegNo') || bizRegNoStatus === 'taken')}
           helperText={
-            validation.errorMessage('bizRegNo')
-            ?? availabilityStatusText(bizRegNoStatus, 'bizRegNo')
+            !readOnly
+              ? validation.errorMessage('bizRegNo')
+                ?? availabilityStatusText(bizRegNoStatus, 'bizRegNo')
+              : undefined
           }
           placeholder="123-45-67890"
+          disabled={readOnly}
           slotProps={{
-            input: { endAdornment: renderAvailabilityIcon(bizRegNoStatus) },
+            input: { endAdornment: !readOnly ? renderAvailabilityIcon(bizRegNoStatus) : undefined },
           }}
         />
         <TextField
@@ -80,6 +89,7 @@ export default function IdentitySection({ form, mode }: Props) {
           label="법인등록번호"
           value={values.corpRegNo}
           onChange={(e) => update('corpRegNo', e.target.value)}
+          disabled={readOnly}
         />
       </FieldGrid>
     </FormSection>
