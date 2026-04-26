@@ -40,6 +40,17 @@ public class CodeRuleInitializer implements ApplicationRunner {
                 .parentScoped(false)
                 .description("부서 코드 — 기본: D001, D002, ...")
                 .build());
+
+        DEFAULTS.put(CodeRuleTarget.POSITION, CodeRule.builder()
+                .target(CodeRuleTarget.POSITION)
+                .prefix("P")
+                .pattern("{PREFIX}{SEQ:3}")
+                .defaultSeqLength(3)
+                .resetPolicy(ResetPolicy.NEVER)
+                .inputMode(InputMode.AUTO_OR_MANUAL)
+                .parentScoped(false)
+                .description("직책 코드 — 기본: P001, P002, ...")
+                .build());
     }
 
     private final CodeRuleRepository codeRuleRepository;
