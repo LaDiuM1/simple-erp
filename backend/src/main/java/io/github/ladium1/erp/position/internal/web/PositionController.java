@@ -56,10 +56,11 @@ public class PositionController {
     @GetMapping("/summary")
     @PreAuthorize(CAN_READ)
     public PageResponse<PositionSummaryResponse> search(
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String codeKeyword,
+            @RequestParam(required = false) String nameKeyword,
             @PageableDefault(sort = "rankLevel", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        return positionService.search(new PositionSearchCondition(keyword), pageable);
+        return positionService.search(new PositionSearchCondition(codeKeyword, nameKeyword), pageable);
     }
 
     @GetMapping("/ranking")

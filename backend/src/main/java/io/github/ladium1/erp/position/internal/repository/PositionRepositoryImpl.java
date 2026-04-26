@@ -46,9 +46,11 @@ public class PositionRepositoryImpl implements PositionRepositoryCustom {
         if (condition == null) {
             return where;
         }
-        if (StringUtils.hasText(condition.keyword())) {
-            String like = "%" + condition.keyword().trim() + "%";
-            where.and(p.code.like(like).or(p.name.like(like)));
+        if (StringUtils.hasText(condition.codeKeyword())) {
+            where.and(p.code.like("%" + condition.codeKeyword().trim() + "%"));
+        }
+        if (StringUtils.hasText(condition.nameKeyword())) {
+            where.and(p.name.like("%" + condition.nameKeyword().trim() + "%"));
         }
         return where;
     }
