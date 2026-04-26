@@ -5,12 +5,14 @@
 
 export const CODE_RULE_TARGET = {
   DEPARTMENT: 'DEPARTMENT',
+  POSITION: 'POSITION',
 } as const;
 
 export type CodeRuleTarget = (typeof CODE_RULE_TARGET)[keyof typeof CODE_RULE_TARGET];
 
 export const CODE_RULE_TARGET_LABEL: Record<CodeRuleTarget, string> = {
   DEPARTMENT: '부서 코드',
+  POSITION: '직책 코드',
 };
 
 export const RESET_POLICY = {
@@ -43,9 +45,7 @@ export const INPUT_MODE_LABEL: Record<InputMode, string> = {
   AUTO_OR_MANUAL: '선택 (자동/수동)',
 };
 
-/* --------------------------------------------------------------------------
- * Server DTO 미러
- * ------------------------------------------------------------------------ */
+// Server DTO 미러
 
 export interface CodeRule {
   id: number;
@@ -87,9 +87,7 @@ export interface CodeRulePreviewResponse {
   samples: string[];
 }
 
-/* --------------------------------------------------------------------------
- * Form values — MUI 호환 위해 숫자도 string 보관, 서버 전송 시 변환
- * ------------------------------------------------------------------------ */
+// Form values — MUI 호환 위해 숫자도 string 보관, 서버 전송 시 변환
 
 export interface CodeRuleFormValues {
   prefix: string;

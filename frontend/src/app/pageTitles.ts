@@ -11,6 +11,8 @@ const STATIC_TITLES: Record<string, string> = {
   '/departments': '부서 목록',
   '/departments/new': '부서 등록',
   '/departments/hierarchy': '부서 계층 관리',
+  '/positions': '직책 목록',
+  '/positions/new': '직책 등록',
   '/code-rules': '코드 채번 규칙',
 };
 
@@ -22,6 +24,7 @@ interface DynamicRule {
 const DYNAMIC_RULES: DynamicRule[] = [
   { test: (p) => /^\/employees\/\d+\/edit$/.test(p), title: '직원 수정' },
   { test: (p) => /^\/departments\/\d+\/edit$/.test(p), title: '부서 수정' },
+  { test: (p) => /^\/positions\/\d+\/edit$/.test(p), title: '직책 수정' },
   { test: (p) => /^\/code-rules\/[^/]+\/edit$/.test(p), title: '코드 채번 규칙 수정' },
 ];
 

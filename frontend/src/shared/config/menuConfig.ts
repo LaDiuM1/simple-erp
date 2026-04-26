@@ -5,6 +5,7 @@
 export const MENU_CODE = {
   EMPLOYEES: 'EMPLOYEES',
   DEPARTMENTS: 'DEPARTMENTS',
+  POSITIONS: 'POSITIONS',
   CODE_RULES: 'CODE_RULES',
 } as const;
 
@@ -14,6 +15,7 @@ export type MenuCode = (typeof MENU_CODE)[keyof typeof MENU_CODE];
 export const MENU_PATH = {
   [MENU_CODE.EMPLOYEES]: '/employees',
   [MENU_CODE.DEPARTMENTS]: '/departments',
+  [MENU_CODE.POSITIONS]: '/positions',
   [MENU_CODE.CODE_RULES]: '/code-rules',
 } as const satisfies Record<MenuCode, string>;
 
@@ -30,6 +32,7 @@ export const MENU_CONFIG: MenuConfig[] = [
     name: '기준 정보 관리',
     children: [
       { code: MENU_CODE.DEPARTMENTS, name: '부서 관리', to: MENU_PATH.DEPARTMENTS },
+      { code: MENU_CODE.POSITIONS, name: '직책 관리', to: MENU_PATH.POSITIONS },
       { code: MENU_CODE.EMPLOYEES, name: '직원 관리', to: MENU_PATH.EMPLOYEES },
     ],
   },
