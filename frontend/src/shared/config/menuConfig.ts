@@ -6,6 +6,7 @@ export const MENU_CODE = {
   EMPLOYEES: 'EMPLOYEES',
   DEPARTMENTS: 'DEPARTMENTS',
   POSITIONS: 'POSITIONS',
+  CUSTOMERS: 'CUSTOMERS',
   ROLES: 'ROLES',
   CODE_RULES: 'CODE_RULES',
 } as const;
@@ -17,6 +18,7 @@ export const MENU_LABEL: Record<MenuCode, string> = {
   [MENU_CODE.EMPLOYEES]: '직원 관리',
   [MENU_CODE.DEPARTMENTS]: '부서 관리',
   [MENU_CODE.POSITIONS]: '직책 관리',
+  [MENU_CODE.CUSTOMERS]: '고객사 관리',
   [MENU_CODE.ROLES]: '권한 관리',
   [MENU_CODE.CODE_RULES]: '코드 채번 규칙',
 };
@@ -26,6 +28,7 @@ export const MENU_PATH = {
   [MENU_CODE.EMPLOYEES]: '/employees',
   [MENU_CODE.DEPARTMENTS]: '/departments',
   [MENU_CODE.POSITIONS]: '/positions',
+  [MENU_CODE.CUSTOMERS]: '/customers',
   [MENU_CODE.ROLES]: '/roles',
   [MENU_CODE.CODE_RULES]: '/code-rules',
 } as const satisfies Record<MenuCode, string>;
@@ -45,6 +48,7 @@ export const MENU_CONFIG: MenuConfig[] = [
       { code: MENU_CODE.DEPARTMENTS, name: '부서 관리', to: MENU_PATH.DEPARTMENTS },
       { code: MENU_CODE.POSITIONS, name: '직책 관리', to: MENU_PATH.POSITIONS },
       { code: MENU_CODE.EMPLOYEES, name: '직원 관리', to: MENU_PATH.EMPLOYEES },
+      { code: MENU_CODE.CUSTOMERS, name: '고객사 관리', to: MENU_PATH.CUSTOMERS },
     ],
   },
   {

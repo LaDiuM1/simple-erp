@@ -6,6 +6,7 @@
 export const CODE_RULE_TARGET = {
   DEPARTMENT: 'DEPARTMENT',
   POSITION: 'POSITION',
+  CUSTOMER: 'CUSTOMER',
 } as const;
 
 export type CodeRuleTarget = (typeof CODE_RULE_TARGET)[keyof typeof CODE_RULE_TARGET];
@@ -13,6 +14,7 @@ export type CodeRuleTarget = (typeof CODE_RULE_TARGET)[keyof typeof CODE_RULE_TA
 export const CODE_RULE_TARGET_LABEL: Record<CodeRuleTarget, string> = {
   DEPARTMENT: '부서 코드',
   POSITION: '직책 코드',
+  CUSTOMER: '고객사 코드',
 };
 
 export const RESET_POLICY = {

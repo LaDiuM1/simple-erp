@@ -20,6 +20,9 @@ import RoleEditPage from '@/pages/role/RoleEditPage';
 import RoleDetailPage from '@/pages/role/RoleDetailPage';
 import CodeRuleListPage from '@/pages/codeRule/CodeRuleListPage';
 import CodeRuleEditPage from '@/pages/codeRule/CodeRuleEditPage';
+import CustomerListPage from '@/pages/customer/CustomerListPage';
+import CustomerCreatePage from '@/pages/customer/CustomerCreatePage';
+import CustomerEditPage from '@/pages/customer/CustomerEditPage';
 
 export default function AppRoutes() {
   return (
@@ -45,6 +48,9 @@ export default function AppRoutes() {
         <Route path="/roles/:id" element={<RoleDetailPage />} />
         <Route path="/code-rules" element={<CodeRuleListPage />} />
         <Route path="/code-rules/:target/edit" element={<CodeRuleEditPage />} />
+        <Route path="/customers" element={<CustomerListPage />} />
+        <Route path="/customers/new" element={<CustomerCreatePage />} />
+        <Route path="/customers/:id/edit" element={<CustomerEditPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

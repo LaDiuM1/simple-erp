@@ -17,6 +17,8 @@ const STATIC_TITLES: Record<string, string> = {
   '/roles': '권한 목록',
   '/roles/new': '권한 등록',
   '/code-rules': '코드 채번 규칙',
+  '/customers': '고객사 목록',
+  '/customers/new': '고객사 등록',
 };
 
 interface DynamicRule {
@@ -31,6 +33,7 @@ const DYNAMIC_RULES: DynamicRule[] = [
   { test: (p) => /^\/roles\/\d+\/edit$/.test(p), title: '권한 수정' },
   { test: (p) => /^\/roles\/\d+$/.test(p), title: '권한 상세' },
   { test: (p) => /^\/code-rules\/[^/]+\/edit$/.test(p), title: '코드 채번 규칙 수정' },
+  { test: (p) => /^\/customers\/\d+\/edit$/.test(p), title: '고객사 수정' },
 ];
 
 export function getPageTitle(pathname: string): string {
