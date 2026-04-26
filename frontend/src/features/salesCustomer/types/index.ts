@@ -26,6 +26,10 @@ export interface SalesActivity {
   ourEmployeeId: number;
   ourEmployeeName: string | null;
   ourEmployeeDepartmentName: string | null;
+  /** 영업 명부 식별자 — null 이면 customerContactName / Position 자유 입력만 사용. */
+  customerContactId: number | null;
+  /** 명부 등록된 이름 (FK 기반 표시용) — customerContactId 가 채워졌을 때만 의미 있음. */
+  customerContactRegisteredName: string | null;
   customerContactName: string | null;
   customerContactPosition: string | null;
 }
@@ -68,6 +72,7 @@ export interface SalesActivityCreateRequest {
   subject: string;
   content?: string | null;
   ourEmployeeId: number;
+  customerContactId?: number | null;
   customerContactName?: string | null;
   customerContactPosition?: string | null;
 }

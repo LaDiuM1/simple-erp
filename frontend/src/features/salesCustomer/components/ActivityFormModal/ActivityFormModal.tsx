@@ -9,6 +9,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import EmployeeSelectField from '@/features/employee/components/EmployeeSelectField';
+import SalesContactSelectField from '@/features/salesContact/components/SalesContactSelectField';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCreateSalesActivityMutation,
@@ -30,6 +31,8 @@ interface FormValues {
   content: string;
   ourEmployeeId: string;
   ourEmployeeName: string;
+  customerContactId: string;
+  customerContactSelectedName: string;
   customerContactName: string;
   customerContactPosition: string;
 }
@@ -41,6 +44,8 @@ const EMPTY: FormValues = {
   content: '',
   ourEmployeeId: '',
   ourEmployeeName: '',
+  customerContactId: '',
+  customerContactSelectedName: '',
   customerContactName: '',
   customerContactPosition: '',
 };
@@ -97,6 +102,7 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
       subject: values.subject.trim(),
       content: emptyToNull(values.content),
       ourEmployeeId: Number(values.ourEmployeeId),
+      customerContactId: values.customerContactId === '' ? null : Number(values.customerContactId),
       customerContactName: emptyToNull(values.customerContactName),
       customerContactPosition: emptyToNull(values.customerContactPosition),
     };
@@ -166,10 +172,20 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
                 update('ourEmployeeName', name);
               }}
             />
+            <SalesContactSelectField
+              label="고객사 담당자 (영업 명부)"
+              value={values.customerContactId}
+              valueLabel={values.customerContactSelectedName}
+              onChange={(id, name) => {
+                update('customerContactId', id);
+                update('customerContactSelectedName', name);
+              }}
+              helperText="명부에 등록된 사람이면 검색 선택. 명부 미등록은 아래 자유 입력 사용."
+            />
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField
                 size="small"
-                label="고객사 담당자 이름"
+                label="고객사 담당자 이름 (자유 입력)"
                 value={values.customerContactName}
                 onChange={(e) => update('customerContactName', e.target.value)}
                 sx={{ flex: 1 }}
@@ -215,6 +231,8 @@ function toFormValues(a: SalesActivity): FormValues {
     content: a.content ?? '',
     ourEmployeeId: String(a.ourEmployeeId),
     ourEmployeeName: a.ourEmployeeName ?? '',
+    customerContactId: a.customerContactId == null ? '' : String(a.customerContactId),
+    customerContactSelectedName: a.customerContactRegisteredName ?? '',
     customerContactName: a.customerContactName ?? '',
     customerContactPosition: a.customerContactPosition ?? '',
   };

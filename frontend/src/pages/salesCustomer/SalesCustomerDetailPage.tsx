@@ -7,6 +7,7 @@ import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { useGetSalesCustomerDetailQuery } from '@/features/salesCustomer/api/salesCustomerApi';
 import ActivityList from '@/features/salesCustomer/components/ActivityList';
 import AssignmentList from '@/features/salesCustomer/components/AssignmentList';
+import CustomerEmploymentList from '@/features/salesCustomer/components/CustomerEmploymentList';
 import {
   DetailRoot,
   HeaderCard,
@@ -51,6 +52,7 @@ function Body({ customerId }: { customerId: number }) {
 
         <ActivityList customerId={customerId} activities={data.activities} />
         <AssignmentList customerId={customerId} assignments={data.assignments} />
+        <CustomerEmploymentList customerId={customerId} />
       </DetailRoot>
     </>
   );

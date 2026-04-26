@@ -110,7 +110,7 @@ export default function ActivityList({ customerId, activities }: Props) {
                 우리 담당: {a.ourEmployeeName ?? <Muted />}
                 {a.ourEmployeeDepartmentName ? ` · ${a.ourEmployeeDepartmentName}` : ''}
                 {' · '}
-                고객 담당: {a.customerContactName ?? <Muted />}
+                고객 담당: {a.customerContactRegisteredName ?? a.customerContactName ?? <Muted />}
                 {a.customerContactPosition ? ` (${a.customerContactPosition})` : ''}
               </ItemSubtle>
               {a.content && <ItemContent>{a.content}</ItemContent>}
