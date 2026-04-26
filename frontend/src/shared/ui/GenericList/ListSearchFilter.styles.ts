@@ -42,7 +42,7 @@ export const ResetButton = styled(IconButton)(({ theme }) => ({
 /** 검색 TextField — height 36 + 내부 placeholder/border 톤 조정. */
 export const SearchTextField = styled(TextField)(({ theme }) => ({
   [theme.breakpoints.up('md')]: {
-    minWidth: 220,
+    minWidth: 176,
     flex: '0 1 auto',
   },
   '& .MuiOutlinedInput-root': {
