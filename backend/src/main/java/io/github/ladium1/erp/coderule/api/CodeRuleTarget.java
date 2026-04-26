@@ -13,7 +13,8 @@ import lombok.RequiredArgsConstructor;
 public enum CodeRuleTarget {
 
     DEPARTMENT("부서 코드"),
-    POSITION("직책 코드");
+    POSITION("직책 코드"),
+    CUSTOMER("고객사 코드");
 
     private final String label;
 }

@@ -51,6 +51,17 @@ public class CodeRuleInitializer implements ApplicationRunner {
                 .parentScoped(false)
                 .description("직책 코드 — 기본: P001, P002, ...")
                 .build());
+
+        DEFAULTS.put(CodeRuleTarget.CUSTOMER, CodeRule.builder()
+                .target(CodeRuleTarget.CUSTOMER)
+                .prefix("C")
+                .pattern("{PREFIX}{SEQ:4}")
+                .defaultSeqLength(4)
+                .resetPolicy(ResetPolicy.NEVER)
+                .inputMode(InputMode.AUTO_OR_MANUAL)
+                .parentScoped(false)
+                .description("고객사 코드 — 기본: C0001, C0002, ...")
+                .build());
     }
 
     private final CodeRuleRepository codeRuleRepository;
