@@ -14,7 +14,7 @@ export const ProfileHeader = styled(Box)(({ theme }) => ({
   alignItems: 'center',
   gap: '1.25rem',
   padding: '2rem',
-  background: 'linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)',
+  background: theme.palette.profileGradient,
   borderBottom: `1px solid ${theme.palette.divider}`,
 }));
 

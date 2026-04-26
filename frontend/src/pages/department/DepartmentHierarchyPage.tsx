@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { styled, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import DragIndicatorRoundedIcon from '@mui/icons-material/DragIndicatorRounded';
 import FolderRoundedIcon from '@mui/icons-material/FolderRounded';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import { ContentBox, NodeRow, PageRoot, PageSurface } from './DepartmentHierarchyPage.styles';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import { usePermission } from '@/shared/hooks/usePermission';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
@@ -151,10 +152,6 @@ export default function DepartmentHierarchyPage() {
     );
 }
 
-/* --------------------------------------------------------------------------
- * Tree node (재귀)
- * ------------------------------------------------------------------------ */
-
 interface TreeNodeProps {
     dept: DepartmentInfo;
     level: number;
@@ -265,10 +262,6 @@ function TreeNode({
     );
 }
 
-/* --------------------------------------------------------------------------
- * Drop zones / tooltip
- * ------------------------------------------------------------------------ */
-
 function DragGuideContent() {
     return (
         <Box sx={{ lineHeight: 1.5 }}>
@@ -318,10 +311,6 @@ function RootDropZone({ isOver, onDragOver, onDragLeave, onDrop }: RootDropZoneP
     );
 }
 
-/* --------------------------------------------------------------------------
- * Helpers
- * ------------------------------------------------------------------------ */
-
 function buildChildrenMap(
     depts: DepartmentInfo[],
 ): Map<number | null, DepartmentInfo[]> {
@@ -355,57 +344,3 @@ function isDescendant(
     return false;
 }
 
-/* --------------------------------------------------------------------------
- * Styled
- * ------------------------------------------------------------------------ */
-
-const PageRoot = styled(Box)(({ theme }) => ({
-    margin: '-1rem',
-    [theme.breakpoints.up('sm')]: { margin: '-2rem' },
-}));
-
-const PageSurface = styled(Box)(({ theme }) => ({
-    backgroundColor: theme.palette.background.paper,
-    padding: '1.5rem 1.25rem',
-    display: 'flex',
-    flexDirection: 'column',
-    [theme.breakpoints.up('md')]: { padding: '2rem' },
-}));
-
-const ContentBox = styled(Box)({
-    width: '100%',
-    maxWidth: 960,
-    marginLeft: 'auto',
-    marginRight: 'auto',
-});
-
-interface NodeRowStyleProps {
-    level: number;
-    isDragging: boolean;
-    isDropTarget: boolean;
-    canWrite: boolean;
-}
-
-const NodeRow = styled(Box, {
-    shouldForwardProp: (prop) =>
-        !['level', 'isDragging', 'isDropTarget', 'canWrite'].includes(prop as string),
-})<NodeRowStyleProps>(({ theme, level, isDragging, isDropTarget, canWrite }) => ({
-    paddingLeft: `${level * 1.75 + 0.5}rem`,
-    paddingTop: '0.625rem',
-    paddingBottom: '0.625rem',
-    paddingRight: '0.5rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    borderRadius: '4px',
-    transition: 'background-color 0.12s, opacity 0.12s, outline-color 0.12s',
-    cursor: canWrite ? (isDragging ? 'grabbing' : 'grab') : 'default',
-    opacity: isDragging ? 0.4 : 1,
-    backgroundColor: isDropTarget ? theme.palette.primarySubtle : 'transparent',
-    outline: isDropTarget ? `1px dashed ${theme.palette.primary.main}` : '1px solid transparent',
-    outlineOffset: 1,
-    '&:hover': {
-        backgroundColor:
-            !isDragging && !isDropTarget ? 'rgba(15, 23, 42, 0.03)' : undefined,
-    },
-}));

@@ -24,7 +24,7 @@ export default function PageHeader({ title, actions }: Props) {
         gap: '1rem',
         px: { xs: '1rem', sm: '1.5rem' },
         py: '0.75rem',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.palette.background.paper,
         borderBottom: `1px solid ${theme.palette.divider}`,
         boxShadow: '0 2px 6px -1px rgba(15, 23, 42, 0.05)',
         position: 'relative',

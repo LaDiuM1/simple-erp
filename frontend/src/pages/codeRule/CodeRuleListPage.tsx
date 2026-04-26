@@ -6,12 +6,10 @@ import TableRow from '@mui/material/TableRow';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import InboxIcon from '@mui/icons-material/InboxOutlined';
-import { styled } from '@mui/material/styles';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import {
   BodyCell,
-  BodyRow,
   EmptyStateContainer,
   EmptyStateText,
   HeaderCell,
@@ -22,6 +20,7 @@ import {
   TableWrapper,
 } from '@/shared/ui/GenericList';
 import { useGetCodeRulesQuery } from '@/features/codeRule/api/codeRuleApi';
+import { ClickableRow, PatternText } from './CodeRuleListPage.styles';
 import {
   INPUT_MODE_LABEL,
   RESET_POLICY_LABEL,
@@ -115,16 +114,3 @@ export default function CodeRuleListPage() {
   );
 }
 
-/** 행 전체 클릭 가능 — MUI 표준 action.hover 톤 + cursor pointer 로 클릭 가능성 가이드. */
-const ClickableRow = styled(BodyRow)(({ theme }) => ({
-  cursor: 'pointer',
-  '&:hover': {
-    backgroundColor: theme.palette.action.hover,
-  },
-}));
-
-const PatternText = styled('span')(({ theme }) => ({
-  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-  fontSize: '0.8125rem',
-  color: theme.palette.text.primary,
-}));

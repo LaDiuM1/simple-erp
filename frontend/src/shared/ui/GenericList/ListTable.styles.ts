@@ -35,7 +35,7 @@ export const HeaderCell = styled(TableCell)(({ theme }) => ({
   whiteSpace: 'nowrap',
   borderBottom: `1px solid ${theme.palette.divider}`,
   padding: '0.625rem 1.25rem',
-  backgroundColor: '#F8FAFC',
+  backgroundColor: theme.palette.headerBg,
   position: 'sticky',
   top: 0,
   zIndex: 2,
@@ -109,10 +109,6 @@ export const LoadingOverlayBox = styled(Box)({
   justifyContent: 'center',
   zIndex: 3,
 });
-
-/* --------------------------------------------------------------------------
- * Mobile (카드 리스트)
- * ------------------------------------------------------------------------ */
 
 /**
  * 모바일 카드 아이템. 카드 사이에 top border 로 구분.

@@ -51,8 +51,8 @@ export default function EmployeeProfileCard({ profile }: Props) {
                   {p.menuCode}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: '0.375rem' }}>
-                  {p.canRead && <Chip label="읽기" size="small" sx={{ backgroundColor: '#DBEAFE', color: '#1D4ED8', fontWeight: 600, fontSize: '0.75rem' }} />}
-                  {p.canWrite && <Chip label="쓰기" size="small" sx={{ backgroundColor: '#D1FAE5', color: '#065F46', fontWeight: 600, fontSize: '0.75rem' }} />}
+                  {p.canRead && <Chip label="읽기" size="small" sx={(theme) => ({ backgroundColor: theme.palette.primaryLight, color: theme.palette.primary.dark, fontWeight: 600, fontSize: '0.75rem' })} />}
+                  {p.canWrite && <Chip label="쓰기" size="small" sx={(theme) => ({ backgroundColor: theme.palette.successBg, color: theme.palette.successDark, fontWeight: 600, fontSize: '0.75rem' })} />}
                 </Box>
               </PermItem>
             ))}

@@ -43,10 +43,6 @@ export const PreviewColumn = styled(Box)(({ theme }) => ({
   },
 }));
 
-/* --------------------------------------------------------------------------
- * Section header — 큰 섹션 구분 (코드 형식 / 고급 옵션 등)
- * ------------------------------------------------------------------------ */
-
 export const SectionTitle = styled(Typography)(({ theme }) => ({
   fontSize: '0.75rem',
   fontWeight: 600,
@@ -57,10 +53,6 @@ export const SectionTitle = styled(Typography)(({ theme }) => ({
   paddingBottom: '0.5rem',
   borderBottom: `1px solid ${theme.palette.divider}`,
 }));
-
-/* --------------------------------------------------------------------------
- * Field — 라벨 + 입력 한 묶음 (외부 라벨 일관 적용)
- * ------------------------------------------------------------------------ */
 
 export const Field = styled(Box)({
   display: 'flex',
@@ -92,10 +84,6 @@ export const InlineEditorRow = styled(Box)(({ theme }) => ({
   },
 }));
 
-/* --------------------------------------------------------------------------
- * 코드 규칙 적용 대상 — 직사각형. 라벨 영역 회색 배경 + 텍스트 가운데 정렬.
- * ------------------------------------------------------------------------ */
-
 export const TargetReadout = styled(Box)(({ theme }) => ({
   display: 'inline-flex',
   flexDirection: 'column',
@@ -109,7 +97,7 @@ export const TargetReadout = styled(Box)(({ theme }) => ({
     fontSize: '0.875rem',
     fontWeight: 600,
     color: theme.palette.text.secondary,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.palette.headerBg,
     padding: '0.5rem 1rem',
     textAlign: 'center',
     borderBottom: `1px solid ${theme.palette.divider}`,
@@ -124,10 +112,6 @@ export const TargetReadout = styled(Box)(({ theme }) => ({
     textAlign: 'center',
   },
 }));
-
-/* --------------------------------------------------------------------------
- * Slider 영역 — 외부 라벨 + 슬라이더 본체 + 우측 값 chip
- * ------------------------------------------------------------------------ */
 
 export const SliderRow = styled(Box)({
   display: 'flex',
@@ -148,10 +132,6 @@ export const SliderValueChip = styled(Box)(({ theme }) => ({
   textAlign: 'center',
   whiteSpace: 'nowrap',
 }));
-
-/* --------------------------------------------------------------------------
- * 고급 옵션 — custom 프리셋 선택 시만 노출. 시각적으로 inset.
- * ------------------------------------------------------------------------ */
 
 export const AdvancedSection = styled(Box)(({ theme }) => ({
   display: 'flex',

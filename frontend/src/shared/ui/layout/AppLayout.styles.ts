@@ -15,7 +15,7 @@ export const LayoutRoot = styled(Box)({
 export const StyledAppBar = styled(AppBar)(({ theme }) => ({
   height: HEADER_HEIGHT,
   flexShrink: 0,
-  backgroundColor: '#FFFFFF',
+  backgroundColor: theme.palette.background.paper,
   color: theme.palette.text.primary,
   borderBottom: `1px solid ${theme.palette.divider}`,
   boxShadow: '0 2px 6px -1px rgba(15, 23, 42, 0.06)',
@@ -90,7 +90,7 @@ export const MobileOverlay = styled(Box)(({ theme }) => ({
 
 export const Sidebar = styled(Box)(({ theme }) => ({
   width: SIDEBAR_WIDTH,
-  backgroundColor: '#F8FAFC',
+  backgroundColor: theme.palette.headerBg,
   borderRight: `1px solid ${theme.palette.divider}`,
   padding: '0.625rem 0.5rem 1.25rem',
   overflowY: 'auto',

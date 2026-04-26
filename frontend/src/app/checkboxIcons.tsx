@@ -12,14 +12,14 @@ const RADIUS = 3;
 export function ThinUncheckedIcon() {
   return (
     <Box
-      sx={{
+      sx={(theme) => ({
         width: ICON_SIZE,
         height: ICON_SIZE,
         borderRadius: `${RADIUS}px`,
-        border: '1px solid #C1C1C1',
+        border: `1px solid ${theme.palette.divider}`,
         backgroundColor: 'transparent',
         boxSizing: 'border-box',
-      }}
+      })}
     />
   );
 }

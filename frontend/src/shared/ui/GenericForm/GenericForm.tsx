@@ -1,4 +1,5 @@
-import { useState, type FormEventHandler } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
@@ -50,10 +51,6 @@ export default function GenericForm<
   }
   return <CreateForm api={api} fields={fields} />;
 }
-
-/* --------------------------------------------------------------------------
- * Create mode
- * ------------------------------------------------------------------------ */
 
 function CreateForm<
   TValues extends object,
@@ -121,10 +118,6 @@ function CreateForm<
     </>
   );
 }
-
-/* --------------------------------------------------------------------------
- * Edit mode — 상세 조회 후 초기값 세팅
- * ------------------------------------------------------------------------ */
 
 function EditForm<
   TValues extends object,
@@ -227,10 +220,6 @@ function EditFormBody<
   );
 }
 
-/* --------------------------------------------------------------------------
- * Shared body (그리드 + 제출/취소)
- * ------------------------------------------------------------------------ */
-
 interface FormBodyProps<TValues extends object> {
   menuCode: string;
   fields: FieldConfig<TValues>[];
@@ -252,7 +241,7 @@ function FormBody<TValues extends object>({
   onSubmit,
   onCancel,
 }: FormBodyProps<TValues>) {
-  const handleFormSubmit: FormEventHandler<HTMLFormElement> = (e) => {
+  const handleFormSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSaving) return;
     onSubmit();

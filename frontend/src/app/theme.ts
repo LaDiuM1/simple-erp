@@ -22,12 +22,33 @@ declare module '@mui/material/styles' {
     primaryLight: string;
     errorBg: string;
     errorBorder: string;
+    /** 헤더 / 사이드바 / 테이블 헤더 셀의 옅은 회색 배경 (#F8FAFC) */
+    headerBg: string;
+    /** 성공/완료 chip 의 배경 (#D1FAE5) */
+    successBg: string;
+    /** 성공/완료 chip 의 강조 텍스트 (#065F46) */
+    successDark: string;
+    /** 직원 상태 등 status indicator 의 활성 색 (#10B981) */
+    statusActive: string;
+    /** 직원 상태 등 status indicator 의 대기/휴직 색 (#F59E0B) */
+    statusPending: string;
+    /** 로그인 페이지 background gradient (CSS background 값 통째) */
+    loginGradient: string;
+    /** 직원 프로필 카드 헤더 gradient (CSS background 값 통째) */
+    profileGradient: string;
   }
   interface PaletteOptions {
     primarySubtle?: string;
     primaryLight?: string;
     errorBg?: string;
     errorBorder?: string;
+    headerBg?: string;
+    successBg?: string;
+    successDark?: string;
+    statusActive?: string;
+    statusPending?: string;
+    loginGradient?: string;
+    profileGradient?: string;
   }
 }
 
@@ -65,6 +86,13 @@ const theme = createTheme({
     success: {
       main: '#0f903a',
     },
+    headerBg: '#F8FAFC',
+    successBg: '#D1FAE5',
+    successDark: '#065F46',
+    statusActive: '#10B981',
+    statusPending: '#F59E0B',
+    loginGradient: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 50%, #f0fdf4 100%)',
+    profileGradient: 'linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)',
   },
   shape: {
     borderRadius: 8,
@@ -83,16 +111,16 @@ const theme = createTheme({
   shadows,
   components: {
     MuiCssBaseline: {
-      styleOverrides: {
+      styleOverrides: ({ palette }) => ({
         'html, body, #root': { height: '100%' },
         body: {
-          backgroundColor: '#FFFFFF',
-          color: '#1E293B',
+          backgroundColor: palette.background.paper,
+          color: palette.text.primary,
           lineHeight: 1.5,
           WebkitFontSmoothing: 'antialiased',
         },
         a: { color: 'inherit', textDecoration: 'none' },
-      },
+      }),
     },
     MuiButton: {
       defaultProps: {
