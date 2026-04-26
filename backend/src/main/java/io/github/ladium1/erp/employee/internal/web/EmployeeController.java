@@ -60,14 +60,15 @@ public class EmployeeController {
     @GetMapping
     @PreAuthorize(CAN_READ)
     public PageResponse<EmployeeSummaryResponse> search(
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String loginIdKeyword,
+            @RequestParam(required = false) String nameKeyword,
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long positionId,
             @RequestParam(required = false) Long roleId,
             @RequestParam(required = false) EmployeeStatus status,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return employeeService.search(toCondition(keyword, departmentId, positionId, roleId, status), pageable);
+        return employeeService.search(toCondition(loginIdKeyword, nameKeyword, departmentId, positionId, roleId, status), pageable);
     }
 
     @GetMapping("/{id}")
@@ -79,7 +80,8 @@ public class EmployeeController {
     @GetMapping("/excel")
     @PreAuthorize(CAN_READ)
     public ResponseEntity<ByteArrayResource> downloadExcel(
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String loginIdKeyword,
+            @RequestParam(required = false) String nameKeyword,
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long positionId,
             @RequestParam(required = false) Long roleId,
@@ -87,7 +89,7 @@ public class EmployeeController {
             @SortDefault(sort = "id", direction = Sort.Direction.DESC) Sort sort
     ) {
         byte[] bytes = employeeService.exportExcel(
-                toCondition(keyword, departmentId, positionId, roleId, status),
+                toCondition(loginIdKeyword, nameKeyword, departmentId, positionId, roleId, status),
                 sort
         );
         String filename = "employees_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".xlsx";
@@ -112,7 +114,7 @@ public class EmployeeController {
         employeeService.delete(id);
     }
 
-    private EmployeeSearchCondition toCondition(String keyword, Long departmentId, Long positionId, Long roleId, EmployeeStatus status) {
-        return new EmployeeSearchCondition(keyword, departmentId, positionId, roleId, status);
+    private EmployeeSearchCondition toCondition(String loginIdKeyword, String nameKeyword, Long departmentId, Long positionId, Long roleId, EmployeeStatus status) {
+        return new EmployeeSearchCondition(loginIdKeyword, nameKeyword, departmentId, positionId, roleId, status);
     }
 }

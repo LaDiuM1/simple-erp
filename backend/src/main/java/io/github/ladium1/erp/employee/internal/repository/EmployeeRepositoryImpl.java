@@ -57,9 +57,11 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         if (condition == null) {
             return where;
         }
-        if (StringUtils.hasText(condition.keyword())) {
-            String like = "%" + condition.keyword().trim() + "%";
-            where.and(m.name.like(like).or(m.loginId.like(like)));
+        if (StringUtils.hasText(condition.loginIdKeyword())) {
+            where.and(m.loginId.like("%" + condition.loginIdKeyword().trim() + "%"));
+        }
+        if (StringUtils.hasText(condition.nameKeyword())) {
+            where.and(m.name.like("%" + condition.nameKeyword().trim() + "%"));
         }
         if (condition.departmentId() != null) {
             where.and(m.departmentId.eq(condition.departmentId()));
