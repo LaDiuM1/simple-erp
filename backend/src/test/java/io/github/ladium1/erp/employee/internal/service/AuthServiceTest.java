@@ -48,7 +48,7 @@ class AuthServiceTest {
     void login_success() {
         // given
         LoginRequest request = new LoginRequest(TEST_ID, TEST_PASSWORD);
-        RoleInfo roleInfo = new RoleInfo(1L, "USER", "일반사원", "설명");
+        RoleInfo roleInfo = new RoleInfo(1L, "USER", "일반사원", "설명", false);
         Employee employee = Employee.builder()
                 .loginId(TEST_ID)
                 .password("encodedPassword")

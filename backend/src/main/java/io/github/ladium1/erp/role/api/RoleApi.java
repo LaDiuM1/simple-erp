@@ -1,8 +1,6 @@
 package io.github.ladium1.erp.role.api;
 
-import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.role.api.dto.MenuPermission;
-import io.github.ladium1.erp.role.api.dto.RoleCreateRequest;
 import io.github.ladium1.erp.role.api.dto.RoleInfo;
 
 import java.util.List;
@@ -21,14 +19,10 @@ public interface RoleApi {
     Optional<RoleInfo> findByCode(String code);
 
     /**
-     * 권한 생성
+     * 시스템 권한 부트스트랩 — system=true 로 생성하고 모든 메뉴에 대해 read/write 부여.
+     * 초기화 전용 (Initializer 등). 이미 존재하면 그대로 반환.
      */
-    RoleInfo createRole(RoleCreateRequest request);
-
-    /**
-     * 특정 권한에 대해 주어진 메뉴들에 대한 읽기, 쓰기 권한 할당
-     */
-    void assignMenuPermissions(Long roleId, List<Menu> menus);
+    RoleInfo bootstrapSystemRole(String code, String name, String description);
 
     /**
      * 권한 id로 권한에 대한 메뉴 권한 반환

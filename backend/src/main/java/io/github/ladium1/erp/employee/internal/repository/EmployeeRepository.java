@@ -24,4 +24,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, Emplo
 
     boolean existsByPositionId(Long positionId);
 
+    boolean existsByRoleId(Long roleId);
+
 }

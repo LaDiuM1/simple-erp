@@ -1,9 +1,9 @@
-package io.github.ladium1.erp.role.api.dto;
+package io.github.ladium1.erp.role.internal.dto;
 
 import lombok.Builder;
 
 @Builder
-public record RoleInfo(
+public record RoleSummaryResponse(
         Long id,
         String code,
         String name,

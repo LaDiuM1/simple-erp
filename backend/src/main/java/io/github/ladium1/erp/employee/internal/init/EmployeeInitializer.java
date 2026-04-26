@@ -1,11 +1,9 @@
 package io.github.ladium1.erp.employee.internal.init;
 
-import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.employee.internal.entity.Employee;
 import io.github.ladium1.erp.employee.internal.entity.EmployeeStatus;
 import io.github.ladium1.erp.employee.internal.repository.EmployeeRepository;
 import io.github.ladium1.erp.role.api.RoleApi;
-import io.github.ladium1.erp.role.api.dto.RoleCreateRequest;
 import io.github.ladium1.erp.role.api.dto.RoleInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +16,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
@@ -65,24 +62,10 @@ public class EmployeeInitializer implements ApplicationRunner {
 
         log.info("최초 관리자 계정 초기화 시작");
 
-        // 2. 관리자 권한 조회 후 없으면 생성
-        RoleInfo masterRole = roleApi.findByCode("MASTER")
-                .orElseGet(() -> {
-                    // 관리자 권한 생성
-                    RoleInfo newRole = roleApi.createRole(RoleCreateRequest.builder()
-                            .code("MASTER")
-                            .name("관리자")
-                            .description("시스템 전체 관리 권한")
-                            .build());
-
-                    // 관리자 계정에 모든 메뉴의 권한 할당
-                    roleApi.assignMenuPermissions(
-                            newRole.id(),
-                            Arrays.asList(Menu.values())
-                    );
-
-                    return newRole;
-                });
+        // 2. 관리자 권한 부트스트랩 — 없으면 system=true + 모든 메뉴 read/write 자동 부여
+        RoleInfo masterRole = roleApi.bootstrapSystemRole(
+                "MASTER", "관리자", "시스템 전체 관리 권한"
+        );
 
         // 3. 관리자 계정 생성
         employeeRepository.save(Employee.builder()
