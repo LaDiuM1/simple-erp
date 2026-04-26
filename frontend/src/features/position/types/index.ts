@@ -32,7 +32,8 @@ export interface PositionRankingRequest {
 }
 
 export interface PositionSearchParams {
-  keyword?: string | null;
+  codeKeyword?: string | null;
+  nameKeyword?: string | null;
   page: number;
   size?: number;
   sort?: string;
