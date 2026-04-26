@@ -42,10 +42,18 @@ public class CustomerController {
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
+    /**
+     * 영업 관리 페이지가 고객사 검색 / 상세 조회를 그대로 사용하므로,
+     * 둘 중 한쪽 메뉴 read 권한이 있으면 허용. (Department 의 reference 권한과 동일 패턴)
+     */
+    private static final String CAN_READ_REFERENCE =
+            "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'SALES_CUSTOMERS')";
+
     private final CustomerService customerService;
 
     @GetMapping
-    @PreAuthorize(CAN_READ)
+    @PreAuthorize(CAN_READ_REFERENCE)
     public PageResponse<CustomerSummaryResponse> search(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String addressKeyword,
@@ -57,7 +65,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize(CAN_READ)
+    @PreAuthorize(CAN_READ_REFERENCE)
     public CustomerDetailResponse getDetail(@PathVariable Long id) {
         return customerService.getDetail(id);
     }

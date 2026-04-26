@@ -5,6 +5,7 @@ import io.github.ladium1.erp.department.api.dto.DepartmentInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
+import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeCreateRequest;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeDetailResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeProfileResponse;
@@ -55,6 +56,34 @@ public class EmployeeService implements EmployeeApi {
         return employeeRepository.findByLoginId(loginId)
                 .map(Employee::getRoleId)
                 .orElseThrow(() -> new BusinessException(EmployeeErrorCode.EMPLOYEE_NOT_FOUND));
+    }
+
+    @Override
+    public EmployeeInfo getById(Long id) {
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(EmployeeErrorCode.EMPLOYEE_NOT_FOUND));
+        ReferenceCache refs = loadReferences(List.of(employee));
+        return toInfo(employee, refs);
+    }
+
+    @Override
+    public List<EmployeeInfo> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        List<Employee> employees = employeeRepository.findAllById(ids);
+        ReferenceCache refs = loadReferences(employees);
+        return employees.stream().map(e -> toInfo(e, refs)).toList();
+    }
+
+    private EmployeeInfo toInfo(Employee employee, ReferenceCache refs) {
+        return EmployeeInfo.builder()
+                .id(employee.getId())
+                .loginId(employee.getLoginId())
+                .name(employee.getName())
+                .departmentName(refs.departmentName(employee.getDepartmentId()))
+                .positionName(refs.positionName(employee.getPositionId()))
+                .build();
     }
 
     public boolean isLoginIdAvailable(String loginId) {
