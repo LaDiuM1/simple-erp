@@ -46,9 +46,11 @@ public class RoleRepositoryImpl implements RoleRepositoryCustom {
         if (condition == null) {
             return where;
         }
-        if (StringUtils.hasText(condition.keyword())) {
-            String like = "%" + condition.keyword().trim() + "%";
-            where.and(r.code.like(like).or(r.name.like(like)));
+        if (StringUtils.hasText(condition.codeKeyword())) {
+            where.and(r.code.like("%" + condition.codeKeyword().trim() + "%"));
+        }
+        if (StringUtils.hasText(condition.nameKeyword())) {
+            where.and(r.name.like("%" + condition.nameKeyword().trim() + "%"));
         }
         return where;
     }

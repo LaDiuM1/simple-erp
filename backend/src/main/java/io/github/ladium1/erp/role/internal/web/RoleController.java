@@ -54,10 +54,11 @@ public class RoleController {
     @GetMapping("/summary")
     @PreAuthorize(CAN_READ)
     public PageResponse<RoleSummaryResponse> search(
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String codeKeyword,
+            @RequestParam(required = false) String nameKeyword,
             @PageableDefault(sort = "code", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        return roleService.search(new RoleSearchCondition(keyword), pageable);
+        return roleService.search(new RoleSearchCondition(codeKeyword, nameKeyword), pageable);
     }
 
     @GetMapping("/code-availability")

@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.role.internal.dto;
 
 public record RoleSearchCondition(
-        String keyword
+        String codeKeyword,
+        String nameKeyword
 ) {
 }
