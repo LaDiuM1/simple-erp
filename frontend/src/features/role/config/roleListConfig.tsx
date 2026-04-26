@@ -38,7 +38,8 @@ export const roleColumn: ColumnConfig<RoleSummary>[] = [
 ];
 
 export const roleSearchFilter: FilterConfig[] = [
-  { type: 'search', key: 'keyword', placeholder: '권한 코드 또는 권한명 검색' },
+  { type: 'search', key: 'codeKeyword', placeholder: '권한 코드 검색' },
+  { type: 'search', key: 'nameKeyword', placeholder: '권한명 검색' },
 ];
 
 /**

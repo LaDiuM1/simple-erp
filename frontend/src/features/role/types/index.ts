@@ -38,7 +38,8 @@ export interface RoleUpdateRequest {
 }
 
 export interface RoleSearchParams {
-  keyword?: string | null;
+  codeKeyword?: string | null;
+  nameKeyword?: string | null;
   page: number;
   size?: number;
   sort?: string;
