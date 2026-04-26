@@ -5,6 +5,7 @@ import io.github.ladium1.erp.position.api.dto.PositionInfo;
 import io.github.ladium1.erp.position.internal.dto.AvailabilityResponse;
 import io.github.ladium1.erp.position.internal.dto.PositionCreateRequest;
 import io.github.ladium1.erp.position.internal.dto.PositionDetailResponse;
+import io.github.ladium1.erp.position.internal.dto.PositionRankingRequest;
 import io.github.ladium1.erp.position.internal.dto.PositionSearchCondition;
 import io.github.ladium1.erp.position.internal.dto.PositionSummaryResponse;
 import io.github.ladium1.erp.position.internal.dto.PositionUpdateRequest;
@@ -61,6 +62,12 @@ public class PositionController {
         return positionService.search(new PositionSearchCondition(keyword), pageable);
     }
 
+    @GetMapping("/ranking")
+    @PreAuthorize(CAN_READ)
+    public List<PositionSummaryResponse> findAllByRanking() {
+        return positionService.findAllByRanking();
+    }
+
     @GetMapping("/code-availability")
     @PreAuthorize(CAN_WRITE)
     public AvailabilityResponse checkCodeAvailability(@RequestParam String code) {
@@ -83,6 +90,12 @@ public class PositionController {
     @PreAuthorize(CAN_WRITE)
     public void update(@PathVariable Long id, @Valid @RequestBody PositionUpdateRequest request) {
         positionService.update(id, request);
+    }
+
+    @PutMapping("/ranking")
+    @PreAuthorize(CAN_WRITE)
+    public void reorder(@Valid @RequestBody PositionRankingRequest request) {
+        positionService.reorder(request);
     }
 
     @DeleteMapping("/{id}")

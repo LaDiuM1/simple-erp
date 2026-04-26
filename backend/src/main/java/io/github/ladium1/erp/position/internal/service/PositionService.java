@@ -12,6 +12,7 @@ import io.github.ladium1.erp.position.api.PositionDeletingEvent;
 import io.github.ladium1.erp.position.api.dto.PositionInfo;
 import io.github.ladium1.erp.position.internal.dto.PositionCreateRequest;
 import io.github.ladium1.erp.position.internal.dto.PositionDetailResponse;
+import io.github.ladium1.erp.position.internal.dto.PositionRankingRequest;
 import io.github.ladium1.erp.position.internal.dto.PositionSearchCondition;
 import io.github.ladium1.erp.position.internal.dto.PositionSummaryResponse;
 import io.github.ladium1.erp.position.internal.dto.PositionUpdateRequest;
@@ -27,7 +28,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -70,6 +76,12 @@ public class PositionService implements PositionApi {
         return positionRepository.findById(id)
                 .map(positionMapper::toDetailResponse)
                 .orElseThrow(() -> new BusinessException(PositionErrorCode.POSITION_NOT_FOUND));
+    }
+
+    public List<PositionSummaryResponse> findAllByRanking() {
+        return positionRepository.findAll(Sort.by("rankLevel").ascending()).stream()
+                .map(positionMapper::toSummaryResponse)
+                .toList();
     }
 
     /**
@@ -140,5 +152,37 @@ public class PositionService implements PositionApi {
         // 다른 모듈 (직원 등) 의 사용 여부는 동기 이벤트로 검사 — 리스너가 throw 하면 트랜잭션 롤백.
         eventPublisher.publishEvent(new PositionDeletingEvent(id));
         positionRepository.deleteById(id);
+    }
+
+    /**
+     * 서열 일괄 재배치.
+     * <p>
+     * 요청 배열은 전체 직책을 모두 포함해야 한다 (중복/누락 거부). 상위→하위 순으로 1, 2, 3 ... 부여.
+     */
+    @Transactional
+    public void reorder(PositionRankingRequest request) {
+        List<Long> orderedIds = request.orderedIds();
+        if (orderedIds == null || orderedIds.isEmpty()) {
+            throw new BusinessException(PositionErrorCode.INVALID_RANKING_PAYLOAD);
+        }
+        Set<Long> uniqueIds = new HashSet<>(orderedIds);
+        if (uniqueIds.size() != orderedIds.size()) {
+            throw new BusinessException(PositionErrorCode.INVALID_RANKING_PAYLOAD);
+        }
+
+        List<Position> all = positionRepository.findAll();
+        if (all.size() != orderedIds.size()) {
+            throw new BusinessException(PositionErrorCode.INVALID_RANKING_PAYLOAD);
+        }
+        Map<Long, Position> byId = all.stream()
+                .collect(Collectors.toMap(Position::getId, Function.identity()));
+        if (!byId.keySet().equals(uniqueIds)) {
+            throw new BusinessException(PositionErrorCode.INVALID_RANKING_PAYLOAD);
+        }
+
+        int rank = 1;
+        for (Long id : orderedIds) {
+            byId.get(id).changeRankLevel(rank++);
+        }
     }
 }
