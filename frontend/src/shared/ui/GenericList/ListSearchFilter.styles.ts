@@ -3,7 +3,7 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
 
-/** 필터바 컨테이너 — 모바일은 세로 stretch, md+ 는 가로 우측 정렬. */
+/** 필터바 컨테이너 — 모바일은 세로 stretch, md+ 는 가로 우측 정렬 (폭 부족 시 wrap 으로 자동 줄바꿈). */
 export const FilterBarContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
@@ -11,6 +11,7 @@ export const FilterBarContainer = styled(Box)(({ theme }) => ({
   gap: '0.5rem',
   [theme.breakpoints.up('md')]: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
