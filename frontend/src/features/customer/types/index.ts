@@ -112,6 +112,7 @@ export interface CustomerUpdateRequest {
 export interface CustomerSearchParams {
   keyword?: string | null;
   addressKeyword?: string | null;
+  phoneKeyword?: string | null;
   type?: CustomerType | null;
   status?: CustomerStatus | null;
   page: number;
