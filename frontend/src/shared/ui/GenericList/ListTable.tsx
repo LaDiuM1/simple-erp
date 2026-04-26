@@ -57,6 +57,8 @@ interface Props<TRow> {
   emptyMessage?: string;
   onEdit?: (row: TRow) => void;
   onDelete?: (row: TRow) => Promise<void> | void;
+  /** 행 전체 클릭 핸들러. 행 내부 액션은 propagation 차단으로 경쟁하지 않는다. */
+  onRowClick?: (row: TRow) => void;
   deleteConfirm?: DeleteConfirmMessages;
   /** 체크박스 열 노출 여부. canWrite 게이트는 본 컴포넌트가 추가로 적용. */
   checkBox?: boolean;
@@ -87,6 +89,7 @@ export default function ListTable<TRow>({
   emptyMessage = DEFAULT_EMPTY_MESSAGE,
   onEdit,
   onDelete,
+  onRowClick,
   deleteConfirm,
   checkBox,
   selection,
@@ -143,7 +146,10 @@ export default function ListTable<TRow>({
                 <IconButton
                   size="small"
                   aria-label="수정"
-                  onClick={() => onEdit(row)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(row);
+                  }}
                   sx={{ '&:hover': { color: 'primary.main' } }}
                 >
                   <EditIcon fontSize="small" />
@@ -155,7 +161,10 @@ export default function ListTable<TRow>({
                 <IconButton
                   size="small"
                   aria-label="삭제"
-                  onClick={() => requestDelete(row, no)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    requestDelete(row, no);
+                  }}
                   sx={{ '&:hover': { color: 'error.main' } }}
                 >
                   <DeleteIcon fontSize="small" />
@@ -182,6 +191,7 @@ export default function ListTable<TRow>({
             rowKey={rowKey}
             rowActions={rowActions}
             emptyMessage={emptyMessage}
+            onRowClick={onRowClick}
           />
         ) : (
           <DesktopTable
@@ -199,6 +209,7 @@ export default function ListTable<TRow>({
             allVisibleSelected={allVisibleSelected}
             someVisibleSelected={someVisibleSelected}
             onToggleAll={onToggleAll}
+            onRowClick={onRowClick}
           />
         )}
       </TableScrollArea>
@@ -239,6 +250,7 @@ interface DesktopProps<TRow> {
   allVisibleSelected?: boolean;
   someVisibleSelected?: boolean;
   onToggleAll?: () => void;
+  onRowClick?: (row: TRow) => void;
 }
 
 function DesktopTable<TRow>({
@@ -256,6 +268,7 @@ function DesktopTable<TRow>({
   allVisibleSelected,
   someVisibleSelected,
   onToggleAll,
+  onRowClick,
 }: DesktopProps<TRow>) {
   const extraColCount = (showCheckboxCol ? 1 : 0) + 1 + (rowActions ? 1 : 0); // checkbox + No + actions
   return (
@@ -311,9 +324,18 @@ function DesktopTable<TRow>({
               const id = rowKey(row);
               const checked = !!selection?.isSelected(id);
               return (
-                <BodyRow key={id}>
+                <BodyRow
+                  key={id}
+                  clickable={!!onRowClick}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                >
                   {showCheckboxCol && (
-                    <BodyCell align="center" padding="checkbox" sx={{ width: CHECKBOX_COL_WIDTH }}>
+                    <BodyCell
+                      align="center"
+                      padding="checkbox"
+                      sx={{ width: CHECKBOX_COL_WIDTH }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Checkbox
                         size="small"
                         checked={checked}
@@ -351,9 +373,10 @@ interface MobileProps<TRow> {
   rowKey: (row: TRow) => string | number;
   rowActions?: (row: TRow, idx: number) => ReactNode;
   emptyMessage: string;
+  onRowClick?: (row: TRow) => void;
 }
 
-function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage }: MobileProps<TRow>) {
+function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, onRowClick }: MobileProps<TRow>) {
   const primary = columns.find((c) => c.mobilePrimary) ?? columns[0];
   const details = columns.filter((c) => c.key !== primary?.key && !c.hideOnMobile);
 
@@ -364,10 +387,18 @@ function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage }: 
   return (
     <>
       {rows.map((row, idx) => (
-        <MobileCardItem key={rowKey(row)}>
+        <MobileCardItem
+          key={rowKey(row)}
+          clickable={!!onRowClick}
+          onClick={onRowClick ? () => onRowClick(row) : undefined}
+        >
           <MobilePrimaryRow>
             <div style={{ minWidth: 0, flex: 1 }}>{renderCell(primary, row)}</div>
-            {rowActions && <div style={{ flexShrink: 0 }}>{rowActions(row, idx)}</div>}
+            {rowActions && (
+              <div style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                {rowActions(row, idx)}
+              </div>
+            )}
           </MobilePrimaryRow>
           {details.length > 0 && (
             <Stack spacing={0.625} sx={{ mt: '0.875rem' }}>

@@ -110,6 +110,13 @@ export interface ListApiConfig<TRow, TFilters extends object> {
   onEdit?: (row: TRow) => void;
 
   /**
+   * 행 전체 클릭 핸들러. 지정 시 행에 cursor pointer + hover 강조 + 클릭 시 호출.
+   * 편집/삭제/체크박스 등 행 내부 액션은 자동으로 propagation 을 막아 행 클릭과 경쟁하지 않는다.
+   * 일반적으로 상세 페이지 진입 (읽기 권한만으로 가능) 에 사용.
+   */
+  onRowClick?: (row: TRow) => void;
+
+  /**
    * true 면 No 컬럼 왼쪽에 체크박스 열 노출 (canWrite 일 때만).
    * 사용 시 GenericList 의 selection prop 도 함께 전달해야 한다.
    */

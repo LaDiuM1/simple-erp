@@ -53,10 +53,16 @@ export const StyledSortLabel = styled(TableSortLabel)(({ theme }) => ({
 /**
  * 본문 행. hover 시 배경 변경 + 행 액션(opacity 0 → 1) 페이드인.
  * 마지막 행은 border-bottom 제거 (surface 바닥 구분선이 이미 있음).
+ * `clickable` 가 true 면 cursor pointer + hover 강조로 클릭 가능성 가이드.
  */
-export const BodyRow = styled(TableRow)(({ theme }) => ({
+export const BodyRow = styled(TableRow, {
+  shouldForwardProp: (prop) => prop !== 'clickable',
+})<{ clickable?: boolean }>(({ theme, clickable }) => ({
   transition: 'background-color 0.12s',
-  '&:hover': { backgroundColor: theme.palette.background.default },
+  cursor: clickable ? 'pointer' : 'default',
+  '&:hover': {
+    backgroundColor: clickable ? theme.palette.action.hover : theme.palette.background.default,
+  },
   '&:hover .row-actions': { opacity: 1 },
   '& > td': {
     paddingLeft: '1.25rem',
@@ -112,13 +118,18 @@ export const LoadingOverlayBox = styled(Box)({
 
 /**
  * 모바일 카드 아이템. 카드 사이에 top border 로 구분.
- * 첫 카드는 :first-of-type 로 border 제거.
+ * 첫 카드는 :first-of-type 로 border 제거. `clickable` 시 cursor pointer + hover 강조.
  */
-export const MobileCardItem = styled(Box)(({ theme }) => ({
+export const MobileCardItem = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'clickable',
+})<{ clickable?: boolean }>(({ theme, clickable }) => ({
   padding: '1rem 1.25rem',
   borderTop: `1px solid ${theme.palette.divider}`,
   transition: 'background-color 0.12s',
-  '&:hover': { backgroundColor: theme.palette.background.default },
+  cursor: clickable ? 'pointer' : 'default',
+  '&:hover': {
+    backgroundColor: clickable ? theme.palette.action.hover : theme.palette.background.default,
+  },
   '&:first-of-type': { borderTop: 'none' },
 }));
 

@@ -130,6 +130,7 @@ export default function GenericList<TRow, TFilters extends object>({
           emptyMessage={api.emptyMessage}
           onEdit={api.onEdit}
           onDelete={handleDelete}
+          onRowClick={api.onRowClick}
           deleteConfirm={api.deleteConfirm}
           checkBox={checkboxEnabled}
           selection={selection}
