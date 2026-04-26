@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class DepartmentDataInitializer implements ApplicationRunner {
+public class DepartmentInitializer implements ApplicationRunner {
 
     private final DepartmentRepository departmentRepository;
 

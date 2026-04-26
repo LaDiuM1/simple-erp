@@ -24,7 +24,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class DataInitializer implements ApplicationRunner {
+public class EmployeeInitializer implements ApplicationRunner {
 
     private static final List<String> TEST_EMPLOYEE_NAMES = List.of(
             "김민수", "이지영", "박서준", "최수빈", "정도현",
