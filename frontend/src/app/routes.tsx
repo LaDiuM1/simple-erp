@@ -17,6 +17,7 @@ import PositionRankingPage from '@/pages/position/PositionRankingPage';
 import RoleListPage from '@/pages/role/RoleListPage';
 import RoleCreatePage from '@/pages/role/RoleCreatePage';
 import RoleEditPage from '@/pages/role/RoleEditPage';
+import RoleDetailPage from '@/pages/role/RoleDetailPage';
 import CodeRuleListPage from '@/pages/codeRule/CodeRuleListPage';
 import CodeRuleEditPage from '@/pages/codeRule/CodeRuleEditPage';
 
@@ -41,6 +42,7 @@ export default function AppRoutes() {
         <Route path="/roles" element={<RoleListPage />} />
         <Route path="/roles/new" element={<RoleCreatePage />} />
         <Route path="/roles/:id/edit" element={<RoleEditPage />} />
+        <Route path="/roles/:id" element={<RoleDetailPage />} />
         <Route path="/code-rules" element={<CodeRuleListPage />} />
         <Route path="/code-rules/:target/edit" element={<CodeRuleEditPage />} />
       </Route>

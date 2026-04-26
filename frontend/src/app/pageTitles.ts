@@ -29,6 +29,7 @@ const DYNAMIC_RULES: DynamicRule[] = [
   { test: (p) => /^\/departments\/\d+\/edit$/.test(p), title: '부서 수정' },
   { test: (p) => /^\/positions\/\d+\/edit$/.test(p), title: '직책 수정' },
   { test: (p) => /^\/roles\/\d+\/edit$/.test(p), title: '권한 수정' },
+  { test: (p) => /^\/roles\/\d+$/.test(p), title: '권한 상세' },
   { test: (p) => /^\/code-rules\/[^/]+\/edit$/.test(p), title: '코드 채번 규칙 수정' },
 ];
 
