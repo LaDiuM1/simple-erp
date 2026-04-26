@@ -46,9 +46,11 @@ public class DepartmentRepositoryImpl implements DepartmentRepositoryCustom {
         if (condition == null) {
             return where;
         }
-        if (StringUtils.hasText(condition.keyword())) {
-            String like = "%" + condition.keyword().trim() + "%";
-            where.and(d.code.like(like).or(d.name.like(like)));
+        if (StringUtils.hasText(condition.codeKeyword())) {
+            where.and(d.code.like("%" + condition.codeKeyword().trim() + "%"));
+        }
+        if (StringUtils.hasText(condition.nameKeyword())) {
+            where.and(d.name.like("%" + condition.nameKeyword().trim() + "%"));
         }
         return where;
     }

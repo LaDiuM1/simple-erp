@@ -55,10 +55,11 @@ public class DepartmentController {
     @GetMapping("/summary")
     @PreAuthorize(CAN_READ)
     public PageResponse<DepartmentSummaryResponse> search(
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String codeKeyword,
+            @RequestParam(required = false) String nameKeyword,
             @PageableDefault(sort = "code", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        return departmentService.search(new DepartmentSearchCondition(keyword), pageable);
+        return departmentService.search(new DepartmentSearchCondition(codeKeyword, nameKeyword), pageable);
     }
 
     @GetMapping("/code-availability")
