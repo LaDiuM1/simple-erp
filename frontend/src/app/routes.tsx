@@ -26,6 +26,10 @@ import CustomerEditPage from '@/pages/customer/CustomerEditPage';
 import CustomerDetailPage from '@/pages/customer/CustomerDetailPage';
 import SalesCustomerListPage from '@/pages/salesCustomer/SalesCustomerListPage';
 import SalesCustomerDetailPage from '@/pages/salesCustomer/SalesCustomerDetailPage';
+import SalesContactListPage from '@/pages/salesContact/SalesContactListPage';
+import SalesContactCreatePage from '@/pages/salesContact/SalesContactCreatePage';
+import SalesContactEditPage from '@/pages/salesContact/SalesContactEditPage';
+import SalesContactDetailPage from '@/pages/salesContact/SalesContactDetailPage';
 
 export default function AppRoutes() {
   return (
@@ -57,6 +61,10 @@ export default function AppRoutes() {
         <Route path="/customers/:id" element={<CustomerDetailPage />} />
         <Route path="/sales-customers" element={<SalesCustomerListPage />} />
         <Route path="/sales-customers/:customerId" element={<SalesCustomerDetailPage />} />
+        <Route path="/sales-contacts" element={<SalesContactListPage />} />
+        <Route path="/sales-contacts/new" element={<SalesContactCreatePage />} />
+        <Route path="/sales-contacts/:id/edit" element={<SalesContactEditPage />} />
+        <Route path="/sales-contacts/:id" element={<SalesContactDetailPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

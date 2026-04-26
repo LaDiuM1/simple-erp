@@ -20,6 +20,8 @@ const STATIC_TITLES: Record<string, string> = {
   '/customers': '고객사 목록',
   '/customers/new': '고객사 등록',
   '/sales-customers': '고객사 영업 관리',
+  '/sales-contacts': '영업 명부 목록',
+  '/sales-contacts/new': '영업 명부 등록',
 };
 
 interface DynamicRule {
@@ -37,6 +39,8 @@ const DYNAMIC_RULES: DynamicRule[] = [
   { test: (p) => /^\/customers\/\d+\/edit$/.test(p), title: '고객사 수정' },
   { test: (p) => /^\/customers\/\d+$/.test(p), title: '고객사 상세' },
   { test: (p) => /^\/sales-customers\/\d+$/.test(p), title: '고객사 영업 상세' },
+  { test: (p) => /^\/sales-contacts\/\d+\/edit$/.test(p), title: '영업 명부 수정' },
+  { test: (p) => /^\/sales-contacts\/\d+$/.test(p), title: '영업 명부 상세' },
 ];
 
 export function getPageTitle(pathname: string): string {

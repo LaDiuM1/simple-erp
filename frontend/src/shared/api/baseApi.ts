@@ -69,6 +69,8 @@ export const api = createApi({
     'SalesActivity',
     'SalesAssignment',
     'SalesAggregate',
+    'SalesContact',
+    'SalesContactEmployment',
   ],
   endpoints: () => ({}),
 });
