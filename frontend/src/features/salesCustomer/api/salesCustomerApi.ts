@@ -1,0 +1,127 @@
+import { api } from '@/shared/api/baseApi';
+import type {
+  SalesActivityCreateRequest,
+  SalesActivityUpdateRequest,
+  SalesAssignmentCreateRequest,
+  SalesAssignmentTerminateRequest,
+  SalesAssignmentUpdateRequest,
+  SalesCustomerAggregate,
+  SalesCustomerDetail,
+} from '../types';
+
+const salesCustomerApi = api.injectEndpoints({
+  endpoints: (builder) => ({
+    /**
+     * 고객사 ID 배열에 대한 영업 집계 (활성 담당자 / 활동 카운트 / 마지막 활동일).
+     * 목록 페이지가 customer 마스터 페이지와 합성하기 위한 보강 데이터.
+     */
+    getSalesCustomerAggregates: builder.query<SalesCustomerAggregate[], number[]>({
+      query: (customerIds) => ({
+        url: '/api/v1/sales-customers/aggregates',
+        method: 'GET',
+        params: { customerIds: customerIds.join(',') },
+      }),
+      providesTags: (_result, _error, customerIds) =>
+        customerIds.flatMap((id) => [
+          { type: 'SalesAggregate' as const, id },
+          { type: 'SalesActivity' as const, id: `CUSTOMER:${id}` },
+          { type: 'SalesAssignment' as const, id: `CUSTOMER:${id}` },
+        ]),
+    }),
+
+    getSalesCustomerDetail: builder.query<SalesCustomerDetail, number>({
+      query: (customerId) => ({
+        url: `/api/v1/sales-customers/${customerId}`,
+        method: 'GET',
+      }),
+      providesTags: (_result, _error, customerId) => [
+        { type: 'SalesActivity', id: `CUSTOMER:${customerId}` },
+        { type: 'SalesAssignment', id: `CUSTOMER:${customerId}` },
+      ],
+    }),
+
+    createSalesActivity: builder.mutation<number, SalesActivityCreateRequest>({
+      query: (body) => ({ url: '/api/v1/sales-customers/activities', method: 'POST', data: body }),
+      invalidatesTags: (_result, _error, { customerId }) => [
+        { type: 'SalesActivity', id: `CUSTOMER:${customerId}` },
+        { type: 'SalesAggregate', id: customerId },
+      ],
+    }),
+    updateSalesActivity: builder.mutation<
+      void,
+      { id: number; customerId: number; body: SalesActivityUpdateRequest }
+    >({
+      query: ({ id, body }) => ({
+        url: `/api/v1/sales-customers/activities/${id}`,
+        method: 'PUT',
+        data: body,
+      }),
+      invalidatesTags: (_result, _error, { customerId }) => [
+        { type: 'SalesActivity', id: `CUSTOMER:${customerId}` },
+        { type: 'SalesAggregate', id: customerId },
+      ],
+    }),
+    deleteSalesActivity: builder.mutation<void, { id: number; customerId: number }>({
+      query: ({ id }) => ({ url: `/api/v1/sales-customers/activities/${id}`, method: 'DELETE' }),
+      invalidatesTags: (_result, _error, { customerId }) => [
+        { type: 'SalesActivity', id: `CUSTOMER:${customerId}` },
+        { type: 'SalesAggregate', id: customerId },
+      ],
+    }),
+
+    createSalesAssignment: builder.mutation<number, SalesAssignmentCreateRequest>({
+      query: (body) => ({ url: '/api/v1/sales-customers/assignments', method: 'POST', data: body }),
+      invalidatesTags: (_result, _error, { customerId }) => [
+        { type: 'SalesAssignment', id: `CUSTOMER:${customerId}` },
+        { type: 'SalesAggregate', id: customerId },
+      ],
+    }),
+    updateSalesAssignment: builder.mutation<
+      void,
+      { id: number; customerId: number; body: SalesAssignmentUpdateRequest }
+    >({
+      query: ({ id, body }) => ({
+        url: `/api/v1/sales-customers/assignments/${id}`,
+        method: 'PUT',
+        data: body,
+      }),
+      invalidatesTags: (_result, _error, { customerId }) => [
+        { type: 'SalesAssignment', id: `CUSTOMER:${customerId}` },
+        { type: 'SalesAggregate', id: customerId },
+      ],
+    }),
+    terminateSalesAssignment: builder.mutation<
+      void,
+      { id: number; customerId: number; body: SalesAssignmentTerminateRequest }
+    >({
+      query: ({ id, body }) => ({
+        url: `/api/v1/sales-customers/assignments/${id}/terminate`,
+        method: 'PUT',
+        data: body,
+      }),
+      invalidatesTags: (_result, _error, { customerId }) => [
+        { type: 'SalesAssignment', id: `CUSTOMER:${customerId}` },
+        { type: 'SalesAggregate', id: customerId },
+      ],
+    }),
+    deleteSalesAssignment: builder.mutation<void, { id: number; customerId: number }>({
+      query: ({ id }) => ({ url: `/api/v1/sales-customers/assignments/${id}`, method: 'DELETE' }),
+      invalidatesTags: (_result, _error, { customerId }) => [
+        { type: 'SalesAssignment', id: `CUSTOMER:${customerId}` },
+        { type: 'SalesAggregate', id: customerId },
+      ],
+    }),
+  }),
+});
+
+export const {
+  useGetSalesCustomerAggregatesQuery,
+  useGetSalesCustomerDetailQuery,
+  useCreateSalesActivityMutation,
+  useUpdateSalesActivityMutation,
+  useDeleteSalesActivityMutation,
+  useCreateSalesAssignmentMutation,
+  useUpdateSalesAssignmentMutation,
+  useTerminateSalesAssignmentMutation,
+  useDeleteSalesAssignmentMutation,
+} = salesCustomerApi;

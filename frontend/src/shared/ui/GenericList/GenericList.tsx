@@ -17,12 +17,20 @@ import type {
   FilterConfig,
   ListApiConfig,
   SortState,
+  UseDeleteMutation,
   UseExcelDownload,
 } from './types';
 import type { ListSelectionState } from './useListSelection';
 
 const DEFAULT_DELETE_SUCCESS = '삭제되었습니다.';
 const DEFAULT_DELETE_ERROR = '삭제 중 오류가 발생했습니다.';
+
+/**
+ * api.useDelete 가 미지정인 페이지에서 hooks 호출 순서 유지용 placeholder.
+ * 실제 deleteFn 은 호출되지 않는다 (handleDelete 가 undefined 로 전달되어 ListTable 이 행 삭제 아이콘 자체를 그리지 않음).
+ */
+const noopDeleteHook: UseDeleteMutation = () =>
+  [() => ({ unwrap: async () => undefined }), undefined] as const;
 
 export interface GenericListProps<TRow, TFilters extends object> {
   api: ListApiConfig<TRow, TFilters>;
@@ -53,23 +61,27 @@ export default function GenericList<TRow, TFilters extends object>({
   const snackbar = useSnackbar();
 
   const query = api.useList(state.queryParams);
-  const [deleteFn] = api.useDelete();
   const { data, isFetching, isError, error, refetch } = query;
 
-  const handleDelete = async (row: TRow) => {
-    try {
-      const id = api.rowKey(row);
-      await deleteFn(id).unwrap();
-      snackbar.success(api.successMessages?.delete ?? DEFAULT_DELETE_SUCCESS);
-      // 행 단건 삭제 후, 일괄 선택 목록에 남아있던 경우 자동 정리.
-      if (selection?.isSelected(id)) {
-        selection.toggle(id);
+  // useDelete 가 없는 페이지는 noopDeleteHook 으로 hooks 순서 유지 + onDelete 미전달로 행 삭제 아이콘 비표시.
+  const useDeleteHook = api.useDelete ?? noopDeleteHook;
+  const [deleteFn] = useDeleteHook();
+
+  const handleDelete = api.useDelete
+    ? async (row: TRow) => {
+        try {
+          const id = api.rowKey(row);
+          await deleteFn(id).unwrap();
+          snackbar.success(api.successMessages?.delete ?? DEFAULT_DELETE_SUCCESS);
+          if (selection?.isSelected(id)) {
+            selection.toggle(id);
+          }
+        } catch (err) {
+          snackbar.error((err as ApiError)?.message ?? DEFAULT_DELETE_ERROR);
+          throw err;
+        }
       }
-    } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? DEFAULT_DELETE_ERROR);
-      throw err;
-    }
-  };
+    : undefined;
 
   if (isError) {
     return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;

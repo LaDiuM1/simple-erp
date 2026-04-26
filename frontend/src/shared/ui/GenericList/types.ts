@@ -100,7 +100,8 @@ export interface ListApiConfig<TRow, TFilters extends object> {
   menuCode: string;
 
   useList: (params: TFilters & ListQueryParamsBase) => QueryState<TRow>;
-  useDelete: UseDeleteMutation;
+  /** 행 삭제 mutation. 미지정 시 행 삭제 아이콘 자체가 비표시 (조회 / 진입 전용 화면용). */
+  useDelete?: UseDeleteMutation;
   /** 지정 시 리스트 툴바 우측에 엑셀 다운로드 버튼이 자동 노출 */
   useExcel?: UseExcelDownload<TFilters>;
 
