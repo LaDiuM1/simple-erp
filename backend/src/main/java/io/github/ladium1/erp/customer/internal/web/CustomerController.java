@@ -57,11 +57,12 @@ public class CustomerController {
     public PageResponse<CustomerSummaryResponse> search(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String addressKeyword,
+            @RequestParam(required = false) String phoneKeyword,
             @RequestParam(required = false) CustomerType type,
             @RequestParam(required = false) CustomerStatus status,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return customerService.search(toCondition(keyword, addressKeyword, type, status), pageable);
+        return customerService.search(toCondition(keyword, addressKeyword, phoneKeyword, type, status), pageable);
     }
 
     @GetMapping("/{id}")
@@ -75,12 +76,13 @@ public class CustomerController {
     public ResponseEntity<ByteArrayResource> downloadExcel(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String addressKeyword,
+            @RequestParam(required = false) String phoneKeyword,
             @RequestParam(required = false) CustomerType type,
             @RequestParam(required = false) CustomerStatus status,
             @SortDefault(sort = "id", direction = Sort.Direction.DESC) Sort sort
     ) {
         byte[] bytes = customerService.exportExcel(
-                toCondition(keyword, addressKeyword, type, status),
+                toCondition(keyword, addressKeyword, phoneKeyword, type, status),
                 sort
         );
         String filename = "customers_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".xlsx";
@@ -117,7 +119,7 @@ public class CustomerController {
         customerService.delete(id);
     }
 
-    private CustomerSearchCondition toCondition(String keyword, String addressKeyword, CustomerType type, CustomerStatus status) {
-        return new CustomerSearchCondition(keyword, addressKeyword, type, status);
+    private CustomerSearchCondition toCondition(String keyword, String addressKeyword, String phoneKeyword, CustomerType type, CustomerStatus status) {
+        return new CustomerSearchCondition(keyword, addressKeyword, phoneKeyword, type, status);
     }
 }

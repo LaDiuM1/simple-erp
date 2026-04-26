@@ -65,6 +65,10 @@ public class CustomerRepositoryImpl implements CustomerRepositoryCustom {
             String like = "%" + condition.addressKeyword().trim() + "%";
             where.and(c.address.roadAddress.like(like).or(c.address.detailAddress.like(like)));
         }
+        if (StringUtils.hasText(condition.phoneKeyword())) {
+            String like = "%" + condition.phoneKeyword().trim() + "%";
+            where.and(c.phone.like(like).or(c.fax.like(like)));
+        }
         if (condition.type() != null) {
             where.and(c.type.eq(condition.type()));
         }
