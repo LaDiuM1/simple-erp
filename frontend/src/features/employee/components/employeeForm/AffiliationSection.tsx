@@ -1,11 +1,9 @@
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
-import {
-  useGetPositionsQuery,
-  useGetRolesQuery,
-} from '@/features/reference/api/referenceApi';
+import { useGetRolesQuery } from '@/features/reference/api/referenceApi';
 import DepartmentSelectField from '@/features/department/components/DepartmentSelectField';
+import PositionSelectField from '@/features/position/components/PositionSelectField';
 import {
   EMPLOYEE_STATUS_OPTIONS,
   type EmployeeStatus,
@@ -24,11 +22,10 @@ export default function AffiliationSection({ form, showStatus = false }: Props) 
   const { values, update, validation } = form;
 
   const { data: roles } = useGetRolesQuery();
-  const { data: positions } = useGetPositionsQuery();
 
   const description = showStatus
     ? '권한과 부서 / 직책 / 재직 상태를 지정합니다.'
-    : '권한과 부서 / 직책을 지정합니다.'
+    : '권한과 부서 / 직책을 지정합니다.';
 
   return (
     <FormSection
@@ -58,20 +55,10 @@ export default function AffiliationSection({ form, showStatus = false }: Props) 
           value={values.departmentId}
           onChange={(v) => update('departmentId', v)}
         />
-        <TextField
-          select
-          size="small"
-          label="직책"
+        <PositionSelectField
           value={values.positionId}
-          onChange={(e) => update('positionId', e.target.value)}
-        >
-          <MenuItem value="">-</MenuItem>
-          {(positions ?? []).map((p) => (
-            <MenuItem key={p.id} value={String(p.id)}>
-              {p.name}
-            </MenuItem>
-          ))}
-        </TextField>
+          onChange={(v) => update('positionId', v)}
+        />
         {showStatus && (
           <TextField
             select
