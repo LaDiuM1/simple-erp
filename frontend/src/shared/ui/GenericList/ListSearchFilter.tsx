@@ -42,7 +42,7 @@ export default function ListSearchFilter({
   debounceMs = 300,
   trailing,
 }: Props) {
-  const searchItem = searchFilter.find((f): f is SearchFilterItem => f.type === 'search');
+  const searchItems = searchFilter.filter((f): f is SearchFilterItem => f.type === 'search');
   const otherItems = searchFilter.filter((f) => f.type !== 'search');
 
   return (
@@ -62,14 +62,15 @@ export default function ListSearchFilter({
         </FilterGroup>
       )}
 
-      {searchItem && (
+      {searchItems.map((searchItem) => (
         <SearchField
+          key={searchItem.key}
           placeholder={searchItem.placeholder}
           value={toSearchValue(filters[searchItem.key])}
           onChange={(v) => onUpdate(searchItem.key, v === '' ? null : v)}
           debounceMs={debounceMs}
         />
-      )}
+      ))}
 
       <Tooltip title="필터 초기화" arrow>
         <ResetButton onClick={onReset} aria-label="필터 초기화">
