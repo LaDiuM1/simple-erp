@@ -16,7 +16,7 @@ import {
   validateRoleForm,
   type RoleErrors,
 } from '@/features/role/validation/roleValidation';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 export interface RoleEditFormState {
   values: RoleFormValues;
@@ -71,7 +71,7 @@ export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormSta
       snackbar.success('권한이 수정되었습니다.');
       navigate(MENU_PATH[MENU_CODE.ROLES]);
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '저장 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
     }
   };
 

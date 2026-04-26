@@ -13,7 +13,7 @@ import {
   HeaderCustomerCode,
   HeaderCustomerName,
 } from '@/features/salesCustomer/components/salesCustomerDetail.styles';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 export default function SalesCustomerDetailPage() {
   const { customerId: param } = useParams<{ customerId: string }>();
@@ -27,7 +27,7 @@ function Body({ customerId }: { customerId: number }) {
   const { data, isLoading, isError, error, refetch } = useGetSalesCustomerDetailQuery(customerId);
 
   if (isLoading) return <LoadingScreen />;
-  if (isError) return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
+  if (isError) return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
   if (!data) return null;
 
   return (

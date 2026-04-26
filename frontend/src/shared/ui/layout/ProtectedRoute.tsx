@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
 import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import AppLayout from './AppLayout';
@@ -14,7 +14,7 @@ export default function ProtectedRoute() {
 
   if (!accessToken) return <Navigate to="/login" replace />;
   if (isLoading) return <LoadingScreen />;
-  if (isError) return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
+  if (isError) return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
 
   return <AppLayout />;
 }

@@ -14,7 +14,7 @@ import Muted from '@/shared/ui/atoms/Muted';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useDeleteSalesAssignmentMutation } from '@/features/salesCustomer/api/salesCustomerApi';
 import type { SalesAssignment } from '@/features/salesCustomer/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import AssignmentStatusIndicator from './AssignmentStatusIndicator';
 import AssignmentFormModal from './AssignmentFormModal/AssignmentFormModal';
 import AssignmentTerminateModal from './AssignmentTerminateModal/AssignmentTerminateModal';
@@ -57,7 +57,7 @@ export default function AssignmentList({ customerId, assignments }: Props) {
       snackbar.success('배정이 삭제되었습니다.');
       setDeletingTarget(null);
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '삭제 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '삭제 중 오류가 발생했습니다.'));
     }
   };
 

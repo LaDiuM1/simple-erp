@@ -6,7 +6,7 @@ import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import FormField from './FormField';
 import FormSection from './FormSection';
 import { FormGrid, FormRoot, FormSurface } from './GenericForm.styles';
@@ -78,7 +78,7 @@ function CreateForm<
       snackbar.success(api.successMessages?.create ?? DEFAULT_CREATE_SUCCESS);
       navigate(api.listPath);
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? DEFAULT_SAVE_ERROR);
+      snackbar.error(getErrorMessage(err, DEFAULT_SAVE_ERROR));
     }
   };
 
@@ -139,7 +139,7 @@ function EditForm<
   if (detailQuery.isError) {
     return (
       <ErrorScreen
-        message={(detailQuery.error as ApiError)?.message}
+        message={getErrorMessage(detailQuery.error)}
         onRetry={detailQuery.refetch}
       />
     );
@@ -179,7 +179,7 @@ function EditFormBody<
       snackbar.success(api.successMessages?.edit ?? DEFAULT_EDIT_SUCCESS);
       navigate(api.listPath);
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? DEFAULT_SAVE_ERROR);
+      snackbar.error(getErrorMessage(err, DEFAULT_SAVE_ERROR));
     }
   };
 

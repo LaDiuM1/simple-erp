@@ -28,7 +28,7 @@ import {
 import PatternBuilder from '@/features/codeRule/components/PatternBuilder/PatternBuilder';
 import PresetCards from '@/features/codeRule/components/PresetCards/PresetCards';
 import PreviewPanel from '@/features/codeRule/components/PreviewPanel/PreviewPanel';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import {
   AdvancedSection,
   AdvancedTitle,
@@ -64,7 +64,7 @@ export default function CodeRuleEditForm({ target }: CodeRuleEditFormProps) {
 
   if (isLoading) return <LoadingScreen />;
   if (isError) {
-    return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
+    return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
   }
   if (!data) return null;
 

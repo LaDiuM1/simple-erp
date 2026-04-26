@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { useLoginMutation } from '@/features/auth/api/authApi';
 import { setToken } from '@/features/auth/store/authSlice';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import {
   AppSubtitle,
   AppTitle,
@@ -31,7 +31,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
 
   const [login, { isLoading, error }] = useLoginMutation();
-  const errorMessage = error ? (error as ApiError).message : null;
+  const errorMessage = getErrorMessage(error) ?? null;
 
   if (accessToken) return <Navigate to="/" replace />;
 

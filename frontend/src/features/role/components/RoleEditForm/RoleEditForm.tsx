@@ -4,7 +4,7 @@ import { useGetRoleQuery } from '@/features/role/api/roleApi';
 import { useRoleEditForm } from '@/features/role/hooks/useRoleEditForm';
 import RoleForm from '@/features/role/components/RoleForm';
 import type { RoleDetail } from '@/features/role/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 interface Props {
   id: number;
@@ -18,7 +18,7 @@ export default function RoleEditForm({ id }: Props) {
   const { data, isLoading, isError, error, refetch } = useGetRoleQuery(id);
 
   if (isLoading) return <LoadingScreen />;
-  if (isError) return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
+  if (isError) return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
   if (!data) return null;
 
   return <Body id={id} detail={data} />;

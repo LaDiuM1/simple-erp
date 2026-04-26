@@ -21,7 +21,7 @@ import {
   todayIsoDate,
   type LoginIdStatus,
 } from '@/features/employee/validation/employeeFormValidation';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import type { EmployeeFormStateBase } from './employeeFormState';
 
 export interface EmployeeCreateFormState extends EmployeeFormStateBase {
@@ -100,7 +100,7 @@ export function useEmployeeCreateForm(): EmployeeCreateFormState {
       snackbar.success('등록되었습니다.');
       navigate(MENU_PATH.EMPLOYEES);
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '저장 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
     }
   };
 

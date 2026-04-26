@@ -6,7 +6,7 @@ import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { useGetEmployeeQuery } from '@/features/employee/api/employeeApi';
 import { useEmployeeEditForm } from '@/features/employee/hooks/useEmployeeEditForm';
 import type { EmployeeDetail } from '@/features/employee/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import BasicInfoSection from '../employeeForm/BasicInfoSection';
 import AffiliationSection from '../employeeForm/AffiliationSection';
 import AddressSection from '../employeeForm/AddressSection';
@@ -20,7 +20,7 @@ export default function EmployeeEditForm({ id }: { id: number }) {
 
   if (isLoading) return <LoadingScreen />;
   if (isError) {
-    return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
+    return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
   }
   if (!data) return null;
 

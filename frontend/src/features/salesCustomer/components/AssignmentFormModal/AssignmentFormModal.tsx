@@ -19,7 +19,7 @@ import {
   todayIsoDate,
   type SalesAssignment,
 } from '@/features/salesCustomer/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 interface FormValues {
   employeeId: string;
@@ -102,7 +102,7 @@ export default function AssignmentFormModal({ open, onClose, customerId, assignm
       }
       onClose();
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '저장 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
     }
   };
 

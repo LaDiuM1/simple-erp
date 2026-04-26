@@ -9,7 +9,7 @@ import {
   ListSearchFilter,
   useListState,
 } from '@/shared/ui/GenericList';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import SearchTable from './SearchTable';
 import { ModalContent, ModalFilterArea } from './CommonSearchModal.styles';
 import type { CommonSearchModalProps, CommonSearchSelectedItem } from './types';
@@ -101,7 +101,7 @@ export default function CommonSearchModal<TRow, TFilters extends object>({
         </ModalFilterArea>
 
         {isError ? (
-          <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />
+          <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />
         ) : (
           <SearchTable
             rows={visibleRows}

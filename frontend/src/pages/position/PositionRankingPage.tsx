@@ -14,7 +14,7 @@ import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { useGetPositionsRankingQuery, useReorderPositionsMutation, } from '@/features/position/api/positionApi';
 import type { PositionSummary } from '@/features/position/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 /**
  * 직책 서열 관리 페이지.
@@ -83,7 +83,7 @@ export default function PositionRankingPage() {
       snackbar.success('직책 서열이 변경되었습니다.');
     } catch (err) {
       setItems(previous);
-      snackbar.error((err as ApiError)?.message ?? '서열 변경 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '서열 변경 중 오류가 발생했습니다.'));
     }
   };
 
@@ -104,7 +104,7 @@ export default function PositionRankingPage() {
           {isLoading ? (
             <LoadingScreen />
           ) : isError ? (
-            <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />
+            <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />
           ) : (
             <ContentBox>
               <HelpText>

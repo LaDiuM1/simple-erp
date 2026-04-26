@@ -13,7 +13,7 @@ import MenuPermissionMatrix, {
   MATRIX_MENUS,
 } from '@/features/role/components/MenuPermissionMatrix';
 import type { RoleDetail, RoleFormValues } from '@/features/role/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import {
   ContentBox,
   InfoGrid,
@@ -41,7 +41,7 @@ function Body({ id }: { id: number }) {
   const { data, isLoading, isError, error, refetch } = useGetRoleQuery(id);
 
   if (isLoading) return <LoadingScreen />;
-  if (isError) return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
+  if (isError) return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
   if (!data) return null;
 
   return (

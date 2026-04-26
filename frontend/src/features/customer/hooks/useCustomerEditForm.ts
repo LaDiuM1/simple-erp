@@ -20,7 +20,7 @@ import {
   customerValidators,
   type AvailabilityStatus,
 } from '@/features/customer/validation/customerFormValidation';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import type { CustomerFormStateBase } from './customerFormState';
 
 export interface CustomerEditFormState extends CustomerFormStateBase {
@@ -108,7 +108,7 @@ export function useCustomerEditForm(
       snackbar.success('저장되었습니다.');
       navigate(MENU_PATH.CUSTOMERS);
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '저장 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
     }
   };
 

@@ -25,7 +25,7 @@ import {
   INPUT_MODE_LABEL,
   RESET_POLICY_LABEL,
 } from '@/features/codeRule/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 /**
  * 코드 채번 규칙 목록.
@@ -39,7 +39,7 @@ export default function CodeRuleListPage() {
   const { data: rules = [], isLoading, isError, refetch, error } = useGetCodeRulesQuery();
 
   if (isLoading) return <LoadingScreen />;
-  if (isError) return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
+  if (isError) return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
 
   return (
     <ListRoot>

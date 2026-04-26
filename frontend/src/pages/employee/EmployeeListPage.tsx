@@ -11,7 +11,7 @@ import {
   employeeSearchFilter,
   useEmployeeListApi,
 } from '@/features/employee/config/employeeListConfig';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 export default function EmployeeListPage() {
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ export default function EmployeeListPage() {
       snackbar.success(`${selectedCount}건이 삭제되었습니다.`);
       selection.clear();
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '일괄 삭제 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '일괄 삭제 중 오류가 발생했습니다.'));
     } finally {
       setIsBulkDeleting(false);
     }

@@ -21,7 +21,7 @@ import {
   type SalesActivity,
   type SalesActivityType,
 } from '@/features/salesCustomer/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 interface FormValues {
   type: SalesActivityType;
@@ -111,7 +111,7 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
       }
       onClose();
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '저장 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
     }
   };
 

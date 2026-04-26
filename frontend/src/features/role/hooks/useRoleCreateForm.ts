@@ -15,7 +15,7 @@ import {
   validateRoleForm,
   type RoleErrors,
 } from '@/features/role/validation/roleValidation';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 export interface RoleCreateFormState {
   values: RoleFormValues;
@@ -79,7 +79,7 @@ export function useRoleCreateForm({ codeAvailable }: Options): RoleCreateFormSta
       snackbar.success('권한이 등록되었습니다.');
       navigate(MENU_PATH[MENU_CODE.ROLES]);
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '저장 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
     }
   };
 

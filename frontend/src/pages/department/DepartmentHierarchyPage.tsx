@@ -18,7 +18,7 @@ import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { useUpdateDepartmentMutation } from '@/features/department/api/departmentApi';
 import { useGetDepartmentsQuery } from '@/features/reference/api/referenceApi';
 import type { DepartmentInfo } from '@/features/reference/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 const ROOT_KEY = 'root';
 type DragOverKey = number | typeof ROOT_KEY | null;
@@ -61,7 +61,7 @@ export default function DepartmentHierarchyPage() {
             }).unwrap();
             snackbar.success('부서 계층이 변경되었습니다.');
         } catch (err) {
-            snackbar.error((err as ApiError)?.message ?? '계층 변경 중 오류가 발생했습니다.');
+            snackbar.error(getErrorMessage(err, '계층 변경 중 오류가 발생했습니다.'));
         }
     };
 
@@ -111,7 +111,7 @@ export default function DepartmentHierarchyPage() {
                     {isLoading ? (
                         <LoadingScreen />
                     ) : isError ? (
-                        <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />
+                        <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />
                     ) : (
                         <ContentBox>
                             {canWrite && (

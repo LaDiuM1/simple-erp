@@ -6,7 +6,7 @@ import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { useGetCustomerQuery } from '@/features/customer/api/customerApi';
 import { useCustomerEditForm } from '@/features/customer/hooks/useCustomerEditForm';
 import type { CustomerDetail } from '@/features/customer/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import IdentitySection from '../customerForm/IdentitySection';
 import ClassificationSection from '../customerForm/ClassificationSection';
 import ContactSection from '../customerForm/ContactSection';
@@ -20,7 +20,7 @@ export default function CustomerEditForm({ id }: { id: number }) {
 
   if (isLoading) return <LoadingScreen />;
   if (isError) {
-    return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
+    return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
   }
   if (!data) return null;
 

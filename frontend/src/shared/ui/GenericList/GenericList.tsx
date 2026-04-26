@@ -1,7 +1,7 @@
 import DownloadIcon from '@mui/icons-material/FileDownloadOutlined';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import ListSearchFilter from './ListSearchFilter';
 import ListTable from './ListTable';
 import ListPagination from './ListPagination';
@@ -77,14 +77,14 @@ export default function GenericList<TRow, TFilters extends object>({
             selection.toggle(id);
           }
         } catch (err) {
-          snackbar.error((err as ApiError)?.message ?? DEFAULT_DELETE_ERROR);
+          snackbar.error(getErrorMessage(err, DEFAULT_DELETE_ERROR));
           throw err;
         }
       }
     : undefined;
 
   if (isError) {
-    return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
+    return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
   }
 
   // 체크박스 활성화 여부 — api.checkBox 가 true 이고 selection prop 이 전달된 경우.

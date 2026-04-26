@@ -22,13 +22,13 @@ import ClassificationSection from '../customerForm/ClassificationSection';
 import ContactSection from '../customerForm/ContactSection';
 import AddressSection from '../customerForm/AddressSection';
 import { CreateForm, CreateRoot } from '../customerForm/customerForm.styles';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 export default function CustomerDetailForm({ id }: { id: number }) {
   const { data, isLoading, isError, error, refetch } = useGetCustomerQuery(id);
 
   if (isLoading) return <LoadingScreen />;
-  if (isError) return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
+  if (isError) return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
   if (!data) return null;
 
   return <CustomerDetailFormBody id={id} detail={data} />;

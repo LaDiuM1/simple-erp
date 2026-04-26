@@ -30,7 +30,7 @@ import {
   patternUsesParentToken,
   validatePattern,
 } from '@/features/codeRule/validation/codeRuleValidation';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 
 export interface CodeRuleEditFormState {
   values: CodeRuleFormValues;
@@ -171,10 +171,10 @@ export function useCodeRuleEditForm(
           setPreviewError(null);
         }
       })
-      .catch((err: ApiError) => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           setPreview(null);
-          setPreviewError(err?.message ?? '미리보기 조회 실패');
+          setPreviewError(getErrorMessage(err, '미리보기 조회 실패'));
         }
       });
     return () => {
@@ -199,7 +199,7 @@ export function useCodeRuleEditForm(
       snackbar.success('저장되었습니다.');
       navigate(MENU_PATH[MENU_CODE.CODE_RULES]);
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '저장 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
     }
   };
 

@@ -13,7 +13,7 @@ import Muted from '@/shared/ui/atoms/Muted';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useDeleteSalesActivityMutation } from '@/features/salesCustomer/api/salesCustomerApi';
 import type { SalesActivity } from '@/features/salesCustomer/types';
-import type { ApiError } from '@/shared/types/api';
+import { getErrorMessage } from '@/shared/api/error';
 import ActivityTypeBadge from './ActivityTypeBadge';
 import ActivityFormModal from './ActivityFormModal/ActivityFormModal';
 import {
@@ -53,7 +53,7 @@ export default function ActivityList({ customerId, activities }: Props) {
       snackbar.success('활동이 삭제되었습니다.');
       setDeletingTarget(null);
     } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '삭제 중 오류가 발생했습니다.');
+      snackbar.error(getErrorMessage(err, '삭제 중 오류가 발생했습니다.'));
     }
   };
 
