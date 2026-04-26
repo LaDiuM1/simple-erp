@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.department.internal.web;
 
 import io.github.ladium1.erp.department.api.dto.DepartmentInfo;
+import io.github.ladium1.erp.department.internal.dto.AvailabilityResponse;
 import io.github.ladium1.erp.department.internal.dto.DepartmentCreateRequest;
 import io.github.ladium1.erp.department.internal.dto.DepartmentDetailResponse;
 import io.github.ladium1.erp.department.internal.dto.DepartmentSearchCondition;
@@ -58,6 +59,12 @@ public class DepartmentController {
             @PageableDefault(sort = "code", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         return departmentService.search(new DepartmentSearchCondition(keyword), pageable);
+    }
+
+    @GetMapping("/code-availability")
+    @PreAuthorize(CAN_WRITE)
+    public AvailabilityResponse checkCodeAvailability(@RequestParam String code) {
+        return new AvailabilityResponse(departmentService.isCodeAvailable(code));
     }
 
     @GetMapping("/{id}")

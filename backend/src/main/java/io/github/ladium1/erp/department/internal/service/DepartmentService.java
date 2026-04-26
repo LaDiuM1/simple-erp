@@ -1,5 +1,10 @@
 package io.github.ladium1.erp.department.internal.service;
 
+import io.github.ladium1.erp.coderule.api.CodeRuleApi;
+import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
+import io.github.ladium1.erp.coderule.api.InputMode;
+import io.github.ladium1.erp.coderule.api.dto.CodeGenerationContext;
+import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
 import io.github.ladium1.erp.department.api.DepartmentApi;
 import io.github.ladium1.erp.department.api.DepartmentDeletingEvent;
 import io.github.ladium1.erp.department.api.dto.DepartmentInfo;
@@ -32,6 +37,7 @@ public class DepartmentService implements DepartmentApi {
     private final DepartmentRepository departmentRepository;
     private final DepartmentMapper departmentMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final CodeRuleApi codeRuleApi;
 
     @Override
     public DepartmentInfo getById(Long id) {
@@ -66,20 +72,55 @@ public class DepartmentService implements DepartmentApi {
                 .orElseThrow(() -> new BusinessException(DepartmentErrorCode.DEPARTMENT_NOT_FOUND));
     }
 
+    /**
+     * 사용자 입력 코드의 사용 가능 여부 — 등록 화면의 디바운스 중복 검사 용.
+     * 빈 문자열은 false 반환.
+     */
+    public boolean isCodeAvailable(String code) {
+        if (code == null || code.isBlank()) {
+            return false;
+        }
+        return !departmentRepository.existsByCode(code.trim());
+    }
+
     @Transactional
     public Long create(DepartmentCreateRequest request) {
-        if (departmentRepository.existsByCode(request.code())) {
+        Department parent = resolveParent(request.parentId(), null);
+        String parentCode = parent != null ? parent.getCode() : null;
+
+        String code = resolveCode(request.code(), parentCode);
+
+        if (departmentRepository.existsByCode(code)) {
             throw new BusinessException(DepartmentErrorCode.DUPLICATE_CODE);
         }
-        Department parent = resolveParent(request.parentId(), null);
 
         Department department = Department.builder()
-                .code(request.code())
+                .code(code)
                 .name(request.name())
                 .parent(parent)
                 .build();
 
         return departmentRepository.save(department).getId();
+    }
+
+    /**
+     * 채번 규칙의 inputMode 에 따라 최종 코드 결정.
+     * AUTO: 항상 시스템 생성 / MANUAL: 사용자 입력 필수 + 패턴 검증 / AUTO_OR_MANUAL: 입력 있으면 검증, 없으면 생성.
+     */
+    private String resolveCode(String requested, String parentCode) {
+        CodeRuleInfo rule = codeRuleApi.getRule(CodeRuleTarget.DEPARTMENT);
+        InputMode mode = rule.inputMode();
+        boolean hasInput = requested != null && !requested.isBlank();
+
+        if (mode == InputMode.AUTO || (mode == InputMode.AUTO_OR_MANUAL && !hasInput)) {
+            return codeRuleApi.generate(CodeRuleTarget.DEPARTMENT, CodeGenerationContext.ofParent(parentCode));
+        }
+        if (!hasInput) {
+            throw new BusinessException(DepartmentErrorCode.CODE_REQUIRED);
+        }
+        String trimmed = requested.trim();
+        codeRuleApi.validate(CodeRuleTarget.DEPARTMENT, trimmed);
+        return trimmed;
     }
 
     @Transactional
