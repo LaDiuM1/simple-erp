@@ -20,6 +20,7 @@ interface Props<TValues extends object> {
   onChange: (value: unknown) => void;
   /** 입력 불가 상태 — disabledOnEdit 플래그를 GenericForm 이 mode 와 합쳐 결정 */
   disabled?: boolean;
+  mode: 'create' | 'edit';
 }
 
 /**
@@ -31,10 +32,11 @@ export default function FormField<TValues extends object>({
   value,
   onChange,
   disabled,
+  mode,
 }: Props<TValues>) {
   return (
     <FieldItem fullWidth={field.fullWidth}>
-      <FieldBody field={field} value={value} onChange={onChange} disabled={disabled} />
+      <FieldBody field={field} value={value} onChange={onChange} disabled={disabled} mode={mode} />
     </FieldItem>
   );
 }
@@ -44,6 +46,7 @@ function FieldBody<TValues extends object>({
   value,
   onChange,
   disabled,
+  mode,
 }: Props<TValues>): ReactNode {
   switch (field.type) {
     case 'text':
@@ -59,13 +62,17 @@ function FieldBody<TValues extends object>({
     case 'select':
       return <SelectFieldRenderer field={field} value={value} onChange={onChange} disabled={disabled} />;
     case 'custom':
-      return <CustomFieldRenderer field={field} value={value} onChange={onChange} />;
+      return (
+        <CustomFieldRenderer
+          field={field}
+          value={value}
+          onChange={onChange}
+          mode={mode}
+          disabled={disabled ?? false}
+        />
+      );
   }
 }
-
-/* --------------------------------------------------------------------------
- * Text-like renderers (TextField 기반)
- * ------------------------------------------------------------------------ */
 
 function TextFieldRenderer<TValues extends object>({
   field,
@@ -208,10 +215,6 @@ function DateFieldRenderer<TValues extends object>({
   );
 }
 
-/* --------------------------------------------------------------------------
- * Select (정적 / 동적 옵션 지원)
- * ------------------------------------------------------------------------ */
-
 function SelectFieldRenderer<TValues extends object>({
   field,
   value,
@@ -305,20 +308,20 @@ function StaticSelect<TValues extends object>({
   );
 }
 
-/* --------------------------------------------------------------------------
- * Custom render
- * ------------------------------------------------------------------------ */
-
 function CustomFieldRenderer<TValues extends object>({
   field,
   value,
   onChange,
+  mode,
+  disabled,
 }: {
   field: CustomFieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
+  mode: 'create' | 'edit';
+  disabled: boolean;
 }): ReactNode {
-  return <>{field.render({ value, onChange })}</>;
+  return <>{field.render({ value, onChange, mode, disabled })}</>;
 }
 
 function toStringValue(v: unknown): string {

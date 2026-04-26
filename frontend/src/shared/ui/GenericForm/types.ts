@@ -1,9 +1,5 @@
 import type { ReactNode } from 'react';
 
-/* --------------------------------------------------------------------------
- * Query / Mutation 훅 시그니처 (RTK Query 호환)
- * ------------------------------------------------------------------------ */
-
 export interface DetailQueryState<T> {
   data?: T;
   isLoading: boolean;
@@ -23,10 +19,6 @@ export type UseUpdateMutation<TUpdateRequest> = () => readonly [
   (arg: { id: number; body: TUpdateRequest }) => { unwrap: () => Promise<unknown> },
   { isLoading: boolean },
 ];
-
-/* --------------------------------------------------------------------------
- * Field config (discriminated union)
- * ------------------------------------------------------------------------ */
 
 export interface FieldOption<V extends string | number = string | number> {
   value: V;
@@ -81,9 +73,16 @@ export interface SelectFieldConfig<TValues> extends BaseField<TValues> {
   mapOptions?: (data: unknown) => FieldOption[];
 }
 
+export interface CustomFieldRenderContext {
+  value: unknown;
+  onChange: (value: unknown) => void;
+  mode: 'create' | 'edit';
+  disabled: boolean;
+}
+
 export interface CustomFieldConfig<TValues> extends BaseField<TValues> {
   type: 'custom';
-  render: (ctx: { value: unknown; onChange: (value: unknown) => void }) => ReactNode;
+  render: (ctx: CustomFieldRenderContext) => ReactNode;
 }
 
 export type FieldConfig<TValues> =
@@ -95,19 +94,11 @@ export type FieldConfig<TValues> =
   | SelectFieldConfig<TValues>
   | CustomFieldConfig<TValues>;
 
-/* --------------------------------------------------------------------------
- * Section header (FormSection wrapper 에 주입할 선택적 헤더 정보)
- * ------------------------------------------------------------------------ */
-
 export interface FormSectionInfo {
   icon?: ReactNode;
   title?: string;
   description?: string;
 }
-
-/* --------------------------------------------------------------------------
- * API config
- * ------------------------------------------------------------------------ */
 
 export interface FormTitles {
   create?: string;
@@ -164,10 +155,6 @@ export interface FormApiConfig<
   /** 폼 컨텐츠 영역에 노출할 섹션 헤더 (icon + title + description). 미지정 시 헤더 없음. */
   section?: FormSectionInfo;
 }
-
-/* --------------------------------------------------------------------------
- * Form state (useFormState 반환)
- * ------------------------------------------------------------------------ */
 
 export interface FormState<TValues> {
   values: TValues;

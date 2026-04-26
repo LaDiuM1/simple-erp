@@ -6,6 +6,7 @@ export type { FormSectionProps } from './FormSection';
 
 export type {
   CustomFieldConfig,
+  CustomFieldRenderContext,
   DateFieldConfig,
   DetailQueryState,
   EmailFieldConfig,

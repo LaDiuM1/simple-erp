@@ -292,6 +292,7 @@ function FormBody<TValues extends object>({
                     )
                   }
                   disabled={mode === 'edit' && field.disabledOnEdit === true}
+                  mode={mode}
                 />
               ))}
             </FormGrid>
