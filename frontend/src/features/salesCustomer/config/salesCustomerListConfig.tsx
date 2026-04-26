@@ -72,7 +72,8 @@ export const salesCustomerListColumn: ColumnConfig<SalesCustomerListRow>[] = [
 ];
 
 export const salesCustomerListSearchFilter: FilterConfig[] = [
-  { type: 'search', key: 'keyword', placeholder: '고객사 코드 또는 고객사명 검색' },
+  { type: 'search', key: 'codeKeyword', placeholder: '고객사 코드 검색' },
+  { type: 'search', key: 'nameKeyword', placeholder: '고객사명 검색' },
   { type: 'search', key: 'addressKeyword', placeholder: '주소 검색' },
   { type: 'select', key: 'status', label: '상태', options: CUSTOMER_STATUS_OPTIONS, minWidth: 120 },
 ];
