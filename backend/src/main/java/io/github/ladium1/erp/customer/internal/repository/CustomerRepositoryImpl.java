@@ -57,9 +57,11 @@ public class CustomerRepositoryImpl implements CustomerRepositoryCustom {
         if (condition == null) {
             return where;
         }
-        if (StringUtils.hasText(condition.keyword())) {
-            String like = "%" + condition.keyword().trim() + "%";
-            where.and(c.name.like(like).or(c.code.like(like)));
+        if (StringUtils.hasText(condition.codeKeyword())) {
+            where.and(c.code.like("%" + condition.codeKeyword().trim() + "%"));
+        }
+        if (StringUtils.hasText(condition.nameKeyword())) {
+            where.and(c.name.like("%" + condition.nameKeyword().trim() + "%"));
         }
         if (StringUtils.hasText(condition.addressKeyword())) {
             String like = "%" + condition.addressKeyword().trim() + "%";

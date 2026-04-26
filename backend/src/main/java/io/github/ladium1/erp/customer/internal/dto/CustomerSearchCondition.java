@@ -4,7 +4,8 @@ import io.github.ladium1.erp.customer.internal.entity.CustomerStatus;
 import io.github.ladium1.erp.customer.internal.entity.CustomerType;
 
 public record CustomerSearchCondition(
-        String keyword,
+        String codeKeyword,
+        String nameKeyword,
         String addressKeyword,
         String phoneKeyword,
         CustomerType type,
