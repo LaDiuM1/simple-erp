@@ -51,6 +51,7 @@ class SalesCustomerServiceTest {
     @Mock private SalesCustomerMapper salesCustomerMapper;
     @Mock private CustomerApi customerApi;
     @Mock private EmployeeApi employeeApi;
+    @Mock private io.github.ladium1.erp.salescontact.api.SalesContactApi salesContactApi;
 
     @Test
     @DisplayName("getDetail 성공 — customer + activities + assignments 통합 반환")
@@ -61,6 +62,7 @@ class SalesCustomerServiceTest {
         given(activityRepository.findByCustomerIdOrderByActivityDateDesc(1L)).willReturn(List.of());
         given(assignmentRepository.findByCustomerIdOrderByEndDateAscStartDateDesc(1L)).willReturn(List.of());
         given(employeeApi.findByIds(any())).willReturn(List.of());
+        given(salesContactApi.findByIds(any())).willReturn(List.of());
 
         // when
         SalesCustomerDetailResponse detail = salesCustomerService.getDetail(1L);
@@ -300,14 +302,14 @@ class SalesCustomerServiceTest {
     private SalesActivityCreateRequest baseActivityCreateRequest(Long customerId, Long employeeId) {
         return new SalesActivityCreateRequest(
                 customerId, SalesActivityType.VISIT, LocalDateTime.now(),
-                "신규 미팅", "내용", employeeId, "고객 담당자", "팀장"
+                "신규 미팅", "내용", employeeId, null, "고객 담당자", "팀장"
         );
     }
 
     private SalesActivityUpdateRequest baseActivityUpdateRequest(Long employeeId) {
         return new SalesActivityUpdateRequest(
                 SalesActivityType.CALL, LocalDateTime.now(),
-                "수정된 제목", "수정된 내용", employeeId, "고객 담당자", "팀장"
+                "수정된 제목", "수정된 내용", employeeId, null, "고객 담당자", "팀장"
         );
     }
 }

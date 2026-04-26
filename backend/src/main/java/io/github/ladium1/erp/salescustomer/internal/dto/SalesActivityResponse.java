@@ -16,6 +16,8 @@ public record SalesActivityResponse(
         Long ourEmployeeId,
         String ourEmployeeName,
         String ourEmployeeDepartmentName,
+        Long customerContactId,
+        String customerContactRegisteredName,
         String customerContactName,
         String customerContactPosition
 ) {

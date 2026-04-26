@@ -25,6 +25,9 @@ public record SalesActivityCreateRequest(
         @NotNull
         Long ourEmployeeId,
 
+        /** 영업 명부 식별자 — null 이면 customerContactName / Position 자유 입력 fallback. */
+        Long customerContactId,
+
         @Size(max = 100)
         String customerContactName,
 

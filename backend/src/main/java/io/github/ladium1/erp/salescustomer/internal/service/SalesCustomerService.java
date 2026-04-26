@@ -5,6 +5,8 @@ import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.salescontact.api.SalesContactApi;
+import io.github.ladium1.erp.salescontact.api.dto.SalesContactInfo;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityCreateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityResponse;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityUpdateRequest;
@@ -47,6 +49,7 @@ public class SalesCustomerService {
     private final SalesCustomerMapper salesCustomerMapper;
     private final CustomerApi customerApi;
     private final EmployeeApi employeeApi;
+    private final SalesContactApi salesContactApi;
 
     public SalesCustomerDetailResponse getDetail(Long customerId) {
         CustomerInfo customer = customerApi.getById(customerId);
@@ -58,8 +61,20 @@ public class SalesCustomerService {
         Map<Long, EmployeeInfo> employeeMap = employeeApi.findByIds(employeeIds).stream()
                 .collect(toMap(EmployeeInfo::id, e -> e));
 
+        List<Long> contactIds = activities.stream()
+                .map(SalesActivity::getCustomerContactId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, SalesContactInfo> contactMap = salesContactApi.findByIds(contactIds).stream()
+                .collect(toMap(SalesContactInfo::id, c -> c));
+
         List<SalesActivityResponse> activityResponses = activities.stream()
-                .map(a -> salesCustomerMapper.toActivityResponse(a, employeeMap.get(a.getOurEmployeeId())))
+                .map(a -> salesCustomerMapper.toActivityResponse(
+                        a,
+                        employeeMap.get(a.getOurEmployeeId()),
+                        a.getCustomerContactId() == null ? null : contactMap.get(a.getCustomerContactId())
+                ))
                 .toList();
         List<SalesAssignmentResponse> assignmentResponses = assignments.stream()
                 .map(a -> salesCustomerMapper.toAssignmentResponse(a, employeeMap.get(a.getEmployeeId())))
@@ -125,6 +140,9 @@ public class SalesCustomerService {
     public Long createActivity(SalesActivityCreateRequest request) {
         customerApi.getById(request.customerId());
         employeeApi.getById(request.ourEmployeeId());
+        if (request.customerContactId() != null) {
+            salesContactApi.getById(request.customerContactId());
+        }
 
         SalesActivity activity = SalesActivity.builder()
                 .customerId(request.customerId())
@@ -133,6 +151,7 @@ public class SalesCustomerService {
                 .subject(request.subject())
                 .content(request.content())
                 .ourEmployeeId(request.ourEmployeeId())
+                .customerContactId(request.customerContactId())
                 .customerContactName(request.customerContactName())
                 .customerContactPosition(request.customerContactPosition())
                 .build();
@@ -144,6 +163,9 @@ public class SalesCustomerService {
         SalesActivity activity = activityRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(SalesCustomerErrorCode.ACTIVITY_NOT_FOUND));
         employeeApi.getById(request.ourEmployeeId());
+        if (request.customerContactId() != null) {
+            salesContactApi.getById(request.customerContactId());
+        }
 
         activity.update(
                 request.type(),
@@ -151,6 +173,7 @@ public class SalesCustomerService {
                 request.subject(),
                 request.content(),
                 request.ourEmployeeId(),
+                request.customerContactId(),
                 request.customerContactName(),
                 request.customerContactPosition()
         );
