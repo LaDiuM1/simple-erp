@@ -15,11 +15,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
@@ -40,7 +46,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(EmployeeController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(EmployeeControllerTest.TestWebMvcConfig.class)
 class EmployeeControllerTest {
+
+    /**
+     * @WebMvcTest 슬라이스는 SecurityConfig 를 import 하지 않아 {@link AuthenticationPrincipalArgumentResolver}
+     * 가 등록되지 않는다. {@code @AuthenticationPrincipal User user} 가 default databinder 로 fallback 되며 실패하므로
+     * 본 테스트에서만 resolver 를 직접 등록.
+     */
+    @TestConfiguration
+    static class TestWebMvcConfig implements WebMvcConfigurer {
+        @Override
+        public void addArgumentResolvers(java.util.List<HandlerMethodArgumentResolver> resolvers) {
+            resolvers.add(new AuthenticationPrincipalArgumentResolver());
+        }
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -61,6 +81,7 @@ class EmployeeControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "테스트아이디")
     @DisplayName("내 정보 조회 성공")
     void get_my_info_success() throws Exception {
         // given
@@ -202,7 +223,8 @@ class EmployeeControllerTest {
                 null, null, null, null, null,
                 LocalDate.of(2026, 4, 1),
                 EmployeeStatus.ACTIVE,
-                1L, null, null
+                1L, null, null,
+                null
         );
 
         // when & then
@@ -221,7 +243,8 @@ class EmployeeControllerTest {
                 "이름",
                 null, null, null, null, null,
                 null, EmployeeStatus.ACTIVE,
-                1L, null, null
+                1L, null, null,
+                null
         );
         willThrow(new BusinessException(EmployeeErrorCode.EMPLOYEE_NOT_FOUND))
                 .given(employeeService).update(eq(99L), any());
