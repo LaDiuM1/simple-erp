@@ -13,6 +13,7 @@ const STATIC_TITLES: Record<string, string> = {
   '/departments/hierarchy': '부서 계층 관리',
   '/positions': '직책 목록',
   '/positions/new': '직책 등록',
+  '/positions/ranking': '직책 서열 관리',
   '/code-rules': '코드 채번 규칙',
 };
 

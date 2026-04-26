@@ -3,6 +3,7 @@ import type { PageResponse } from '@/shared/types/api';
 import type {
   PositionCreateRequest,
   PositionDetail,
+  PositionRankingRequest,
   PositionSearchParams,
   PositionSummary,
   PositionUpdateRequest,
@@ -27,24 +28,42 @@ const positionApi = api.injectEndpoints({
         ...(result?.content.map((m) => ({ type: 'Position' as const, id: m.id })) ?? []),
       ],
     }),
+    getPositionsRanking: builder.query<PositionSummary[], void>({
+      query: () => ({ url: '/api/v1/positions/ranking', method: 'GET' }),
+      providesTags: [{ type: 'Position', id: 'RANKING' }],
+    }),
     getPosition: builder.query<PositionDetail, number>({
       query: (id) => ({ url: `/api/v1/positions/${id}`, method: 'GET' }),
       providesTags: (_result, _error, id) => [{ type: 'Position', id }],
     }),
     createPosition: builder.mutation<number, PositionCreateRequest>({
       query: (body) => ({ url: '/api/v1/positions', method: 'POST', data: body }),
-      invalidatesTags: [{ type: 'Position', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'Position', id: 'LIST' },
+        { type: 'Position', id: 'RANKING' },
+      ],
     }),
     updatePosition: builder.mutation<void, { id: number; body: PositionUpdateRequest }>({
       query: ({ id, body }) => ({ url: `/api/v1/positions/${id}`, method: 'PUT', data: body }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Position', id },
         { type: 'Position', id: 'LIST' },
+        { type: 'Position', id: 'RANKING' },
       ],
     }),
     deletePosition: builder.mutation<void, number>({
       query: (id) => ({ url: `/api/v1/positions/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Position', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'Position', id: 'LIST' },
+        { type: 'Position', id: 'RANKING' },
+      ],
+    }),
+    reorderPositions: builder.mutation<void, PositionRankingRequest>({
+      query: (body) => ({ url: '/api/v1/positions/ranking', method: 'PUT', data: body }),
+      invalidatesTags: [
+        { type: 'Position', id: 'LIST' },
+        { type: 'Position', id: 'RANKING' },
+      ],
     }),
     checkPositionCodeAvailability: builder.query<{ available: boolean }, string>({
       query: (code) => ({
@@ -58,9 +77,11 @@ const positionApi = api.injectEndpoints({
 
 export const {
   useGetPositionsSummaryQuery,
+  useGetPositionsRankingQuery,
   useGetPositionQuery,
   useCreatePositionMutation,
   useUpdatePositionMutation,
   useDeletePositionMutation,
+  useReorderPositionsMutation,
   useCheckPositionCodeAvailabilityQuery,
 } = positionApi;

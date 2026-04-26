@@ -26,6 +26,11 @@ export interface PositionUpdateRequest {
   description: string | null;
 }
 
+export interface PositionRankingRequest {
+  /** 상위 → 하위 순. 서버가 1, 2, 3 ... 으로 일괄 갱신. */
+  orderedIds: number[];
+}
+
 export interface PositionSearchParams {
   keyword?: string | null;
   page: number;

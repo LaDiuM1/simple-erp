@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import LowPriorityRoundedIcon from '@mui/icons-material/LowPriorityRounded';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import GenericList, { useListSelection } from '@/shared/ui/GenericList';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
@@ -55,6 +56,12 @@ export default function PositionListPage() {
                 },
               ]
             : []),
+          {
+            design: 'cancel' as const,
+            label: '직책 서열 관리',
+            icon: <LowPriorityRoundedIcon />,
+            onClick: () => navigate(`${MENU_PATH[MENU_CODE.POSITIONS]}/ranking`),
+          },
           {
             design: 'create' as const,
             label: '직책 등록',

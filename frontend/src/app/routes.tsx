@@ -13,6 +13,7 @@ import DepartmentHierarchyPage from '@/pages/department/DepartmentHierarchyPage'
 import PositionListPage from '@/pages/position/PositionListPage';
 import PositionCreatePage from '@/pages/position/PositionCreatePage';
 import PositionEditPage from '@/pages/position/PositionEditPage';
+import PositionRankingPage from '@/pages/position/PositionRankingPage';
 import CodeRuleListPage from '@/pages/codeRule/CodeRuleListPage';
 import CodeRuleEditPage from '@/pages/codeRule/CodeRuleEditPage';
 
@@ -31,6 +32,7 @@ export default function AppRoutes() {
         <Route path="/departments/new" element={<DepartmentCreatePage />} />
         <Route path="/departments/:id/edit" element={<DepartmentEditPage />} />
         <Route path="/positions" element={<PositionListPage />} />
+        <Route path="/positions/ranking" element={<PositionRankingPage />} />
         <Route path="/positions/new" element={<PositionCreatePage />} />
         <Route path="/positions/:id/edit" element={<PositionEditPage />} />
         <Route path="/code-rules" element={<CodeRuleListPage />} />
