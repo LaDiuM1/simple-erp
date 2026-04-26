@@ -110,7 +110,8 @@ export interface CustomerUpdateRequest {
 }
 
 export interface CustomerSearchParams {
-  keyword?: string | null;
+  codeKeyword?: string | null;
+  nameKeyword?: string | null;
   addressKeyword?: string | null;
   phoneKeyword?: string | null;
   type?: CustomerType | null;

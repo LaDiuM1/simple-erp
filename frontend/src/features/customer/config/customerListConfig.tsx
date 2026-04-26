@@ -61,7 +61,8 @@ export const customerColumn: ColumnConfig<CustomerSummary>[] = [
 ];
 
 export const customerSearchFilter: FilterConfig[] = [
-  { type: 'search', key: 'keyword', placeholder: '고객사 코드 또는 고객사명 검색' },
+  { type: 'search', key: 'codeKeyword', placeholder: '고객사 코드 검색' },
+  { type: 'search', key: 'nameKeyword', placeholder: '고객사명 검색' },
   { type: 'search', key: 'addressKeyword', placeholder: '주소 검색' },
   { type: 'search', key: 'phoneKeyword', placeholder: '전화번호 검색' },
   { type: 'select', key: 'type', label: '분류', options: CUSTOMER_TYPE_OPTIONS, minWidth: 120 },
