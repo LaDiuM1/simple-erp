@@ -1,15 +1,18 @@
 package io.github.ladium1.erp.salescontact.internal.repository;
 
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.ladium1.erp.global.jpa.QuerydslSortUtils;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactSearchCondition;
 import io.github.ladium1.erp.salescontact.internal.entity.QSalesContact;
+import io.github.ladium1.erp.salescontact.internal.entity.QSalesContactSource;
 import io.github.ladium1.erp.salescontact.internal.entity.SalesContact;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -41,6 +44,16 @@ public class SalesContactRepositoryImpl implements SalesContactRepositoryCustom 
         return new PageImpl<>(content, pageable, total != null ? total : 0L);
     }
 
+    @Override
+    public List<SalesContact> searchAll(SalesContactSearchCondition condition, Sort sort) {
+        QSalesContact c = QSalesContact.salesContact;
+        return queryFactory
+                .selectFrom(c)
+                .where(buildPredicate(condition, c))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, c, c.id.desc()))
+                .fetch();
+    }
+
     private BooleanBuilder buildPredicate(SalesContactSearchCondition condition, QSalesContact c) {
         BooleanBuilder where = new BooleanBuilder();
         if (condition == null) {
@@ -56,6 +69,14 @@ public class SalesContactRepositoryImpl implements SalesContactRepositoryCustom 
         if (StringUtils.hasText(condition.phoneKeyword())) {
             String like = "%" + condition.phoneKeyword().trim() + "%";
             where.and(c.mobilePhone.like(like).or(c.officePhone.like(like)));
+        }
+        if (condition.sourceIds() != null && !condition.sourceIds().isEmpty()) {
+            QSalesContactSource cs = QSalesContactSource.salesContactSource;
+            where.and(c.id.in(
+                    JPAExpressions.select(cs.contactId)
+                            .from(cs)
+                            .where(cs.sourceId.in(condition.sourceIds()))
+            ));
         }
         return where;
     }

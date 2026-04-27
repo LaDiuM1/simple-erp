@@ -15,6 +15,7 @@ import io.github.ladium1.erp.salescontact.internal.exception.SalesContactErrorCo
 import io.github.ladium1.erp.salescontact.internal.mapper.SalesContactMapper;
 import io.github.ladium1.erp.salescontact.internal.repository.SalesContactEmploymentRepository;
 import io.github.ladium1.erp.salescontact.internal.repository.SalesContactRepository;
+import io.github.ladium1.erp.salescontact.internal.repository.SalesContactSourceRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,8 +43,10 @@ class SalesContactServiceTest {
 
     @Mock private SalesContactRepository contactRepository;
     @Mock private SalesContactEmploymentRepository employmentRepository;
+    @Mock private SalesContactSourceRepository contactSourceRepository;
     @Mock private SalesContactMapper salesContactMapper;
     @Mock private CustomerApi customerApi;
+    @Mock private io.github.ladium1.erp.salescontact.internal.service.AcquisitionSourceService acquisitionSourceService;
 
     @Test
     @DisplayName("create 성공 — 명부 마스터 저장")
@@ -54,7 +57,7 @@ class SalesContactServiceTest {
 
         Long id = salesContactService.create(new SalesContactCreateRequest(
                 "정대성", null, "010-0000-0000", null, "ds@daesung.co.kr", null,
-                LocalDate.of(2026, 4, 1), "전시회", null
+                LocalDate.of(2026, 4, 1), List.of(), null
         ));
 
         assertThat(id).isEqualTo(100L);

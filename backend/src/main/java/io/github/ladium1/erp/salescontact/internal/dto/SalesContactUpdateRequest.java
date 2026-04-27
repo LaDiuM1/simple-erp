@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public record SalesContactUpdateRequest(
         @NotBlank @Size(max = 50)
@@ -27,8 +28,7 @@ public record SalesContactUpdateRequest(
 
         LocalDate metAt,
 
-        @Size(max = 100)
-        String metVia,
+        List<Long> sourceIds,
 
         String note
 ) {

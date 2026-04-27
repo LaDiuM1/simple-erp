@@ -15,8 +15,9 @@ public record SalesContactDetailResponse(
         String email,
         String personalEmail,
         LocalDate metAt,
-        String metVia,
         String note,
+        /** type ASC → name ASC 로 정렬된 컨택 경로 목록. */
+        List<AcquisitionSourceInfo> sources,
         List<SalesContactEmploymentResponse> employments
 ) {
 }

@@ -7,8 +7,10 @@ import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.salescontact.api.SalesContactApi;
 import io.github.ladium1.erp.salescontact.api.dto.RecentSalesContactInfo;
 import io.github.ladium1.erp.salescontact.api.dto.SalesContactInfo;
+import io.github.ladium1.erp.salescontact.internal.dto.AcquisitionSourceInfo;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactCreateRequest;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactDetailResponse;
+import io.github.ladium1.erp.salescontact.internal.dto.SalesContactExcelRow;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactEmploymentCreateRequest;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactEmploymentResponse;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactEmploymentTerminateRequest;
@@ -18,10 +20,13 @@ import io.github.ladium1.erp.salescontact.internal.dto.SalesContactSummaryRespon
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactUpdateRequest;
 import io.github.ladium1.erp.salescontact.internal.entity.SalesContact;
 import io.github.ladium1.erp.salescontact.internal.entity.SalesContactEmployment;
+import io.github.ladium1.erp.salescontact.internal.entity.SalesContactSource;
+import io.github.ladium1.erp.salescontact.internal.excel.SalesContactExcelExporter;
 import io.github.ladium1.erp.salescontact.internal.exception.SalesContactErrorCode;
 import io.github.ladium1.erp.salescontact.internal.mapper.SalesContactMapper;
 import io.github.ladium1.erp.salescontact.internal.repository.SalesContactEmploymentRepository;
 import io.github.ladium1.erp.salescontact.internal.repository.SalesContactRepository;
+import io.github.ladium1.erp.salescontact.internal.repository.SalesContactSourceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -32,10 +37,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 @Service
@@ -45,8 +55,11 @@ public class SalesContactService implements SalesContactApi {
 
     private final SalesContactRepository contactRepository;
     private final SalesContactEmploymentRepository employmentRepository;
+    private final SalesContactSourceRepository contactSourceRepository;
     private final SalesContactMapper salesContactMapper;
+    private final SalesContactExcelExporter excelExporter;
     private final CustomerApi customerApi;
+    private final AcquisitionSourceService acquisitionSourceService;
 
     @Override
     public SalesContactInfo getById(Long id) {
@@ -111,7 +124,9 @@ public class SalesContactService implements SalesContactApi {
 
     public PageResponse<SalesContactSummaryResponse> search(SalesContactSearchCondition condition, Pageable pageable) {
         Page<SalesContact> page = contactRepository.search(condition, pageable);
-        EmploymentRefs refs = loadActiveEmployments(page.getContent().stream().map(SalesContact::getId).toList());
+        List<Long> contactIds = page.getContent().stream().map(SalesContact::getId).toList();
+        EmploymentRefs refs = loadActiveEmployments(contactIds);
+        Map<Long, List<AcquisitionSourceInfo>> sourcesByContact = loadSourcesByContact(contactIds);
         return PageResponse.of(page.map(c -> {
             SalesContactEmployment active = refs.activeByContact.get(c.getId());
             return SalesContactSummaryResponse.builder()
@@ -123,8 +138,46 @@ public class SalesContactService implements SalesContactApi {
                     .currentPosition(active == null ? null : active.getPosition())
                     .currentDepartment(active == null ? null : active.getDepartment())
                     .metAt(c.getMetAt())
+                    .sources(sourcesByContact.getOrDefault(c.getId(), List.of()))
                     .build();
         }));
+    }
+
+    /**
+     * 검색 조건 + 정렬 그대로 전체 페이지를 .xlsx 바이트로 직렬화. 페이지네이션 무시 — 필터링된 전체.
+     */
+    public byte[] exportExcel(SalesContactSearchCondition condition, Sort sort) {
+        List<SalesContact> contacts = contactRepository.searchAll(condition, sort);
+        if (contacts.isEmpty()) {
+            return excelExporter.export(List.of());
+        }
+        List<Long> contactIds = contacts.stream().map(SalesContact::getId).toList();
+        EmploymentRefs refs = loadActiveEmployments(contactIds);
+        Map<Long, List<AcquisitionSourceInfo>> sourcesByContact = loadSourcesByContact(contactIds);
+
+        List<SalesContactExcelRow> rows = contacts.stream()
+                .map(c -> {
+                    SalesContactEmployment active = refs.activeByContact.get(c.getId());
+                    String sourcesJoined = sourcesByContact.getOrDefault(c.getId(), List.of()).stream()
+                            .map(AcquisitionSourceInfo::name)
+                            .collect(java.util.stream.Collectors.joining(", "));
+                    return SalesContactExcelRow.builder()
+                            .name(c.getName())
+                            .nameEn(c.getNameEn())
+                            .mobilePhone(c.getMobilePhone())
+                            .officePhone(c.getOfficePhone())
+                            .email(c.getEmail())
+                            .personalEmail(c.getPersonalEmail())
+                            .metAt(c.getMetAt())
+                            .sources(sourcesJoined.isEmpty() ? null : sourcesJoined)
+                            .currentCompanyName(refs.companyName(active))
+                            .currentPosition(active == null ? null : active.getPosition())
+                            .currentDepartment(active == null ? null : active.getDepartment())
+                            .note(c.getNote())
+                            .build();
+                })
+                .toList();
+        return excelExporter.export(rows);
     }
 
     public SalesContactDetailResponse getDetail(Long id) {
@@ -137,6 +190,9 @@ public class SalesContactService implements SalesContactApi {
                 .map(e -> salesContactMapper.toEmploymentResponse(e, contact, customerNames.get(e.getCustomerId())))
                 .toList();
 
+        List<AcquisitionSourceInfo> sources = loadSourcesByContact(List.of(id))
+                .getOrDefault(id, List.of());
+
         return SalesContactDetailResponse.builder()
                 .id(contact.getId())
                 .name(contact.getName())
@@ -146,8 +202,8 @@ public class SalesContactService implements SalesContactApi {
                 .email(contact.getEmail())
                 .personalEmail(contact.getPersonalEmail())
                 .metAt(contact.getMetAt())
-                .metVia(contact.getMetVia())
                 .note(contact.getNote())
+                .sources(sources)
                 .employments(employmentResponses)
                 .build();
     }
@@ -173,37 +229,72 @@ public class SalesContactService implements SalesContactApi {
                 .toList();
     }
 
+    /**
+     * 휴대폰 번호 사용 가능 여부 — 등록 / 수정 화면의 디바운스 중복 검사 용.
+     * excludeId 가 있으면 자기 자신은 제외 (수정 모드에서 본인 번호 그대로 두는 케이스 허용).
+     */
+    public boolean isMobilePhoneAvailable(String mobilePhone, Long excludeId) {
+        if (mobilePhone == null || mobilePhone.isBlank()) {
+            return false;
+        }
+        String trimmed = mobilePhone.trim();
+        if (excludeId == null) {
+            return !contactRepository.existsByMobilePhone(trimmed);
+        }
+        return !contactRepository.existsByMobilePhoneAndIdNot(trimmed, excludeId);
+    }
+
     @Transactional
     public Long create(SalesContactCreateRequest request) {
+        List<Long> sourceIds = distinctOrEmpty(request.sourceIds());
+        acquisitionSourceService.validateIds(sourceIds);
+
+        String mobilePhone = trimToNull(request.mobilePhone());
+        if (mobilePhone != null && contactRepository.existsByMobilePhone(mobilePhone)) {
+            throw new BusinessException(SalesContactErrorCode.DUPLICATE_MOBILE_PHONE);
+        }
+
         SalesContact contact = SalesContact.builder()
                 .name(request.name())
                 .nameEn(request.nameEn())
-                .mobilePhone(request.mobilePhone())
+                .mobilePhone(mobilePhone)
                 .officePhone(request.officePhone())
                 .email(request.email())
                 .personalEmail(request.personalEmail())
                 .metAt(request.metAt())
-                .metVia(request.metVia())
                 .note(request.note())
                 .build();
-        return contactRepository.save(contact).getId();
+        Long id = contactRepository.save(contact).getId();
+        replaceSources(id, sourceIds);
+        return id;
     }
 
     @Transactional
     public void update(Long id, SalesContactUpdateRequest request) {
         SalesContact contact = contactRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(SalesContactErrorCode.CONTACT_NOT_FOUND));
+
+        List<Long> sourceIds = distinctOrEmpty(request.sourceIds());
+        acquisitionSourceService.validateIds(sourceIds);
+
+        String mobilePhone = trimToNull(request.mobilePhone());
+        if (mobilePhone != null
+                && !mobilePhone.equals(contact.getMobilePhone())
+                && contactRepository.existsByMobilePhone(mobilePhone)) {
+            throw new BusinessException(SalesContactErrorCode.DUPLICATE_MOBILE_PHONE);
+        }
+
         contact.update(
                 request.name(),
                 request.nameEn(),
-                request.mobilePhone(),
+                mobilePhone,
                 request.officePhone(),
                 request.email(),
                 request.personalEmail(),
                 request.metAt(),
-                request.metVia(),
                 request.note()
         );
+        replaceSources(id, sourceIds);
     }
 
     @Transactional
@@ -211,8 +302,9 @@ public class SalesContactService implements SalesContactApi {
         if (!contactRepository.existsById(id)) {
             throw new BusinessException(SalesContactErrorCode.CONTACT_NOT_FOUND);
         }
-        // 재직 이력도 함께 제거 (물리 삭제 — 영업 명부 자체를 지우는 케이스)
+        // 재직 이력 / 만난 경로 정션도 함께 제거 (물리 삭제 — 영업 명부 자체를 지우는 케이스)
         employmentRepository.deleteAll(employmentRepository.findByContactIdOrderByEndDateAscStartDateDesc(id));
+        contactSourceRepository.deleteByContactId(id);
         contactRepository.deleteById(id);
     }
 
@@ -285,6 +377,52 @@ public class SalesContactService implements SalesContactApi {
     }
 
     /**
+     * 명부의 컨택 경로 정션을 새 sourceIds 로 교체 (delete-all + insert-all). 빈 목록이면 정션을 모두 비움.
+     */
+    private void replaceSources(Long contactId, List<Long> sourceIds) {
+        contactSourceRepository.deleteByContactId(contactId);
+        if (sourceIds.isEmpty()) {
+            return;
+        }
+        List<SalesContactSource> rows = sourceIds.stream()
+                .map(sid -> SalesContactSource.builder()
+                        .contactId(contactId)
+                        .sourceId(sid)
+                        .build())
+                .toList();
+        contactSourceRepository.saveAll(rows);
+    }
+
+    /**
+     * 명부 ids 의 정션을 일괄 조회 → contactId → 정렬된 AcquisitionSourceInfo 목록으로 변환.
+     * 정렬: type ASC → name ASC.
+     */
+    private Map<Long, List<AcquisitionSourceInfo>> loadSourcesByContact(List<Long> contactIds) {
+        if (contactIds == null || contactIds.isEmpty()) {
+            return Map.of();
+        }
+        List<SalesContactSource> rows = contactSourceRepository.findByContactIdIn(contactIds);
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> sourceIds = rows.stream().map(SalesContactSource::getSourceId).distinct().toList();
+        Map<Long, AcquisitionSourceInfo> sourceById = acquisitionSourceService.findByIds(sourceIds).stream()
+                .collect(toMap(AcquisitionSourceInfo::id, s -> s));
+        Map<Long, List<AcquisitionSourceInfo>> grouped = rows.stream()
+                .filter(r -> sourceById.containsKey(r.getSourceId()))
+                .collect(groupingBy(
+                        SalesContactSource::getContactId,
+                        mapping(r -> sourceById.get(r.getSourceId()), toList())
+                ));
+        grouped.replaceAll((cid, list) -> list.stream()
+                .sorted(java.util.Comparator
+                        .comparing((AcquisitionSourceInfo s) -> s.type().name())
+                        .thenComparing(AcquisitionSourceInfo::name))
+                .toList());
+        return grouped;
+    }
+
+    /**
      * customerId / externalCompanyName 중 한쪽만 채워지도록 정규화 — customerId 가 있으면 customer 무결성 검증 + externalCompanyName 무시.
      */
     private Long validateCompany(Long customerId, String externalCompanyName) {
@@ -332,6 +470,14 @@ public class SalesContactService implements SalesContactApi {
         }
         return customerApi.findByIds(customerIds).stream()
                 .collect(toMap(CustomerInfo::id, CustomerInfo::name));
+    }
+
+    private static List<Long> distinctOrEmpty(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> distinct = new HashSet<>(ids);
+        return distinct.stream().toList();
     }
 
     private static String trimToNull(String value) {

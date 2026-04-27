@@ -17,7 +17,8 @@ import java.time.LocalDate;
 /**
  * 영업 명부 — 외부인 명함 정보 마스터.
  * <p>
- * 회사 / 직책 같은 소속 정보는 SalesContactEmployment 의 활성 row 로 관리. 본 엔티티는 개인 자체 정보만.
+ * 회사 / 직책 같은 소속 정보는 SalesContactEmployment 의 활성 row 로 관리. 만난 경로는
+ * SalesContactSource 정션을 통해 acquisitionsource 모듈의 AcquisitionSource 와 N:N. 본 엔티티는 개인 자체 정보만.
  */
 @Entity
 @Getter
@@ -35,7 +36,7 @@ public class SalesContact extends BaseEntity {
     @Column(comment = "영문명")
     private String nameEn;
 
-    @Column(comment = "휴대폰")
+    @Column(unique = true, length = 30, comment = "휴대폰 — 명부 식별 고유 키")
     private String mobilePhone;
 
     @Column(comment = "전화번호")
@@ -50,9 +51,6 @@ public class SalesContact extends BaseEntity {
     @Column(comment = "최초 미팅일짜")
     private LocalDate metAt;
 
-    @Column(comment = "만난 경로 — 전시회 / 소개 / 미팅 등")
-    private String metVia;
-
     @Column(columnDefinition = "TEXT", comment = "비고")
     private String note;
 
@@ -64,7 +62,6 @@ public class SalesContact extends BaseEntity {
                  String email,
                  String personalEmail,
                  LocalDate metAt,
-                 String metVia,
                  String note) {
         this.name = name;
         this.nameEn = nameEn;
@@ -73,7 +70,6 @@ public class SalesContact extends BaseEntity {
         this.email = email;
         this.personalEmail = personalEmail;
         this.metAt = metAt;
-        this.metVia = metVia;
         this.note = note;
     }
 
@@ -84,7 +80,6 @@ public class SalesContact extends BaseEntity {
                        String email,
                        String personalEmail,
                        LocalDate metAt,
-                       String metVia,
                        String note) {
         this.name = name;
         this.nameEn = nameEn;
@@ -93,7 +88,6 @@ public class SalesContact extends BaseEntity {
         this.email = email;
         this.personalEmail = personalEmail;
         this.metAt = metAt;
-        this.metVia = metVia;
         this.note = note;
     }
 }

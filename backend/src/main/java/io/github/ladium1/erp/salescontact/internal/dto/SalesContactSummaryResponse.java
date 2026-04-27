@@ -3,6 +3,7 @@ package io.github.ladium1.erp.salescontact.internal.dto;
 import lombok.Builder;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Builder
 public record SalesContactSummaryResponse(
@@ -13,6 +14,8 @@ public record SalesContactSummaryResponse(
         String currentCompanyName,
         String currentPosition,
         String currentDepartment,
-        LocalDate metAt
+        LocalDate metAt,
+        /** type ASC → name ASC 로 정렬된 컨택 경로 목록. */
+        List<AcquisitionSourceInfo> sources
 ) {
 }

@@ -1,6 +1,8 @@
 package io.github.ladium1.erp.salescontact.internal.web;
 
+import io.github.ladium1.erp.global.web.DownloadResponse;
 import io.github.ladium1.erp.global.web.PageResponse;
+import io.github.ladium1.erp.salescontact.internal.dto.AvailabilityResponse;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactCreateRequest;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactDetailResponse;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactEmploymentCreateRequest;
@@ -13,9 +15,12 @@ import io.github.ladium1.erp.salescontact.internal.dto.SalesContactUpdateRequest
 import io.github.ladium1.erp.salescontact.internal.service.SalesContactService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.SortDefault;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +32,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @RestController
@@ -53,10 +60,11 @@ public class SalesContactController {
             @RequestParam(required = false) String nameKeyword,
             @RequestParam(required = false) String emailKeyword,
             @RequestParam(required = false) String phoneKeyword,
+            @RequestParam(required = false) List<Long> sourceIds,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return salesContactService.search(
-                new SalesContactSearchCondition(nameKeyword, emailKeyword, phoneKeyword),
+                new SalesContactSearchCondition(nameKeyword, emailKeyword, phoneKeyword, sourceIds),
                 pageable
         );
     }
@@ -67,6 +75,36 @@ public class SalesContactController {
         return salesContactService.getDetail(id);
     }
 
+    @GetMapping("/mobile-phone-availability")
+    @PreAuthorize(CAN_WRITE)
+    public AvailabilityResponse checkMobilePhoneAvailability(
+            @RequestParam String mobilePhone,
+            @RequestParam(required = false) Long excludeId
+    ) {
+        return new AvailabilityResponse(salesContactService.isMobilePhoneAvailable(mobilePhone, excludeId));
+    }
+
+    @GetMapping("/excel")
+    @PreAuthorize(CAN_READ)
+    public ResponseEntity<ByteArrayResource> downloadExcel(
+            @RequestParam(required = false) String nameKeyword,
+            @RequestParam(required = false) String emailKeyword,
+            @RequestParam(required = false) String phoneKeyword,
+            @RequestParam(required = false) List<Long> sourceIds,
+            @SortDefault(sort = "id", direction = Sort.Direction.DESC) Sort sort
+    ) {
+        byte[] bytes = salesContactService.exportExcel(
+                new SalesContactSearchCondition(nameKeyword, emailKeyword, phoneKeyword, sourceIds),
+                sort
+        );
+        String filename = "sales-contacts_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".xlsx";
+        return DownloadResponse.xlsx(bytes, filename);
+    }
+
+    /**
+     * 고객사 영업 관리 페이지의 "재직 명부" 섹션에서 호출 — 영업 명부 메뉴 권한이 없어도
+     * 고객사 영업 메뉴 read 권한만으로 접근 가능하도록 CAN_READ_REFERENCE 적용.
+     */
     @GetMapping("/employments")
     @PreAuthorize(CAN_READ_REFERENCE)
     public List<SalesContactEmploymentResponse> findEmploymentsByCustomerId(@RequestParam Long customerId) {
