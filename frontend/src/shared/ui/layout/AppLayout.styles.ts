@@ -80,13 +80,13 @@ export const LayoutBody = styled(Box)({
   position: 'relative',
 });
 
-export const MobileOverlay = styled(Box)(({ theme }) => ({
+export const MobileOverlay = styled(Box)({
   position: 'fixed',
   inset: 0,
   backgroundColor: 'rgb(0 0 0 / 0.35)',
   zIndex: 99,
-  [theme.breakpoints.up('md')]: { display: 'none' },
-}));
+  '@media (min-width: 769px)': { display: 'none' },
+});
 
 export const Sidebar = styled(Box)(({ theme }) => ({
   width: SIDEBAR_WIDTH,

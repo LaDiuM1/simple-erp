@@ -18,7 +18,7 @@ export default function DepartmentListPage() {
       <PageHeaderActions
         actions={[
           {
-            design: 'cancel',
+            design: 'secondary',
             label: '부서 계층 관리',
             icon: <AccountTreeRoundedIcon />,
             onClick: () => navigate(`${MENU_PATH[MENU_CODE.DEPARTMENTS]}/hierarchy`),

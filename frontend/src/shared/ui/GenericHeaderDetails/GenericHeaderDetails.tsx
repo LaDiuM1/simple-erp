@@ -40,7 +40,9 @@ function Cell({ field }: { field: HeaderDetailField }) {
   const isEmpty = field.value === null || field.value === undefined || field.value === '';
   return (
     <>
-      <HeaderLabelCell>{field.label}</HeaderLabelCell>
+      <HeaderLabelCell sx={field.fullWidth ? { gridColumn: '1' } : undefined}>
+        {field.label}
+      </HeaderLabelCell>
       <HeaderValueCell sx={field.fullWidth ? { gridColumn: '2 / -1' } : undefined}>
         {isEmpty ? <Muted /> : field.value}
       </HeaderValueCell>

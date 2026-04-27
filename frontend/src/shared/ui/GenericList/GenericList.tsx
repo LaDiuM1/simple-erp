@@ -193,6 +193,7 @@ export default function GenericList<TRow, TFilters extends object>({
           pageSize={state.pageSize}
           sort={state.sort}
           onSortChange={state.setSort}
+          filters={state.filters as Record<string, unknown>}
           isLoading={isLoading}
           isFetching={isFetching}
           emptyMessage={api.emptyMessage}

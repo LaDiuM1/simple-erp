@@ -27,7 +27,10 @@ export const StyledTableContainer = styled(TableContainer)({
   overflow: 'visible',
 });
 
-/** sticky 헤더 셀 (정렬 컬럼 헤더). 사이드바와 동일한 표준 회색 톤. */
+/**
+ * sticky 헤더 셀 (정렬 컬럼 헤더). 사이드바와 동일한 표준 회색 톤.
+ * 헤더는 라벨이 짧고 의미 식별이 중요해 ellipsis 미적용 — 컬럼 폭이 좁아도 라벨이 보이도록 nowrap 만 유지.
+ */
 export const HeaderCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.8125rem',
   fontWeight: 600,

@@ -8,11 +8,29 @@ export interface SortState {
   direction: SortDirection;
 }
 
+/**
+ * 셀 render 에 주입되는 리스트 컨텍스트 — 필터 인지 표현 (매치 우선 정렬 / 매치 강조 등) 용.
+ * 도메인은 자기 TFilters 형태로 cast 해서 사용한다.
+ */
+export interface CellContext {
+  filters: Record<string, unknown>;
+}
+
 interface BaseColumn<TRow> {
   key: string;
   label: string;
   align?: 'left' | 'center' | 'right';
-  width?: string | number;
+  /**
+   * 고정 폭 (px). 지정 시 컨테이너 폭과 무관하게 정확히 그 폭 — No / 코드 / 짧은 식별자 컬럼 용.
+   * width 와 flex 는 동시 사용 불가 (width 가 우선).
+   */
+  width?: number;
+  /**
+   * 비례 폭. 고정 폭 컬럼을 제외한 나머지 공간을 flex 비율로 분배.
+   * 미지정 시 기본값 1 — 모든 컬럼이 동일 비율로 폭을 나눠 가짐 (이전 동작과 호환).
+   * 예: 이메일 flex:3, 직책 flex:1 → 이메일이 직책의 3배 폭.
+   */
+  flex?: number;
   mobilePrimary?: boolean;
   hideOnMobile?: boolean;
   /**
@@ -20,7 +38,13 @@ interface BaseColumn<TRow> {
    * 기본 false — 모든 셀이 nowrap + 잘림 시 hover Tooltip 으로 전체 텍스트 노출.
    */
   noTruncate?: boolean;
-  render?: (row: TRow) => ReactNode;
+  /**
+   * 잘림 시 hover Tooltip 텍스트 추출기. 미지정 시 row[key] 가 string/number 일 때만 자동 추출.
+   * 복잡 render (배열, JSX 조합) 셀에서 풀 텍스트 노출이 필요할 때 사용.
+   * ctx 를 받아 render 와 동일한 필터 인지 표현 (매치 우선 정렬 등) 을 적용할 수 있다.
+   */
+  tooltip?: (row: TRow, ctx: CellContext) => string | undefined;
+  render?: (row: TRow, ctx: CellContext) => ReactNode;
 }
 
 /**
@@ -36,6 +60,9 @@ export type ColumnConfig<TRow> = BaseColumn<TRow> &
 
 export interface QueryState<T> {
   data?: PageResponse<T>;
+  /** 캐시 없는 최초 로딩. 빈 화면 깜빡임 제거용 — true 면 EmptyState 를 숨긴다. */
+  isLoading?: boolean;
+  /** 모든 fetch 중 상태 (재조회 포함). 로딩 오버레이 트리거. */
   isFetching: boolean;
   isError: boolean;
   error?: unknown;

@@ -78,6 +78,11 @@ export interface CustomFieldRenderContext {
   onChange: (value: unknown) => void;
   mode: 'create' | 'edit';
   disabled: boolean;
+  /**
+   * 수정 / 상세 모드일 때만 채워지는 대상 record id. 자기 자신을 제외한 unique 검사 등에 사용.
+   * create 모드에서는 undefined.
+   */
+  recordId?: number;
 }
 
 export interface CustomFieldConfig<TValues> extends BaseField<TValues> {

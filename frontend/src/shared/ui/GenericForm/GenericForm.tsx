@@ -116,6 +116,7 @@ function CreateForm<
         <ConfirmModal
           isOpen={confirmOpen}
           title={api.titles?.create ?? '등록'}
+
           message="등록하시겠습니까?"
           confirmLabel={isSaving ? '등록 중...' : '등록'}
           onConfirm={async () => {
@@ -210,6 +211,7 @@ function EditFormBody<
         isSaving={isSaving}
         mode="edit"
         section={api.section}
+        recordId={id}
         onSubmit={handleSubmit}
         onCancel={() => navigate(api.listPath)}
       />
@@ -237,6 +239,7 @@ interface FormBodyProps<TValues extends object> {
   isSaving: boolean;
   mode: 'create' | 'edit';
   section?: FormSectionInfo;
+  recordId?: number;
   onSubmit: () => void;
   onCancel: () => void;
 }
@@ -248,6 +251,7 @@ function FormBody<TValues extends object>({
   isSaving,
   mode,
   section,
+  recordId,
   onSubmit,
   onCancel,
 }: FormBodyProps<TValues>) {
@@ -292,6 +296,7 @@ function FormBody<TValues extends object>({
                   }
                   disabled={mode === 'edit' && field.disabledOnEdit === true}
                   mode={mode}
+                  recordId={recordId}
                 />
               ))}
             </FormGrid>
@@ -393,6 +398,7 @@ function DetailFormBody<
                   onChange={() => undefined}
                   disabled
                   mode="detail"
+                  recordId={id}
                 />
               ))}
             </FormGrid>

@@ -30,7 +30,7 @@ export default function PageHeader({ title, actions }: Props) {
         position: 'relative',
         zIndex: 1,
         flexShrink: 0,
-        minHeight: 52,
+        minHeight: 58,
       })}
     >
       <Typography

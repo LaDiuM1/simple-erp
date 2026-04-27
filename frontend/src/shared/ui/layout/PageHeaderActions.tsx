@@ -46,12 +46,29 @@ export type PageHeaderAction =
       icon?: ReactNode;
     }
   | {
+      /**
+       * 폼 취소 / 상세에서 목록으로 돌아가기처럼 "현재 흐름을 떠나는" 액션.
+       * 같은 페이지의 보조 도구 (예: 컨택 경로 관리, 직책 서열 관리) 는 의미론 분리를 위해 `secondary` 사용.
+       */
       design: 'cancel';
       label?: string;
-      /** 선택적 시작 아이콘. 일반 취소 버튼엔 안 쓰지만, 동일 outlined 톤의 보조 액션 (예: 부서 계층도) 에서 사용. */
+      /** 선택적 시작 아이콘 — "목록으로" 등 navigate 액션에서 ArrowBack 등을 표시. */
       icon?: ReactNode;
       onClick: () => void;
       disabled?: boolean;
+    }
+  | {
+      /**
+       * 같은 페이지에서 동등한 위치의 보조 도구를 여는 액션 (sub-master 모달 / 별도 sub-page 진입 등).
+       * outlined 톤은 cancel 과 동일하지만 의미가 다르므로 별도 design 으로 구분.
+       */
+      design: 'secondary';
+      label: string;
+      icon?: ReactNode;
+      onClick: () => void;
+      disabled?: boolean;
+      /** 권한 게이트 — 지정 시 해당 메뉴의 read 권한이 있을 때만 노출. */
+      menuCode?: string;
     }
   | {
       design: 'delete';
@@ -86,6 +103,27 @@ function renderAction(action: PageHeaderAction): ReactNode {
         {action.label ?? DEFAULT_LABEL.cancel}
       </CancelButton>
     );
+  }
+
+  if (action.design === 'secondary') {
+    const button = (
+      <CancelButton
+        type="button"
+        onClick={action.onClick}
+        disabled={action.disabled}
+        startIcon={action.icon}
+      >
+        {action.label}
+      </CancelButton>
+    );
+    if (action.menuCode) {
+      return (
+        <PermissionGate menuCode={action.menuCode} action="read">
+          {button}
+        </PermissionGate>
+      );
+    }
+    return button;
   }
 
   if (action.design === 'delete') {

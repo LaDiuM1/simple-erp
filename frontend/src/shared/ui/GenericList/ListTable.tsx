@@ -32,7 +32,8 @@ import {
 import EmptyState from './EmptyState';
 import { renderCellContent, renderTruncatableCell } from './cellRender';
 import { useFillRowHeight } from './useFillRowHeight';
-import type { ColumnConfig, DeleteConfirmMessages, SortState } from './types';
+import { computeColumnWidths } from './utils';
+import type { CellContext, ColumnConfig, DeleteConfirmMessages, SortState } from './types';
 import type { ListSelectionState } from './useListSelection';
 
 const DEFAULT_DELETE_CONFIRM: DeleteConfirmMessages = {
@@ -51,6 +52,8 @@ interface Props<TRow> {
   pageSize: number;
   sort: SortState;
   onSortChange: (sort: SortState) => void;
+  /** 셀 render 의 2번째 인자로 전달될 컨텍스트 (현재 필터). 매치 우선 정렬 / 강조 셀 등에 사용. */
+  filters: Record<string, unknown>;
   /** 캐시 없는 최초 로딩. true 면 EmptyState 를 숨겨 빈 화면 깜빡임을 막는다. */
   isLoading?: boolean;
   /** 모든 fetch 중 상태 (재조회 포함). 로딩 오버레이를 그릴지 결정한다. */
@@ -72,6 +75,11 @@ interface Props<TRow> {
 /** 데이터 전체 순번 = 현재 페이지 인덱스 × size + 행 인덱스 + 1. */
 const NO_COL_WIDTH = 64;
 const CHECKBOX_COL_WIDTH = 48;
+/**
+ * 데스크탑 테이블 최소 폭 — 이 폭 미만으로 좁아지면 가로 스크롤 발생.
+ * 100% 줌 / 표준 노트북 폭에서는 스크롤이 안 생기되, 그보다 좁아질 때만 스크롤이 보이도록 설정.
+ */
+const TABLE_MIN_WIDTH = 1008;
 
 /**
  * 표 영역. 데스크탑은 Table, 모바일은 카드 리스트.
@@ -87,6 +95,7 @@ export default function ListTable<TRow>({
   pageSize,
   sort,
   onSortChange,
+  filters,
   isLoading = false,
   isFetching = false,
   emptyMessage = DEFAULT_EMPTY_MESSAGE,
@@ -103,6 +112,7 @@ export default function ListTable<TRow>({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { canWrite } = usePermission(menuCode);
+  const cellCtx: CellContext = { filters };
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   /** 데스크탑 행 높이 — 컨테이너 높이 / pageSize, 단 minHeight 미만이면 자연 스크롤. */
@@ -226,6 +236,7 @@ export default function ListTable<TRow>({
             emptyMessage={emptyMessage}
             isLoading={isLoading}
             onRowClick={onRowClick}
+            cellCtx={cellCtx}
           />
         ) : (
           <DesktopTable
@@ -246,6 +257,7 @@ export default function ListTable<TRow>({
             someVisibleSelected={someVisibleSelected}
             onToggleAll={onToggleAll}
             onRowClick={onRowClick}
+            cellCtx={cellCtx}
           />
         )}
       </TableScrollArea>
@@ -291,6 +303,7 @@ interface DesktopProps<TRow> {
   someVisibleSelected?: boolean;
   onToggleAll?: () => void;
   onRowClick?: (row: TRow) => void;
+  cellCtx: CellContext;
 }
 
 function DesktopTable<TRow>({
@@ -311,15 +324,24 @@ function DesktopTable<TRow>({
   someVisibleSelected,
   onToggleAll,
   onRowClick,
+  cellCtx,
 }: DesktopProps<TRow>) {
   const extraColCount = (showCheckboxCol ? 1 : 0) + 1; // checkbox + No
+  const domainColWidths = computeColumnWidths(columns);
   return (
     <StyledTableContainer>
-      <Table size="small" sx={{ minWidth: 720 }}>
+      <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', minWidth: TABLE_MIN_WIDTH }}>
+        <colgroup>
+          {showCheckboxCol && <col style={{ width: CHECKBOX_COL_WIDTH }} />}
+          <col style={{ width: NO_COL_WIDTH }} />
+          {columns.map((col, idx) => (
+            <col key={col.key} style={{ width: domainColWidths[idx] }} />
+          ))}
+        </colgroup>
         <TableHead ref={headerRef}>
           <TableRow>
             {showCheckboxCol && (
-              <HeaderCell align="center" padding="checkbox" sx={{ width: CHECKBOX_COL_WIDTH }}>
+              <HeaderCell align="center" padding="checkbox">
                 <Checkbox
                   size="small"
                   checked={!!allVisibleSelected}
@@ -329,13 +351,12 @@ function DesktopTable<TRow>({
                 />
               </HeaderCell>
             )}
-            <HeaderCell align="center" sx={{ width: NO_COL_WIDTH }}>No</HeaderCell>
+            <HeaderCell align="center">No</HeaderCell>
             {columns.map((col) => (
               <HeaderCell
                 key={col.key}
                 align={col.align ?? 'left'}
                 sortDirection={sort.key === col.key ? sort.direction : false}
-                sx={{ width: col.width }}
               >
                 {col.sortable ? (
                   <StyledSortLabel
@@ -375,7 +396,6 @@ function DesktopTable<TRow>({
                     <BodyCell
                       align="center"
                       padding="checkbox"
-                      sx={{ width: CHECKBOX_COL_WIDTH }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Checkbox
@@ -386,12 +406,12 @@ function DesktopTable<TRow>({
                       />
                     </BodyCell>
                   )}
-                  <BodyCell align="center" sx={{ color: 'text.secondary', width: NO_COL_WIDTH }}>
+                  <BodyCell align="center" sx={{ color: 'text.secondary' }}>
                     {page * pageSize + idx + 1}
                   </BodyCell>
                   {columns.map((col) => (
                     <BodyCell key={col.key} align={col.align ?? 'left'}>
-                      {renderTruncatableCell(col, row)}
+                      {renderTruncatableCell(col, row, cellCtx)}
                     </BodyCell>
                   ))}
                 </BodyRow>
@@ -412,9 +432,10 @@ interface MobileProps<TRow> {
   emptyMessage: string;
   isLoading?: boolean;
   onRowClick?: (row: TRow) => void;
+  cellCtx: CellContext;
 }
 
-function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, isLoading, onRowClick }: MobileProps<TRow>) {
+function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, isLoading, onRowClick, cellCtx }: MobileProps<TRow>) {
   const primary = columns.find((c) => c.mobilePrimary) ?? columns[0];
   const details = columns.filter((c) => c.key !== primary?.key && !c.hideOnMobile);
 
@@ -431,7 +452,7 @@ function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, is
           onClick={onRowClick ? () => onRowClick(row) : undefined}
         >
           <MobilePrimaryRow>
-            <div style={{ minWidth: 0, flex: 1 }}>{renderCellContent(primary, row)}</div>
+            <div style={{ minWidth: 0, flex: 1 }}>{renderCellContent(primary, row, cellCtx)}</div>
             {rowActions && (
               <div style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                 {rowActions(row, idx)}
@@ -443,7 +464,7 @@ function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, is
               {details.map((col) => (
                 <MobileDetailRow key={col.key}>
                   <MobileDetailLabel>{col.label}</MobileDetailLabel>
-                  <MobileDetailValue>{renderCellContent(col, row)}</MobileDetailValue>
+                  <MobileDetailValue>{renderCellContent(col, row, cellCtx)}</MobileDetailValue>
                 </MobileDetailRow>
               ))}
             </Stack>

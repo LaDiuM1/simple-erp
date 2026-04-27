@@ -10,9 +10,10 @@ interface Props {
 }
 
 /**
- * 셀 콘텐츠가 셀 폭을 초과하면 ellipsis 로 자르고, hover 시 Tooltip 으로 전체 텍스트 노출.
- * - 항상 Tooltip 으로 wrap 하고 잘림 없을 때만 비활성화 → DOM 트리가 안 바뀌므로 ref/observer 안정.
- * - ResizeObserver 가 셀 폭 / 콘텐츠 변화를 감지해 overflow 상태 갱신.
+ * 셀 콘텐츠를 **컬럼 폭 (table-layout: fixed)** 에 맞춰 ellipsis 로 자르고, hover 시 Tooltip 으로 전체 텍스트 노출.
+ * - width: 100% — 셀 폭을 그대로 채워 컬럼 폭이 곧 잘림 임계점이 된다.
+ * - 직속 자식 (예: <Typography>) 도 ellipsis 가 적용되도록 cascade — block 컴포넌트로 감싼 셀 내용이 잘리지 않는 회귀 방지.
+ * - 자기 자신 + 모든 descendant 를 검사해 overflow 여부 판단 — 자식이 자체 ellipsis 로 잘릴 때 부모는 overflow 미발생이라 직접 검사 필요.
  */
 export default function TruncatedCellContent({ tooltip, align, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
@@ -22,7 +23,18 @@ export default function TruncatedCellContent({ tooltip, align, children }: Props
     const el = ref.current;
     if (!el) return;
     const update = () => {
-      setOverflow(el.scrollWidth > el.clientWidth + 1);
+      if (el.scrollWidth > el.clientWidth + 1) {
+        setOverflow(true);
+        return;
+      }
+      const all = el.querySelectorAll<HTMLElement>('*');
+      for (const node of all) {
+        if (node.scrollWidth > node.clientWidth + 1) {
+          setOverflow(true);
+          return;
+        }
+      }
+      setOverflow(false);
     };
     update();
     const observer = new ResizeObserver(update);
@@ -48,22 +60,20 @@ export default function TruncatedCellContent({ tooltip, align, children }: Props
   );
 }
 
-/**
- * table-layout: auto 환경에서:
- * - 짧은 content → 자연 너비 (셀이 content 만큼 자동 확장)
- * - 긴 content → max-width 에서 cap + ellipsis + 툴팁으로 전체 노출
- * MAX_CELL_WIDTH 이 컬럼별 상한 역할 — 너무 길어도 한 컬럼이 무한히 늘어나지 않음.
- */
-const MAX_CELL_WIDTH = '20rem';
-
 const TruncatedDiv = styled('div', {
   shouldForwardProp: (prop) => prop !== '$align',
 })<{ $align?: 'left' | 'center' | 'right' }>(({ $align }) => ({
-  display: 'inline-block',
-  maxWidth: MAX_CELL_WIDTH,
+  display: 'block',
+  width: '100%',
+  minWidth: 0,
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
   textAlign: $align ?? 'left',
-  verticalAlign: 'middle',
+  '& > *': {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: '100%',
+  },
 }));

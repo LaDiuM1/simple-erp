@@ -21,6 +21,8 @@ interface Props<TValues extends object> {
   /** 입력 불가 상태 — disabledOnEdit 플래그를 GenericForm 이 mode 와 합쳐 결정 */
   disabled?: boolean;
   mode: 'create' | 'edit' | 'detail';
+  /** edit / detail 모드일 때 record id — custom 필드의 unique 검사 등에 자기 자신 제외용. */
+  recordId?: number;
 }
 
 /**
@@ -33,10 +35,18 @@ export default function FormField<TValues extends object>({
   onChange,
   disabled,
   mode,
+  recordId,
 }: Props<TValues>) {
   return (
     <FieldItem fullWidth={field.fullWidth}>
-      <FieldBody field={field} value={value} onChange={onChange} disabled={disabled} mode={mode} />
+      <FieldBody
+        field={field}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        mode={mode}
+        recordId={recordId}
+      />
     </FieldItem>
   );
 }
@@ -47,6 +57,7 @@ function FieldBody<TValues extends object>({
   onChange,
   disabled,
   mode,
+  recordId,
 }: Props<TValues>): ReactNode {
   switch (field.type) {
     case 'text':
@@ -69,6 +80,7 @@ function FieldBody<TValues extends object>({
           onChange={onChange}
           mode={mode === 'detail' ? 'edit' : mode}
           disabled={disabled ?? false}
+          recordId={recordId}
         />
       );
   }
@@ -314,14 +326,16 @@ function CustomFieldRenderer<TValues extends object>({
   onChange,
   mode,
   disabled,
+  recordId,
 }: {
   field: CustomFieldConfig<TValues>;
   value: unknown;
   onChange: (value: unknown) => void;
   mode: 'create' | 'edit';
   disabled: boolean;
+  recordId?: number;
 }): ReactNode {
-  return <>{field.render({ value, onChange, mode, disabled })}</>;
+  return <>{field.render({ value, onChange, mode, disabled, recordId })}</>;
 }
 
 

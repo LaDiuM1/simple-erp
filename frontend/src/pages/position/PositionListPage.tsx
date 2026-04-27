@@ -18,7 +18,7 @@ export default function PositionListPage() {
       <PageHeaderActions
         actions={[
           {
-            design: 'cancel',
+            design: 'secondary',
             label: '직책 서열 관리',
             icon: <LowPriorityRoundedIcon />,
             onClick: () => navigate(`${MENU_PATH[MENU_CODE.POSITIONS]}/ranking`),
