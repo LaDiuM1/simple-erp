@@ -12,47 +12,6 @@ export const DetailRoot = styled(Box)(({ theme }) => ({
   },
 }));
 
-export const InfoSection = styled(Box)(({ theme }) => ({
-  backgroundColor: theme.palette.background.paper,
-  padding: '1.25rem',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.75rem',
-  [theme.breakpoints.up('md')]: {
-    padding: '1.5rem 2rem',
-  },
-}));
-
-export const InfoTitle = styled('div')(({ theme }) => ({
-  fontSize: '0.9375rem',
-  fontWeight: 600,
-  color: theme.palette.text.primary,
-  paddingBottom: '0.625rem',
-  borderBottom: `1px solid ${theme.palette.divider}`,
-}));
-
-export const InfoGrid = styled(Box)(({ theme }) => ({
-  display: 'grid',
-  gridTemplateColumns: '1fr',
-  gap: '0.625rem 1.5rem',
-  [theme.breakpoints.up('md')]: {
-    gridTemplateColumns: '160px 1fr 160px 1fr',
-    alignItems: 'center',
-  },
-}));
-
-export const InfoLabel = styled('div')(({ theme }) => ({
-  fontSize: '0.8125rem',
-  color: theme.palette.text.secondary,
-  fontWeight: 500,
-}));
-
-export const InfoValue = styled('div')(({ theme }) => ({
-  fontSize: '0.875rem',
-  color: theme.palette.text.primary,
-  whiteSpace: 'pre-wrap',
-}));
-
 export const SectionRoot = styled(Box)(({ theme }) => ({
   backgroundColor: theme.palette.background.paper,
   padding: '1rem 1.25rem',

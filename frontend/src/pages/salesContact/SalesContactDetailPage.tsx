@@ -6,17 +6,13 @@ import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { usePermission } from '@/shared/hooks/usePermission';
-import Muted from '@/shared/ui/atoms/Muted';
+import GenericHeaderDetails, {
+  type HeaderDetailField,
+} from '@/shared/ui/GenericHeaderDetails';
+import { SideBySideGrid } from '@/shared/ui/layout/SideBySideGrid';
 import { useGetSalesContactQuery } from '@/features/salesContact/api/salesContactApi';
 import EmploymentList from '@/features/salesContact/components/EmploymentList';
-import {
-  DetailRoot,
-  InfoGrid,
-  InfoLabel,
-  InfoSection,
-  InfoTitle,
-  InfoValue,
-} from '@/features/salesContact/components/salesContactDetail.styles';
+import { DetailRoot } from '@/features/salesContact/components/salesContactDetail.styles';
 import type { SalesContactDetail } from '@/features/salesContact/types';
 import type { ApiError } from '@/shared/types/api';
 
@@ -61,41 +57,25 @@ function Body({ contactId }: { contactId: number }) {
       />
 
       <DetailRoot>
-        <ContactInfo detail={data} />
-        <EmploymentList contactId={contactId} employments={data.employments} />
+        <GenericHeaderDetails fields={contactInfoFields(data)} />
+        <SideBySideGrid>
+          <EmploymentList contactId={contactId} employments={data.employments} />
+        </SideBySideGrid>
       </DetailRoot>
     </>
   );
 }
 
-function ContactInfo({ detail }: { detail: SalesContactDetail }) {
-  return (
-    <InfoSection>
-      <InfoTitle>명부 정보</InfoTitle>
-      <InfoGrid>
-        <InfoLabel>이름</InfoLabel>
-        <InfoValue>{detail.name}</InfoValue>
-        <InfoLabel>영문명</InfoLabel>
-        <InfoValue>{detail.nameEn ?? <Muted />}</InfoValue>
-
-        <InfoLabel>휴대폰</InfoLabel>
-        <InfoValue>{detail.mobilePhone ?? <Muted />}</InfoValue>
-        <InfoLabel>사무실 전화</InfoLabel>
-        <InfoValue>{detail.officePhone ?? <Muted />}</InfoValue>
-
-        <InfoLabel>회사 이메일</InfoLabel>
-        <InfoValue>{detail.email ?? <Muted />}</InfoValue>
-        <InfoLabel>개인 이메일</InfoLabel>
-        <InfoValue>{detail.personalEmail ?? <Muted />}</InfoValue>
-
-        <InfoLabel>처음 만난 날</InfoLabel>
-        <InfoValue>{detail.metAt ?? <Muted />}</InfoValue>
-        <InfoLabel>만난 경로</InfoLabel>
-        <InfoValue>{detail.metVia ?? <Muted />}</InfoValue>
-
-        <InfoLabel>비고</InfoLabel>
-        <InfoValue style={{ gridColumn: '1 / -1' }}>{detail.note ?? <Muted />}</InfoValue>
-      </InfoGrid>
-    </InfoSection>
-  );
+function contactInfoFields(d: SalesContactDetail): HeaderDetailField[] {
+  return [
+    { label: '이름', value: d.name },
+    { label: '영문명', value: d.nameEn },
+    { label: '휴대폰', value: d.mobilePhone },
+    { label: '사무실 전화', value: d.officePhone },
+    { label: '회사 이메일', value: d.email },
+    { label: '개인 이메일', value: d.personalEmail },
+    { label: '처음 만난 날', value: d.metAt },
+    { label: '만난 경로', value: d.metVia },
+    { label: '비고', value: d.note, fullWidth: true },
+  ];
 }

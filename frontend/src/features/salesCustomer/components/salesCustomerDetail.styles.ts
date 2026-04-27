@@ -5,36 +5,12 @@ export const DetailRoot = styled(Box)(({ theme }) => ({
   margin: '-1rem',
   display: 'flex',
   flexDirection: 'column',
-  gap: '1.25rem',
+  gap: '0.4375rem',
   [theme.breakpoints.up('sm')]: {
     margin: '-2rem',
-    gap: '1.5rem',
+    gap: '0.525rem',
   },
 }));
-
-export const HeaderCard = styled(Box)(({ theme }) => ({
-  backgroundColor: theme.palette.background.paper,
-  padding: '1.25rem',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.25rem',
-  borderBottom: `1px solid ${theme.palette.divider}`,
-  [theme.breakpoints.up('md')]: {
-    padding: '1.5rem 2rem',
-  },
-}));
-
-export const HeaderCustomerCode = styled('div')(({ theme }) => ({
-  fontSize: '0.8125rem',
-  color: theme.palette.text.secondary,
-  fontWeight: 500,
-}));
-
-export const HeaderCustomerName = styled('div')({
-  fontSize: '1.25rem',
-  fontWeight: 700,
-  letterSpacing: '-0.01em',
-});
 
 export const SectionRoot = styled(Box)(({ theme }) => ({
   backgroundColor: theme.palette.background.paper,
