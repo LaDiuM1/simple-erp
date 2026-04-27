@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/customers")
@@ -119,6 +120,12 @@ public class CustomerController {
     @PreAuthorize(CAN_WRITE)
     public void delete(@PathVariable Long id) {
         customerService.delete(id);
+    }
+
+    @DeleteMapping
+    @PreAuthorize(CAN_WRITE)
+    public void deleteAll(@RequestBody List<Long> ids) {
+        customerService.deleteAll(ids);
     }
 
     private CustomerSearchCondition toCondition(String codeKeyword, String nameKeyword, String addressKeyword, String phoneKeyword, CustomerType type, CustomerStatus status) {

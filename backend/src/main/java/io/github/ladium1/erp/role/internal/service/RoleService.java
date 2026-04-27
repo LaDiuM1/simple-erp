@@ -178,6 +178,18 @@ public class RoleService implements RoleApi {
     }
 
     /**
+     * 일괄 삭제 — 단일 트랜잭션에서 ID 별 단건 delete 호출.
+     * 한 건이라도 실패하면 전체 롤백.
+     */
+    @Transactional
+    public void deleteAll(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return;
+        for (Long id : ids) {
+            delete(id);
+        }
+    }
+
+    /**
      * Role 의 RoleMenu 행을 요청 매트릭스로 통째로 교체.
      * - canWrite=true 면서 canRead=false 인 행은 canRead=true 로 자동 보정.
      * - canRead/canWrite 둘 다 false 인 행은 저장하지 않음 (DB lean).

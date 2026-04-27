@@ -91,6 +91,12 @@ public class SalesContactController {
         salesContactService.delete(id);
     }
 
+    @DeleteMapping
+    @PreAuthorize(CAN_WRITE)
+    public void deleteAll(@RequestBody List<Long> ids) {
+        salesContactService.deleteAll(ids);
+    }
+
     @PostMapping("/{contactId}/employments")
     @PreAuthorize(CAN_WRITE)
     public Long createEmployment(@PathVariable Long contactId,

@@ -145,6 +145,18 @@ public class DepartmentService implements DepartmentApi {
         departmentRepository.deleteById(id);
     }
 
+    /**
+     * 일괄 삭제 — 단일 트랜잭션에서 ID 별 단건 delete 호출.
+     * 한 건이라도 실패하면 전체 롤백.
+     */
+    @Transactional
+    public void deleteAll(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return;
+        for (Long id : ids) {
+            delete(id);
+        }
+    }
+
     private Department resolveParent(Long parentId, Long selfId) {
         if (parentId == null) {
             return null;

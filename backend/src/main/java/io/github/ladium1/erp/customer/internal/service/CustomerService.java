@@ -177,6 +177,18 @@ public class CustomerService implements CustomerApi {
     }
 
     /**
+     * 일괄 삭제 — 단일 트랜잭션에서 ID 별 단건 delete 호출.
+     * 한 건이라도 실패하면 전체 롤백.
+     */
+    @Transactional
+    public void deleteAll(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return;
+        for (Long id : ids) {
+            delete(id);
+        }
+    }
+
+    /**
      * 채번 규칙의 inputMode 에 따라 최종 코드 결정.
      * AUTO: 항상 시스템 생성 / MANUAL: 사용자 입력 필수 + 패턴 검증 / AUTO_OR_MANUAL: 입력 있으면 검증, 없으면 생성.
      */

@@ -90,4 +90,10 @@ public class RoleController {
     public void delete(@PathVariable Long id) {
         roleService.delete(id);
     }
+
+    @DeleteMapping
+    @PreAuthorize(CAN_WRITE)
+    public void deleteAll(@RequestBody List<Long> ids) {
+        roleService.deleteAll(ids);
+    }
 }

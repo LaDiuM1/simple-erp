@@ -155,6 +155,18 @@ public class PositionService implements PositionApi {
     }
 
     /**
+     * 일괄 삭제 — 단일 트랜잭션에서 ID 별 단건 delete 호출.
+     * 한 건이라도 실패하면 전체 롤백.
+     */
+    @Transactional
+    public void deleteAll(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return;
+        for (Long id : ids) {
+            delete(id);
+        }
+    }
+
+    /**
      * 서열 일괄 재배치.
      * <p>
      * 요청 배열은 전체 직책을 모두 포함해야 한다 (중복/누락 거부). 상위→하위 순으로 1, 2, 3 ... 부여.

@@ -104,4 +104,10 @@ public class PositionController {
     public void delete(@PathVariable Long id) {
         positionService.delete(id);
     }
+
+    @DeleteMapping
+    @PreAuthorize(CAN_WRITE)
+    public void deleteAll(@RequestBody List<Long> ids) {
+        positionService.deleteAll(ids);
+    }
 }

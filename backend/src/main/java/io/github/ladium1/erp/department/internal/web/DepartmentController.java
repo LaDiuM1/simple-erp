@@ -91,4 +91,10 @@ public class DepartmentController {
     public void delete(@PathVariable Long id) {
         departmentService.delete(id);
     }
+
+    @DeleteMapping
+    @PreAuthorize(CAN_WRITE)
+    public void deleteAll(@RequestBody List<Long> ids) {
+        departmentService.deleteAll(ids);
+    }
 }

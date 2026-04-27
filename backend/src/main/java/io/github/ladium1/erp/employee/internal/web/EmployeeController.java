@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/employees")
@@ -112,6 +113,12 @@ public class EmployeeController {
     @PreAuthorize(CAN_WRITE)
     public void delete(@PathVariable Long id) {
         employeeService.delete(id);
+    }
+
+    @DeleteMapping
+    @PreAuthorize(CAN_WRITE)
+    public void deleteAll(@RequestBody List<Long> ids) {
+        employeeService.deleteAll(ids);
     }
 
     private EmployeeSearchCondition toCondition(String loginIdKeyword, String nameKeyword, Long departmentId, Long positionId, Long roleId, EmployeeStatus status) {
