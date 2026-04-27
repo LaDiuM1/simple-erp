@@ -8,6 +8,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import CustomerSelectField from '@/features/customer/components/CustomerSelectField';
+import ModeChoiceSection from '@/shared/ui/ModeChoiceSection';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCreateSalesContactEmploymentMutation,
@@ -16,7 +17,10 @@ import {
 import type { SalesContactEmployment } from '@/features/salesContact/types';
 import type { ApiError } from '@/shared/types/api';
 
+type CompanyMode = 'lookup' | 'manual';
+
 interface FormValues {
+  companyMode: CompanyMode;
   customerId: string;
   customerName: string;
   externalCompanyName: string;
@@ -26,6 +30,7 @@ interface FormValues {
 }
 
 const EMPTY: FormValues = {
+  companyMode: 'lookup',
   customerId: '',
   customerName: '',
   externalCompanyName: '',
@@ -60,6 +65,14 @@ export default function EmploymentFormModal({ open, onClose, contactId, employme
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));
 
+  const switchCompanyMode = (mode: CompanyMode) => {
+    setValues((prev) =>
+      mode === 'lookup'
+        ? { ...prev, companyMode: mode, externalCompanyName: '' }
+        : { ...prev, companyMode: mode, customerId: '', customerName: '' },
+    );
+  };
+
   const isSaving = isCreating || isUpdating;
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
@@ -70,17 +83,19 @@ export default function EmploymentFormModal({ open, onClose, contactId, employme
       snackbar.error('재직 시작일을 선택해주세요.');
       return;
     }
-    if (values.customerId === '' && values.externalCompanyName.trim() === '') {
-      snackbar.error('고객사 또는 외부 회사명 둘 중 하나는 입력해주세요.');
+    if (values.companyMode === 'lookup' && values.customerId === '') {
+      snackbar.error('관리중 고객사를 선택해주세요.');
+      return;
+    }
+    if (values.companyMode === 'manual' && values.externalCompanyName.trim() === '') {
+      snackbar.error('외부 고객사명을 입력해주세요.');
       return;
     }
 
+    const isLookup = values.companyMode === 'lookup';
     const payload = {
-      customerId: values.customerId === '' ? null : Number(values.customerId),
-      externalCompanyName:
-        values.customerId !== '' || values.externalCompanyName.trim() === ''
-          ? null
-          : values.externalCompanyName.trim(),
+      customerId: isLookup && values.customerId !== '' ? Number(values.customerId) : null,
+      externalCompanyName: isLookup ? null : values.externalCompanyName.trim(),
       position: emptyToNull(values.position),
       department: emptyToNull(values.department),
       startDate: values.startDate,
@@ -111,26 +126,39 @@ export default function EmploymentFormModal({ open, onClose, contactId, employme
       <form onSubmit={handleSubmit} noValidate>
         <DialogContent dividers>
           <Stack spacing={2}>
-            <CustomerSelectField
-              label="고객사 (등록된 회사)"
-              value={values.customerId}
-              valueLabel={values.customerName}
-              onChange={(id, name) => {
-                update('customerId', id);
-                update('customerName', name);
-                if (id) update('externalCompanyName', '');
-              }}
-              helperText="우리 시스템에 등록된 고객사면 검색 선택, 외부 회사면 아래 외부 회사명에 직접 입력."
-            />
-            <TextField
-              size="small"
-              label="외부 회사명"
-              value={values.externalCompanyName}
-              onChange={(e) => update('externalCompanyName', e.target.value)}
-              disabled={values.customerId !== ''}
-              placeholder="우리 customer 가 아닌 회사 (이직 후 추적용)"
-              slotProps={{ htmlInput: { maxLength: 200 } }}
-            />
+            <ModeChoiceSection
+              title="재직 회사"
+              mode={values.companyMode}
+              onModeChange={switchCompanyMode}
+              options={[
+                { value: 'lookup', label: '관리중 고객사 검색' },
+                { value: 'manual', label: '직접 입력' },
+              ]}
+            >
+              {values.companyMode === 'lookup' ? (
+                <CustomerSelectField
+                  label="관리중 고객사명"
+                  required
+                  value={values.customerId}
+                  valueLabel={values.customerName}
+                  onChange={(id, name) => {
+                    update('customerId', id);
+                    update('customerName', name);
+                  }}
+                />
+              ) : (
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="외부 고객사명"
+                  required
+                  value={values.externalCompanyName}
+                  onChange={(e) => update('externalCompanyName', e.target.value)}
+                  placeholder="미관리 고객사 직접 입력"
+                  slotProps={{ htmlInput: { maxLength: 200 } }}
+                />
+              )}
+            </ModeChoiceSection>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField
                 size="small"
@@ -172,7 +200,9 @@ export default function EmploymentFormModal({ open, onClose, contactId, employme
 }
 
 function toFormValues(e: SalesContactEmployment): FormValues {
+  const hasLookup = e.customerId != null;
   return {
+    companyMode: hasLookup ? 'lookup' : 'manual',
     customerId: e.customerId == null ? '' : String(e.customerId),
     customerName: e.customerName ?? '',
     externalCompanyName: e.externalCompanyName ?? '',
