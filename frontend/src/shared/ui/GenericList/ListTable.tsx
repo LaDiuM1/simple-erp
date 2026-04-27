@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
@@ -10,17 +10,13 @@ import TableRow from '@mui/material/TableRow';
 import Tooltip from '@mui/material/Tooltip';
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/EditOutlined';
-import InboxIcon from '@mui/icons-material/InboxOutlined';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
-import Muted from '@/shared/ui/atoms/Muted';
 import { usePermission } from '@/shared/hooks/usePermission';
 import {
   BodyCell,
   BodyRow,
-  EmptyStateContainer,
-  EmptyStateText,
   HeaderCell,
   LoadingOverlayBox,
   MobileCardItem,
@@ -28,12 +24,14 @@ import {
   MobileDetailRow,
   MobileDetailValue,
   MobilePrimaryRow,
-  RowActionsCell,
   StyledSortLabel,
   StyledTableContainer,
   TableScrollArea,
   TableWrapper,
 } from './ListTable.styles';
+import EmptyState from './EmptyState';
+import { renderCellContent, renderTruncatableCell } from './cellRender';
+import { useFillRowHeight } from './useFillRowHeight';
 import type { ColumnConfig, DeleteConfirmMessages, SortState } from './types';
 import type { ListSelectionState } from './useListSelection';
 
@@ -53,7 +51,10 @@ interface Props<TRow> {
   pageSize: number;
   sort: SortState;
   onSortChange: (sort: SortState) => void;
+  /** 캐시 없는 최초 로딩. true 면 EmptyState 를 숨겨 빈 화면 깜빡임을 막는다. */
   isLoading?: boolean;
+  /** 모든 fetch 중 상태 (재조회 포함). 로딩 오버레이를 그릴지 결정한다. */
+  isFetching?: boolean;
   emptyMessage?: string;
   onEdit?: (row: TRow) => void;
   onDelete?: (row: TRow) => Promise<void> | void;
@@ -74,7 +75,8 @@ const CHECKBOX_COL_WIDTH = 48;
 
 /**
  * 표 영역. 데스크탑은 Table, 모바일은 카드 리스트.
- * 수정/삭제 행 액션 + 삭제 확인 모달까지 내재.
+ * 데스크탑은 행 클릭 → 상세 페이지 + 체크박스 일괄 삭제 (GenericList 가 처리).
+ * 모바일은 카드에 수정/삭제 아이콘 + 단건 삭제 확인 모달까지 내재.
  */
 export default function ListTable<TRow>({
   menuCode,
@@ -86,6 +88,7 @@ export default function ListTable<TRow>({
   sort,
   onSortChange,
   isLoading = false,
+  isFetching = false,
   emptyMessage = DEFAULT_EMPTY_MESSAGE,
   onEdit,
   onDelete,
@@ -100,6 +103,32 @@ export default function ListTable<TRow>({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { canWrite } = usePermission(menuCode);
+
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  /** 데스크탑 행 높이 — 컨테이너 높이 / pageSize, 단 minHeight 미만이면 자연 스크롤. */
+  const rowHeight = useFillRowHeight(scrollAreaRef, pageSize, { minHeight: 28 });
+
+  /**
+   * 데스크탑 헤더 높이 — 로딩 오버레이가 헤더 아래 (행 영역) 부터 덮이도록 top 오프셋으로 사용.
+   * 모바일은 헤더 없음 → 0 유지 → 카드 영역 전체 덮임.
+   */
+  const headerRef = useRef<HTMLTableSectionElement>(null);
+  const [headerOffset, setHeaderOffset] = useState(0);
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) {
+      setHeaderOffset(0);
+      return;
+    }
+    setHeaderOffset(el.getBoundingClientRect().height);
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setHeaderOffset(entry.contentRect.height);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isMobile]);
 
   /** 권한 게이트 — 체크박스 열은 옵션 + 쓰기 권한이 모두 만족될 때만 노출. */
   const showCheckboxCol = !!checkBox && canWrite && !!selection && !isMobile;
@@ -136,7 +165,11 @@ export default function ListTable<TRow>({
     }
   };
 
-  const rowActions = canWrite && (onEdit || requestDelete)
+  /**
+   * 모바일 카드 전용 행 액션 — 카드 우상단에 수정 / 삭제 아이콘.
+   * 데스크탑은 행 클릭 → 상세 페이지 + 체크박스 일괄 삭제로 대체되어 행 액션이 없다.
+   */
+  const mobileRowActions = isMobile && canWrite && (onEdit || requestDelete)
     ? (row: TRow, idx: number) => {
         const no = page * pageSize + idx + 1;
         return (
@@ -183,14 +216,15 @@ export default function ListTable<TRow>({
 
   return (
     <TableWrapper>
-      <TableScrollArea>
+      <TableScrollArea ref={scrollAreaRef}>
         {isMobile ? (
           <MobileCards
             columns={columns}
             rows={rows}
             rowKey={rowKey}
-            rowActions={rowActions}
+            rowActions={mobileRowActions}
             emptyMessage={emptyMessage}
+            isLoading={isLoading}
             onRowClick={onRowClick}
           />
         ) : (
@@ -198,12 +232,14 @@ export default function ListTable<TRow>({
             columns={columns}
             rows={rows}
             rowKey={rowKey}
-            rowActions={rowActions}
             page={page}
             pageSize={pageSize}
             sort={sort}
             onSortClick={handleSortClick}
             emptyMessage={emptyMessage}
+            isLoading={isLoading}
+            rowHeight={rowHeight}
+            headerRef={headerRef}
             showCheckboxCol={showCheckboxCol}
             selection={selection}
             allVisibleSelected={allVisibleSelected}
@@ -214,8 +250,8 @@ export default function ListTable<TRow>({
         )}
       </TableScrollArea>
 
-      {isLoading && (
-        <LoadingOverlayBox>
+      {isFetching && (
+        <LoadingOverlayBox style={{ top: headerOffset }}>
           <CircularProgress size={36} thickness={4} />
         </LoadingOverlayBox>
       )}
@@ -239,12 +275,16 @@ interface DesktopProps<TRow> {
   columns: ColumnConfig<TRow>[];
   rows: TRow[];
   rowKey: (row: TRow) => number;
-  rowActions?: (row: TRow, idx: number) => ReactNode;
   page: number;
   pageSize: number;
   sort: SortState;
   onSortClick: (col: ColumnConfig<TRow>) => void;
   emptyMessage: string;
+  isLoading?: boolean;
+  /** ListTable 가 측정한 동적 행 높이 (px). 컨테이너 높이 / pageSize, minHeight 클램프. */
+  rowHeight: number;
+  /** 로딩 오버레이 top 오프셋 측정용 — 헤더 ResizeObserver 가 부착된다. */
+  headerRef: RefObject<HTMLTableSectionElement | null>;
   showCheckboxCol?: boolean;
   selection?: ListSelectionState;
   allVisibleSelected?: boolean;
@@ -257,12 +297,14 @@ function DesktopTable<TRow>({
   columns,
   rows,
   rowKey,
-  rowActions,
   page,
   pageSize,
   sort,
   onSortClick,
   emptyMessage,
+  isLoading,
+  rowHeight,
+  headerRef,
   showCheckboxCol,
   selection,
   allVisibleSelected,
@@ -270,11 +312,11 @@ function DesktopTable<TRow>({
   onToggleAll,
   onRowClick,
 }: DesktopProps<TRow>) {
-  const extraColCount = (showCheckboxCol ? 1 : 0) + 1 + (rowActions ? 1 : 0); // checkbox + No + actions
+  const extraColCount = (showCheckboxCol ? 1 : 0) + 1; // checkbox + No
   return (
     <StyledTableContainer>
       <Table size="small" sx={{ minWidth: 720 }}>
-        <TableHead>
+        <TableHead ref={headerRef}>
           <TableRow>
             {showCheckboxCol && (
               <HeaderCell align="center" padding="checkbox" sx={{ width: CHECKBOX_COL_WIDTH }}>
@@ -306,7 +348,6 @@ function DesktopTable<TRow>({
                 ) : col.label}
               </HeaderCell>
             ))}
-            {rowActions && <HeaderCell align="right" sx={{ width: 100 }} />}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -316,7 +357,7 @@ function DesktopTable<TRow>({
                 colSpan={columns.length + extraColCount}
                 sx={{ p: 0 }}
               >
-                <EmptyState message={emptyMessage} />
+                {isLoading ? null : <EmptyState message={emptyMessage} />}
               </BodyCell>
             </TableRow>
           ) : (
@@ -328,6 +369,7 @@ function DesktopTable<TRow>({
                   key={id}
                   clickable={!!onRowClick}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  style={{ height: rowHeight }}
                 >
                   {showCheckboxCol && (
                     <BodyCell
@@ -349,14 +391,9 @@ function DesktopTable<TRow>({
                   </BodyCell>
                   {columns.map((col) => (
                     <BodyCell key={col.key} align={col.align ?? 'left'}>
-                      {renderCell(col, row)}
+                      {renderTruncatableCell(col, row)}
                     </BodyCell>
                   ))}
-                  {rowActions && (
-                    <RowActionsCell align="right" className="row-actions">
-                      {rowActions(row, idx)}
-                    </RowActionsCell>
-                  )}
                 </BodyRow>
               );
             })
@@ -373,15 +410,16 @@ interface MobileProps<TRow> {
   rowKey: (row: TRow) => string | number;
   rowActions?: (row: TRow, idx: number) => ReactNode;
   emptyMessage: string;
+  isLoading?: boolean;
   onRowClick?: (row: TRow) => void;
 }
 
-function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, onRowClick }: MobileProps<TRow>) {
+function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, isLoading, onRowClick }: MobileProps<TRow>) {
   const primary = columns.find((c) => c.mobilePrimary) ?? columns[0];
   const details = columns.filter((c) => c.key !== primary?.key && !c.hideOnMobile);
 
   if (rows.length === 0) {
-    return <EmptyState message={emptyMessage} />;
+    return isLoading ? null : <EmptyState message={emptyMessage} />;
   }
 
   return (
@@ -393,7 +431,7 @@ function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, on
           onClick={onRowClick ? () => onRowClick(row) : undefined}
         >
           <MobilePrimaryRow>
-            <div style={{ minWidth: 0, flex: 1 }}>{renderCell(primary, row)}</div>
+            <div style={{ minWidth: 0, flex: 1 }}>{renderCellContent(primary, row)}</div>
             {rowActions && (
               <div style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                 {rowActions(row, idx)}
@@ -405,7 +443,7 @@ function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, on
               {details.map((col) => (
                 <MobileDetailRow key={col.key}>
                   <MobileDetailLabel>{col.label}</MobileDetailLabel>
-                  <MobileDetailValue>{renderCell(col, row)}</MobileDetailValue>
+                  <MobileDetailValue>{renderCellContent(col, row)}</MobileDetailValue>
                 </MobileDetailRow>
               ))}
             </Stack>
@@ -416,18 +454,3 @@ function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, on
   );
 }
 
-function EmptyState({ message }: { message: string }) {
-  return (
-    <EmptyStateContainer>
-      <InboxIcon sx={{ fontSize: 44, color: 'text.disabled' }} />
-      <EmptyStateText>{message}</EmptyStateText>
-    </EmptyStateContainer>
-  );
-}
-
-function renderCell<TRow>(col: ColumnConfig<TRow>, row: TRow): ReactNode {
-  if (col.render) return col.render(row);
-  const value = (row as Record<string, unknown>)[col.key];
-  if (value == null) return <Muted />;
-  return value as ReactNode;
-}

@@ -86,7 +86,13 @@ export default function CommonSearchModal<TRow, TFilters extends object>({
   const selectedCount = selectedMap.size;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xl"
+      fullWidth
+      slotProps={{ paper: { sx: { height: '85vh' } } }}
+    >
       <DialogTitle>{title}</DialogTitle>
       <ModalContent>
         <ModalFilterArea>
