@@ -19,6 +19,8 @@ export const SALES_ACTIVITY_TYPE_OPTIONS: { value: SalesActivityType; label: str
 export interface SalesActivity {
   id: number;
   customerId: number;
+  /** 명부 상세 페이지처럼 여러 고객사가 섞인 컨텍스트에서만 사용. 고객사 상세에서는 null. */
+  customerName: string | null;
   type: SalesActivityType;
   activityDate: string;
   subject: string;

@@ -100,6 +100,28 @@ export const ItemSubtle = styled('div')(({ theme }) => ({
   color: theme.palette.text.secondary,
 }));
 
+export const ItemContent = styled('div')(({ theme }) => ({
+  fontSize: '0.875rem',
+  color: theme.palette.text.primary,
+  whiteSpace: 'pre-wrap',
+  lineHeight: 1.6,
+  paddingTop: '0.25rem',
+  borderTop: `1px dashed ${theme.palette.divider}`,
+}));
+
+export const ItemTitleLink = styled('button')(({ theme }) => ({
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  margin: 0,
+  cursor: 'pointer',
+  fontSize: '0.9375rem',
+  fontWeight: 600,
+  color: theme.palette.primary.main,
+  textAlign: 'left',
+  '&:hover': { textDecoration: 'underline' },
+}));
+
 export const EmptySection = styled('div')(({ theme }) => ({
   padding: '1.5rem 1rem',
   textAlign: 'center',

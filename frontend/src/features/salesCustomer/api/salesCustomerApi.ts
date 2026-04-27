@@ -1,5 +1,6 @@
 import { api } from '@/shared/api/baseApi';
 import type {
+  SalesActivity,
   SalesActivityCreateRequest,
   SalesActivityUpdateRequest,
   SalesAssignmentCreateRequest,
@@ -40,11 +41,27 @@ const salesCustomerApi = api.injectEndpoints({
       ],
     }),
 
+    /**
+     * 영업 명부 상세 페이지가 호출 — 해당 명부 인물이 등장한 활동 이력 (모든 고객사 통합).
+     */
+    getSalesActivitiesByContact: builder.query<SalesActivity[], number>({
+      query: (contactId) => ({
+        url: `/api/v1/sales-customers/contacts/${contactId}/activities`,
+        method: 'GET',
+      }),
+      providesTags: (_result, _error, contactId) => [
+        { type: 'SalesActivity', id: `CONTACT:${contactId}` },
+      ],
+    }),
+
     createSalesActivity: builder.mutation<number, SalesActivityCreateRequest>({
       query: (body) => ({ url: '/api/v1/sales-customers/activities', method: 'POST', data: body }),
-      invalidatesTags: (_result, _error, { customerId }) => [
+      invalidatesTags: (_result, _error, { customerId, customerContactId }) => [
         { type: 'SalesActivity', id: `CUSTOMER:${customerId}` },
         { type: 'SalesAggregate', id: customerId },
+        ...(customerContactId
+          ? [{ type: 'SalesActivity' as const, id: `CONTACT:${customerContactId}` }]
+          : []),
       ],
     }),
     updateSalesActivity: builder.mutation<
@@ -56,16 +73,25 @@ const salesCustomerApi = api.injectEndpoints({
         method: 'PUT',
         data: body,
       }),
-      invalidatesTags: (_result, _error, { customerId }) => [
+      invalidatesTags: (_result, _error, { customerId, body }) => [
         { type: 'SalesActivity', id: `CUSTOMER:${customerId}` },
         { type: 'SalesAggregate', id: customerId },
+        ...(body.customerContactId
+          ? [{ type: 'SalesActivity' as const, id: `CONTACT:${body.customerContactId}` }]
+          : []),
       ],
     }),
-    deleteSalesActivity: builder.mutation<void, { id: number; customerId: number }>({
+    deleteSalesActivity: builder.mutation<
+      void,
+      { id: number; customerId: number; customerContactId?: number | null }
+    >({
       query: ({ id }) => ({ url: `/api/v1/sales-customers/activities/${id}`, method: 'DELETE' }),
-      invalidatesTags: (_result, _error, { customerId }) => [
+      invalidatesTags: (_result, _error, { customerId, customerContactId }) => [
         { type: 'SalesActivity', id: `CUSTOMER:${customerId}` },
         { type: 'SalesAggregate', id: customerId },
+        ...(customerContactId
+          ? [{ type: 'SalesActivity' as const, id: `CONTACT:${customerContactId}` }]
+          : []),
       ],
     }),
 
@@ -117,6 +143,7 @@ const salesCustomerApi = api.injectEndpoints({
 export const {
   useGetSalesCustomerAggregatesQuery,
   useGetSalesCustomerDetailQuery,
+  useGetSalesActivitiesByContactQuery,
   useCreateSalesActivityMutation,
   useUpdateSalesActivityMutation,
   useDeleteSalesActivityMutation,

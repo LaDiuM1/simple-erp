@@ -12,6 +12,7 @@ import GenericHeaderDetails, {
 import { SideBySideGrid } from '@/shared/ui/layout/SideBySideGrid';
 import { useGetSalesContactQuery } from '@/features/salesContact/api/salesContactApi';
 import EmploymentList from '@/features/salesContact/components/EmploymentList';
+import ContactActivityList from '@/features/salesContact/components/ContactActivityList';
 import { DetailRoot } from '@/features/salesContact/components/salesContactDetail.styles';
 import type { SalesContactDetail } from '@/features/salesContact/types';
 import type { ApiError } from '@/shared/types/api';
@@ -60,6 +61,7 @@ function Body({ contactId }: { contactId: number }) {
         <GenericHeaderDetails fields={contactInfoFields(data)} />
         <SideBySideGrid>
           <EmploymentList contactId={contactId} employments={data.employments} />
+          <ContactActivityList contactId={contactId} />
         </SideBySideGrid>
       </DetailRoot>
     </>

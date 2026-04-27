@@ -49,7 +49,11 @@ export default function ActivityList({ customerId, activities }: Props) {
   const handleDelete = async () => {
     if (!deletingTarget) return;
     try {
-      await deleteMut({ id: deletingTarget.id, customerId }).unwrap();
+      await deleteMut({
+        id: deletingTarget.id,
+        customerId,
+        customerContactId: deletingTarget.customerContactId,
+      }).unwrap();
       snackbar.success('활동이 삭제되었습니다.');
       setDeletingTarget(null);
     } catch (err) {
