@@ -38,7 +38,7 @@ public class SalesContact extends BaseEntity {
     @Column(comment = "휴대폰")
     private String mobilePhone;
 
-    @Column(comment = "사무실 전화")
+    @Column(comment = "전화번호")
     private String officePhone;
 
     @Column(comment = "회사 이메일")
@@ -47,7 +47,7 @@ public class SalesContact extends BaseEntity {
     @Column(comment = "개인 이메일")
     private String personalEmail;
 
-    @Column(comment = "처음 만난 날짜")
+    @Column(comment = "최초 미팅일짜")
     private LocalDate metAt;
 
     @Column(comment = "만난 경로 — 전시회 / 소개 / 미팅 등")
