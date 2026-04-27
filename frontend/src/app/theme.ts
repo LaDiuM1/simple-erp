@@ -224,8 +224,7 @@ const theme = createTheme({
         root: {
           fontSize: '0.75rem',
           marginTop: '0.375rem',
-          /** filled input 의 내부 padding-left (12px) 와 세로 기준선 정렬 */
-          marginLeft: '12px',
+          marginLeft: 8,
         },
       },
     },
@@ -241,12 +240,21 @@ const theme = createTheme({
     /**
      * 체크박스 아이콘을 1px border + 옅은 톤의 커스텀 Box 로 교체.
      * MUI 기본 SVG 는 2px stroke 라 시각적으로 무거움.
+     * - disableRipple: 클릭 ripple 애니메이션 제거
+     * - hover/focus 의 옅은 회색 배경도 제거 (정적인 톤 유지)
      */
     MuiCheckbox: {
       defaultProps: {
         icon: createElement(ThinUncheckedIcon),
         checkedIcon: createElement(ThinCheckedIcon),
         indeterminateIcon: createElement(ThinIndeterminateIcon),
+        disableRipple: true,
+      },
+      styleOverrides: {
+        root: {
+          '&:hover': { backgroundColor: 'transparent' },
+          '&.Mui-focusVisible': { backgroundColor: 'transparent' },
+        },
       },
     },
   },
