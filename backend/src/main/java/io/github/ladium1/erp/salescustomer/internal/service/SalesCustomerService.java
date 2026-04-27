@@ -117,6 +117,7 @@ public class SalesCustomerService implements SalesCustomerApi {
         List<SalesActivityResponse> activityResponses = activities.stream()
                 .map(a -> salesCustomerMapper.toActivityResponse(
                         a,
+                        customer,
                         employeeMap.get(a.getOurEmployeeId()),
                         a.getCustomerContactId() == null ? null : contactMap.get(a.getCustomerContactId())
                 ))
@@ -132,6 +133,34 @@ public class SalesCustomerService implements SalesCustomerApi {
                 .activities(activityResponses)
                 .assignments(assignmentResponses)
                 .build();
+    }
+
+    /**
+     * 명부 상세 페이지에서 호출 — 특정 영업 명부 인물이 등장한 활동 이력 (모든 고객사 통합).
+     */
+    public List<SalesActivityResponse> findActivitiesByContactId(Long contactId) {
+        SalesContactInfo contact = salesContactApi.getById(contactId);
+        List<SalesActivity> activities = activityRepository.findByCustomerContactIdOrderByActivityDateDesc(contactId);
+        if (activities.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> customerIds = activities.stream().map(SalesActivity::getCustomerId).distinct().toList();
+        Map<Long, CustomerInfo> customerMap = customerApi.findByIds(customerIds).stream()
+                .collect(toMap(CustomerInfo::id, c -> c));
+
+        List<Long> employeeIds = activities.stream().map(SalesActivity::getOurEmployeeId).distinct().toList();
+        Map<Long, EmployeeInfo> employeeMap = employeeApi.findByIds(employeeIds).stream()
+                .collect(toMap(EmployeeInfo::id, e -> e));
+
+        return activities.stream()
+                .map(a -> salesCustomerMapper.toActivityResponse(
+                        a,
+                        customerMap.get(a.getCustomerId()),
+                        employeeMap.get(a.getOurEmployeeId()),
+                        contact
+                ))
+                .toList();
     }
 
     /**

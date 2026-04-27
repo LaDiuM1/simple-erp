@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.salescustomer.internal.mapper;
 
+import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.salescontact.api.dto.SalesContactInfo;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityResponse;
@@ -14,6 +15,7 @@ public interface SalesCustomerMapper {
 
     @Mapping(source = "activity.id", target = "id")
     @Mapping(source = "activity.customerId", target = "customerId")
+    @Mapping(source = "customer.name", target = "customerName")
     @Mapping(source = "activity.type", target = "type")
     @Mapping(source = "activity.activityDate", target = "activityDate")
     @Mapping(source = "activity.subject", target = "subject")
@@ -25,7 +27,7 @@ public interface SalesCustomerMapper {
     @Mapping(source = "customerContact.name", target = "customerContactRegisteredName")
     @Mapping(source = "activity.customerContactName", target = "customerContactName")
     @Mapping(source = "activity.customerContactPosition", target = "customerContactPosition")
-    SalesActivityResponse toActivityResponse(SalesActivity activity, EmployeeInfo ourEmployee, SalesContactInfo customerContact);
+    SalesActivityResponse toActivityResponse(SalesActivity activity, CustomerInfo customer, EmployeeInfo ourEmployee, SalesContactInfo customerContact);
 
     @Mapping(source = "assignment.id", target = "id")
     @Mapping(source = "assignment.customerId", target = "customerId")

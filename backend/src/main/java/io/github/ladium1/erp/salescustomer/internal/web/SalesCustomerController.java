@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.salescustomer.internal.web;
 
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityCreateRequest;
+import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityResponse;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityUpdateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesAssignmentCreateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesAssignmentTerminateRequest;
@@ -32,6 +33,10 @@ public class SalesCustomerController {
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
+    // 명부 상세 페이지의 "활동 이력" 섹션이 소비 — 소비 페이지 권한으로 묶음.
+    private static final String CONTACT_MENU_CODE = "SALES_CONTACTS";
+    private static final String CONTACT_CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + CONTACT_MENU_CODE + "')";
+
     private final SalesCustomerService salesCustomerService;
 
     /**
@@ -47,6 +52,15 @@ public class SalesCustomerController {
     @PreAuthorize(CAN_READ)
     public SalesCustomerDetailResponse getDetail(@PathVariable Long customerId) {
         return salesCustomerService.getDetail(customerId);
+    }
+
+    /**
+     * 영업 명부 상세 페이지가 호출 — 해당 명부 인물이 등장한 활동 이력 (모든 고객사 통합).
+     */
+    @GetMapping("/contacts/{contactId}/activities")
+    @PreAuthorize(CONTACT_CAN_READ)
+    public List<SalesActivityResponse> findActivitiesByContactId(@PathVariable Long contactId) {
+        return salesCustomerService.findActivitiesByContactId(contactId);
     }
 
     @PostMapping("/activities")

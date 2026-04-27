@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public record SalesActivityResponse(
         Long id,
         Long customerId,
+        String customerName,
         SalesActivityType type,
         LocalDateTime activityDate,
         String subject,

@@ -14,6 +14,8 @@ public interface SalesActivityRepository extends JpaRepository<SalesActivity, Lo
 
     List<SalesActivity> findByCustomerIdOrderByActivityDateDesc(Long customerId);
 
+    List<SalesActivity> findByCustomerContactIdOrderByActivityDateDesc(Long customerContactId);
+
     long countByActivityDateGreaterThanEqual(LocalDateTime since);
 
     List<SalesActivity> findAllByOrderByActivityDateDesc(Pageable pageable);
