@@ -50,6 +50,16 @@ export default function AssignmentList({ customerId, assignments }: Props) {
 
   const activeCount = assignments.filter((a) => a.active).length;
 
+  /**
+   * 주담당이 가장 위, 그다음 활성, 그다음 startDate 내림차순.
+   * 백엔드는 endDate/startDate 만 정렬하므로 표시층에서 primary 를 끌어올림.
+   */
+  const sortedAssignments = [...assignments].sort((a, b) => {
+    if (a.primary !== b.primary) return a.primary ? -1 : 1;
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    return b.startDate.localeCompare(a.startDate);
+  });
+
   const handleDelete = async () => {
     if (!deletingTarget) return;
     try {
@@ -85,7 +95,7 @@ export default function AssignmentList({ customerId, assignments }: Props) {
         <EmptySection>배정된 영업 담당자가 없습니다.</EmptySection>
       ) : (
         <ItemList>
-          {assignments.map((a) => (
+          {sortedAssignments.map((a) => (
             <ItemCard key={a.id} sx={{ opacity: a.active ? 1 : 0.7 }}>
               <ItemHeader>
                 <ItemHeaderLeft>
