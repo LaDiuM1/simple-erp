@@ -3,6 +3,7 @@ package io.github.ladium1.erp.global.web.internal;
 import io.github.ladium1.erp.global.web.ApiResponse;
 import org.jspecify.annotations.NonNull;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -30,6 +31,10 @@ public class GlobalResponseWrapper implements ResponseBodyAdvice<Object> {
                                   @NonNull ServerHttpResponse response) {
 
         if (body instanceof ApiResponse) {
+            return body;
+        }
+
+        if (body instanceof Resource) {
             return body;
         }
 
