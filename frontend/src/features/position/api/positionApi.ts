@@ -58,6 +58,13 @@ const positionApi = api.injectEndpoints({
         { type: 'Position', id: 'RANKING' },
       ],
     }),
+    deletePositions: builder.mutation<void, number[]>({
+      query: (ids) => ({ url: '/api/v1/positions', method: 'DELETE', data: ids }),
+      invalidatesTags: [
+        { type: 'Position', id: 'LIST' },
+        { type: 'Position', id: 'RANKING' },
+      ],
+    }),
     reorderPositions: builder.mutation<void, PositionRankingRequest>({
       query: (body) => ({ url: '/api/v1/positions/ranking', method: 'PUT', data: body }),
       invalidatesTags: [
@@ -82,6 +89,7 @@ export const {
   useCreatePositionMutation,
   useUpdatePositionMutation,
   useDeletePositionMutation,
+  useDeletePositionsMutation,
   useReorderPositionsMutation,
   useCheckPositionCodeAvailabilityQuery,
 } = positionApi;

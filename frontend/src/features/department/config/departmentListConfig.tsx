@@ -8,6 +8,7 @@ import {
 } from '@/shared/ui/GenericList';
 import {
   useDeleteDepartmentMutation,
+  useDeleteDepartmentsMutation,
   useGetDepartmentsSummaryQuery,
 } from '@/features/department/api/departmentApi';
 import {
@@ -40,7 +41,7 @@ export const departmentSearchFilter: FilterConfig[] = [
 
 /**
  * 부서 목록용 ListApiConfig 를 생성하는 훅.
- * onEdit 이 navigate 를 사용하므로 컴포넌트 내부에서만 호출 가능.
+ * 데스크탑: 행 클릭 → 상세 + 체크박스 일괄 삭제. 모바일: 카드 + 행별 수정/삭제 아이콘.
  */
 export function useDepartmentListApi(): ListApiConfig<DepartmentSummary, DepartmentListFilters> {
   const navigate = useNavigate();
@@ -48,6 +49,7 @@ export function useDepartmentListApi(): ListApiConfig<DepartmentSummary, Departm
     menuCode: MENU_CODE.DEPARTMENTS,
     useList: useGetDepartmentsSummaryQuery,
     useDelete: useDeleteDepartmentMutation,
+    useBulkDelete: useDeleteDepartmentsMutation,
     rowKey: (m) => m.id,
     onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.DEPARTMENTS]}/${m.id}/edit`),
   };

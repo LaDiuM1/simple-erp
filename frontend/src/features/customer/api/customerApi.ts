@@ -49,6 +49,10 @@ const customerApi = api.injectEndpoints({
       query: (id) => ({ url: `/api/v1/customers/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Customer', id: 'LIST' }],
     }),
+    deleteCustomers: builder.mutation<void, number[]>({
+      query: (ids) => ({ url: '/api/v1/customers', method: 'DELETE', data: ids }),
+      invalidatesTags: [{ type: 'Customer', id: 'LIST' }],
+    }),
     checkCustomerCodeAvailability: builder.query<{ available: boolean }, string>({
       query: (code) => ({
         url: '/api/v1/customers/code-availability',
@@ -72,6 +76,7 @@ export const {
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
+  useDeleteCustomersMutation,
   useCheckCustomerCodeAvailabilityQuery,
   useCheckCustomerBizRegNoAvailabilityQuery,
 } = customerApi;

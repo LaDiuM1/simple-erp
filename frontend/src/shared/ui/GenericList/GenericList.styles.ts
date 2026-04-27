@@ -37,6 +37,19 @@ export const FilterBarArea = styled(Box)(({ theme }) => ({
 }));
 
 /**
+ * 필터바 좌측 액션 그룹 — 일괄 삭제 / 엑셀 다운로드 등의 버튼 묶음.
+ * md+ 에서 marginRight: auto 로 나머지 필터/검색/리셋을 우측으로 밀어낸다.
+ */
+export const FilterBarTrailing = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  gap: '0.5rem',
+  alignItems: 'center',
+  [theme.breakpoints.up('md')]: {
+    marginRight: 'auto',
+  },
+}));
+
+/**
  * 필터바 **좌측**에 노출되는 엑셀 다운로드 버튼.
  * 높이는 FilterSelect / SearchField 와 동일한 36px.
  * md+ 에서 margin-right: auto 로 나머지 필터/검색/리셋을 우측으로 밀어낸다.
@@ -59,6 +72,30 @@ export const ExcelDownloadButton = styled(Button)(({ theme }) => ({
   },
   [theme.breakpoints.up('md')]: {
     alignSelf: 'center',
-    marginRight: 'auto',
+  },
+}));
+
+/**
+ * 필터바 좌측 (엑셀 버튼 옆) 에 노출되는 일괄 삭제 버튼.
+ * 데스크탑에서 체크박스로 선택된 행들이 있을 때만 표시.
+ * danger 톤 — error palette 의 outline 으로 강조.
+ */
+export const BulkDeleteButton = styled(Button)(({ theme }) => ({
+  height: 36,
+  fontSize: '0.8125rem',
+  color: theme.palette.error.main,
+  borderColor: theme.palette.errorBorder,
+  borderRadius: '6px',
+  textTransform: 'none',
+  paddingLeft: '0.75rem',
+  paddingRight: '0.75rem',
+  '& .MuiButton-startIcon': { marginRight: '0.375rem' },
+  '& .MuiButton-startIcon > *': { fontSize: '1rem' },
+  '&:hover': {
+    borderColor: theme.palette.error.main,
+    backgroundColor: theme.palette.errorBg,
+  },
+  [theme.breakpoints.up('md')]: {
+    alignSelf: 'center',
   },
 }));

@@ -9,6 +9,7 @@ import {
 } from '@/shared/ui/GenericList';
 import {
   useDeleteRoleMutation,
+  useDeleteRolesMutation,
   useGetRolesSummaryQuery,
 } from '@/features/role/api/roleApi';
 import {
@@ -44,7 +45,7 @@ export const roleSearchFilter: FilterConfig[] = [
 
 /**
  * 권한 목록용 ListApiConfig 를 생성하는 훅.
- * 행 클릭 = 상세 페이지 (읽기 권한). 편집 아이콘 = 수정 페이지 (쓰기 권한). 둘이 경쟁하지 않도록 GenericList 가 propagation 을 차단.
+ * 데스크탑: 행 클릭 → 상세 + 체크박스 일괄 삭제. 모바일: 카드 + 행별 수정/삭제 아이콘.
  */
 export function useRoleListApi(): ListApiConfig<RoleSummary, RoleListFilters> {
   const navigate = useNavigate();
@@ -52,6 +53,7 @@ export function useRoleListApi(): ListApiConfig<RoleSummary, RoleListFilters> {
     menuCode: MENU_CODE.ROLES,
     useList: useGetRolesSummaryQuery,
     useDelete: useDeleteRoleMutation,
+    useBulkDelete: useDeleteRolesMutation,
     rowKey: (m) => m.id,
     onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.ROLES]}/${m.id}/edit`),
     onRowClick: (m) => navigate(`${MENU_PATH[MENU_CODE.ROLES]}/${m.id}`),

@@ -46,6 +46,10 @@ const roleApi = api.injectEndpoints({
       query: (id) => ({ url: `/api/v1/roles/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Role', id: 'LIST' }],
     }),
+    deleteRoles: builder.mutation<void, number[]>({
+      query: (ids) => ({ url: '/api/v1/roles', method: 'DELETE', data: ids }),
+      invalidatesTags: [{ type: 'Role', id: 'LIST' }],
+    }),
     checkRoleCodeAvailability: builder.query<{ available: boolean }, string>({
       query: (code) => ({
         url: '/api/v1/roles/code-availability',
@@ -62,5 +66,6 @@ export const {
   useCreateRoleMutation,
   useUpdateRoleMutation,
   useDeleteRoleMutation,
+  useDeleteRolesMutation,
   useCheckRoleCodeAvailabilityQuery,
 } = roleApi;

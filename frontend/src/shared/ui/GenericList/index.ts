@@ -2,8 +2,6 @@ export { default } from './GenericList';
 export type { GenericListProps } from './GenericList';
 
 export { mapIdName } from './utils';
-export { useListSelection } from './useListSelection';
-export type { ListSelectionState } from './useListSelection';
 
 /** 내부 building blocks — CommonSearchModal 등 다른 합성 위젯에서 재사용. */
 export { default as ListSearchFilter } from './ListSearchFilter';
@@ -20,7 +18,6 @@ export {
   EmptyStateContainer,
   EmptyStateText,
   HeaderCell,
-  RowActionsCell,
   StyledTableContainer,
   TableScrollArea,
   TableWrapper,
@@ -42,6 +39,7 @@ export type {
   SelectFilterItem,
   SortDirection,
   SortState,
+  UseBulkDeleteMutation,
   UseDeleteMutation,
   UseExcelDownload,
 } from './types';

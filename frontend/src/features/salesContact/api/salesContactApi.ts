@@ -53,6 +53,10 @@ const salesContactApi = api.injectEndpoints({
       query: (id) => ({ url: `/api/v1/sales-contacts/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }],
     }),
+    deleteSalesContacts: builder.mutation<void, number[]>({
+      query: (ids) => ({ url: '/api/v1/sales-contacts', method: 'DELETE', data: ids }),
+      invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }],
+    }),
 
     /** 고객사별 재직 명부 — 고객사 영업 상세 페이지에서 호출. */
     getSalesContactEmploymentsByCustomerId: builder.query<SalesContactEmployment[], number>({
@@ -142,6 +146,7 @@ export const {
   useCreateSalesContactMutation,
   useUpdateSalesContactMutation,
   useDeleteSalesContactMutation,
+  useDeleteSalesContactsMutation,
   useGetSalesContactEmploymentsByCustomerIdQuery,
   useCreateSalesContactEmploymentMutation,
   useUpdateSalesContactEmploymentMutation,

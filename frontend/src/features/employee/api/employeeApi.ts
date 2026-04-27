@@ -53,6 +53,10 @@ const employeeApi = api.injectEndpoints({
       query: (id) => ({ url: `/api/v1/employees/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Employee', id: 'LIST' }],
     }),
+    deleteEmployees: builder.mutation<void, number[]>({
+      query: (ids) => ({ url: '/api/v1/employees', method: 'DELETE', data: ids }),
+      invalidatesTags: [{ type: 'Employee', id: 'LIST' }],
+    }),
     checkLoginIdAvailability: builder.query<{ available: boolean }, string>({
       query: (loginId) => ({
         url: '/api/v1/employees/availability',
@@ -70,6 +74,7 @@ export const {
   useCreateEmployeeMutation,
   useUpdateEmployeeMutation,
   useDeleteEmployeeMutation,
+  useDeleteEmployeesMutation,
   useCheckLoginIdAvailabilityQuery,
 } = employeeApi;
 

@@ -8,6 +8,7 @@ import {
 } from '@/shared/ui/GenericList';
 import {
   useDeleteCustomerMutation,
+  useDeleteCustomersMutation,
   useDownloadCustomersExcel,
   useGetCustomersQuery,
 } from '@/features/customer/api/customerApi';
@@ -70,8 +71,7 @@ export const customerSearchFilter: FilterConfig[] = [
 ];
 
 /**
- * 행 클릭 = 상세 페이지 (읽기 권한). 편집 아이콘 = 수정 페이지 (쓰기 권한).
- * 권한 관리 목록과 동일한 진입 패턴 — GenericList 가 propagation 차단으로 두 액션이 경쟁하지 않게 처리.
+ * 데스크탑: 행 클릭 → 상세 + 체크박스 일괄 삭제. 모바일: 카드 + 행별 수정/삭제 아이콘.
  */
 export function useCustomerListApi(): ListApiConfig<CustomerSummary, CustomerListFilters> {
   const navigate = useNavigate();
@@ -79,6 +79,7 @@ export function useCustomerListApi(): ListApiConfig<CustomerSummary, CustomerLis
     menuCode: MENU_CODE.CUSTOMERS,
     useList: useGetCustomersQuery,
     useDelete: useDeleteCustomerMutation,
+    useBulkDelete: useDeleteCustomersMutation,
     useExcel: useDownloadCustomersExcel,
     rowKey: (m) => m.id,
     onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.CUSTOMERS]}/${m.id}/edit`),

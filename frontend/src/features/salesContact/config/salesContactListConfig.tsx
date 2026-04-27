@@ -8,6 +8,7 @@ import {
 } from '@/shared/ui/GenericList';
 import {
   useDeleteSalesContactMutation,
+  useDeleteSalesContactsMutation,
   useGetSalesContactsQuery,
 } from '@/features/salesContact/api/salesContactApi';
 import {
@@ -55,6 +56,7 @@ export function useSalesContactListApi(): ListApiConfig<SalesContactSummary, Sal
     menuCode: MENU_CODE.SALES_CONTACTS,
     useList: useGetSalesContactsQuery,
     useDelete: useDeleteSalesContactMutation,
+    useBulkDelete: useDeleteSalesContactsMutation,
     rowKey: (m) => m.id,
     onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.SALES_CONTACTS]}/${m.id}/edit`),
     onRowClick: (m) => navigate(`${MENU_PATH[MENU_CODE.SALES_CONTACTS]}/${m.id}`),

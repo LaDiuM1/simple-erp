@@ -9,6 +9,7 @@ import {
 } from '@/shared/ui/GenericList';
 import {
   useDeleteEmployeeMutation,
+  useDeleteEmployeesMutation,
   useDownloadEmployeesExcel,
   useGetEmployeesQuery,
 } from '@/features/employee/api/employeeApi';
@@ -58,7 +59,7 @@ export const employeeSearchFilter: FilterConfig[] = [
 
 /**
  * 직원 목록용 ListApiConfig 를 생성하는 훅.
- * onEdit 이 navigate 를 사용하므로 컴포넌트 내부에서만 호출 가능 (module-level 상수 불가).
+ * 데스크탑: 행 클릭 → 상세 + 체크박스 일괄 삭제. 모바일: 카드 + 행별 수정/삭제 아이콘.
  */
 export function useEmployeeListApi(): ListApiConfig<EmployeeSummary, EmployeeListFilters> {
   const navigate = useNavigate();
@@ -66,9 +67,9 @@ export function useEmployeeListApi(): ListApiConfig<EmployeeSummary, EmployeeLis
     menuCode: MENU_CODE.EMPLOYEES,
     useList: useGetEmployeesQuery,
     useDelete: useDeleteEmployeeMutation,
+    useBulkDelete: useDeleteEmployeesMutation,
     useExcel: useDownloadEmployeesExcel,
     rowKey: (m) => m.id,
     onEdit: (m) => navigate(`/employees/${m.id}/edit`),
-    checkBox: true,
   };
 }
