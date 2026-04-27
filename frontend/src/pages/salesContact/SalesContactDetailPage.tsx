@@ -73,10 +73,10 @@ function contactInfoFields(d: SalesContactDetail): HeaderDetailField[] {
     { label: '이름', value: d.name },
     { label: '영문명', value: d.nameEn },
     { label: '휴대폰', value: d.mobilePhone },
-    { label: '사무실 전화', value: d.officePhone },
+    { label: '전화번호', value: d.officePhone },
     { label: '회사 이메일', value: d.email },
     { label: '개인 이메일', value: d.personalEmail },
-    { label: '처음 만난 날', value: d.metAt },
+    { label: '최초 미팅일', value: d.metAt },
     { label: '만난 경로', value: d.metVia },
     { label: '비고', value: d.note, fullWidth: true },
   ];

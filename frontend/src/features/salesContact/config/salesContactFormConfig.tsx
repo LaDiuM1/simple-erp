@@ -21,10 +21,10 @@ export const salesContactFormFields: FieldConfig<SalesContactFormValues>[] = [
   { key: 'name', label: '이름', type: 'text', required: true, maxLength: 50 },
   { key: 'nameEn', label: '영문명', type: 'text', maxLength: 50, placeholder: 'Daesung Jung' },
   { key: 'mobilePhone', label: '휴대폰', type: 'phone', placeholder: '010-0000-0000' },
-  { key: 'officePhone', label: '사무실 전화', type: 'phone' },
+  { key: 'officePhone', label: '전화번호', type: 'phone' },
   { key: 'email', label: '회사 이메일', type: 'email', placeholder: 'name@company.com' },
   { key: 'personalEmail', label: '개인 이메일', type: 'email' },
-  { key: 'metAt', label: '처음 만난 날', type: 'date' },
+  { key: 'metAt', label: '최초 미팅일', type: 'date' },
   { key: 'metVia', label: '만난 경로', type: 'text', maxLength: 100, placeholder: '전시회 / 소개 / 미팅 등' },
   { key: 'note', label: '비고', type: 'text', fullWidth: true },
 ];

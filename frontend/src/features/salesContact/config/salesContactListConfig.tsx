@@ -36,7 +36,7 @@ export const salesContactColumn: ColumnConfig<SalesContactSummary>[] = [
   { key: 'email', label: '이메일', hideOnMobile: true },
   {
     key: 'metAt',
-    label: '처음 만난 날',
+    label: '최초 미팅일',
     sortable: true,
     sortDirection: 'desc',
     defaultSort: true,
