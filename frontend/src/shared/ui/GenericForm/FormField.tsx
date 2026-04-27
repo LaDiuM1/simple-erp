@@ -20,7 +20,7 @@ interface Props<TValues extends object> {
   onChange: (value: unknown) => void;
   /** 입력 불가 상태 — disabledOnEdit 플래그를 GenericForm 이 mode 와 합쳐 결정 */
   disabled?: boolean;
-  mode: 'create' | 'edit';
+  mode: 'create' | 'edit' | 'detail';
 }
 
 /**
@@ -67,7 +67,7 @@ function FieldBody<TValues extends object>({
           field={field}
           value={value}
           onChange={onChange}
-          mode={mode}
+          mode={mode === 'detail' ? 'edit' : mode}
           disabled={disabled ?? false}
         />
       );
@@ -323,6 +323,8 @@ function CustomFieldRenderer<TValues extends object>({
 }): ReactNode {
   return <>{field.render({ value, onChange, mode, disabled })}</>;
 }
+
+
 
 function toStringValue(v: unknown): string {
   if (v == null) return '';
