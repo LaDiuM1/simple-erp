@@ -5,6 +5,7 @@ import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.salescontact.api.SalesContactApi;
+import io.github.ladium1.erp.salescontact.api.dto.RecentSalesContactInfo;
 import io.github.ladium1.erp.salescontact.api.dto.SalesContactInfo;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactCreateRequest;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactDetailResponse;
@@ -23,7 +24,9 @@ import io.github.ladium1.erp.salescontact.internal.repository.SalesContactEmploy
 import io.github.ladium1.erp.salescontact.internal.repository.SalesContactRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -76,6 +79,31 @@ public class SalesContactService implements SalesContactApi {
                             .name(c.getName())
                             .currentCompanyName(refs.companyName(active))
                             .currentPosition(active == null ? null : active.getPosition())
+                            .build();
+                })
+                .toList();
+    }
+
+    @Override
+    public long count() {
+        return contactRepository.count();
+    }
+
+    @Override
+    public List<RecentSalesContactInfo> findRecent(int limit) {
+        Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"));
+        List<SalesContact> contacts = contactRepository.findAll(pageable).getContent();
+        EmploymentRefs refs = loadActiveEmployments(contacts.stream().map(SalesContact::getId).toList());
+        return contacts.stream()
+                .map(c -> {
+                    SalesContactEmployment active = refs.activeByContact.get(c.getId());
+                    return RecentSalesContactInfo.builder()
+                            .id(c.getId())
+                            .name(c.getName())
+                            .currentCompanyName(refs.companyName(active))
+                            .currentPosition(active == null ? null : active.getPosition())
+                            .metAt(c.getMetAt())
+                            .createdAt(c.getCreatedAt())
                             .build();
                 })
                 .toList();

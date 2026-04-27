@@ -14,6 +14,7 @@ import io.github.ladium1.erp.employee.internal.dto.EmployeeSummaryResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeUpdateRequest;
 import io.github.ladium1.erp.employee.internal.entity.Address;
 import io.github.ladium1.erp.employee.internal.entity.Employee;
+import io.github.ladium1.erp.employee.internal.entity.EmployeeStatus;
 import io.github.ladium1.erp.employee.internal.excel.EmployeeExcelExporter;
 import io.github.ladium1.erp.employee.internal.exception.EmployeeErrorCode;
 import io.github.ladium1.erp.employee.internal.mapper.EmployeeMapper;
@@ -67,6 +68,12 @@ public class EmployeeService implements EmployeeApi {
     }
 
     @Override
+    public Optional<EmployeeInfo> findByLoginId(String loginId) {
+        return employeeRepository.findByLoginId(loginId)
+                .map(employee -> toInfo(employee, loadReferences(List.of(employee))));
+    }
+
+    @Override
     public List<EmployeeInfo> findByIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
@@ -74,6 +81,11 @@ public class EmployeeService implements EmployeeApi {
         List<Employee> employees = employeeRepository.findAllById(ids);
         ReferenceCache refs = loadReferences(employees);
         return employees.stream().map(e -> toInfo(e, refs)).toList();
+    }
+
+    @Override
+    public long countActive() {
+        return employeeRepository.countByStatusNot(EmployeeStatus.RESIGNED);
     }
 
     private EmployeeInfo toInfo(Employee employee, ReferenceCache refs) {

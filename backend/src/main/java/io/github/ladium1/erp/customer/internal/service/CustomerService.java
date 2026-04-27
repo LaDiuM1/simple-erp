@@ -7,6 +7,7 @@ import io.github.ladium1.erp.coderule.api.dto.CodeGenerationContext;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
 import io.github.ladium1.erp.customer.api.CustomerApi;
 import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
+import io.github.ladium1.erp.customer.api.dto.RecentCustomerInfo;
 import io.github.ladium1.erp.customer.internal.dto.CustomerCreateRequest;
 import io.github.ladium1.erp.customer.internal.dto.CustomerDetailResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerSearchCondition;
@@ -22,6 +23,7 @@ import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.web.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -59,6 +61,26 @@ public class CustomerService implements CustomerApi {
             return List.of();
         }
         return customerMapper.toCustomerInfos(customerRepository.findAllById(ids));
+    }
+
+    @Override
+    public long count() {
+        return customerRepository.count();
+    }
+
+    @Override
+    public List<RecentCustomerInfo> findRecent(int limit) {
+        Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return customerRepository.findAll(pageable).stream()
+                .map(c -> RecentCustomerInfo.builder()
+                        .id(c.getId())
+                        .code(c.getCode())
+                        .name(c.getName())
+                        .type(c.getType().name())
+                        .status(c.getStatus().name())
+                        .createdAt(c.getCreatedAt())
+                        .build())
+                .toList();
     }
 
     public PageResponse<CustomerSummaryResponse> search(CustomerSearchCondition condition, Pageable pageable) {

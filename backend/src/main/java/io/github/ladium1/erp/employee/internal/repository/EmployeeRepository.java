@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.employee.internal.repository;
 
 import io.github.ladium1.erp.employee.internal.entity.Employee;
+import io.github.ladium1.erp.employee.internal.entity.EmployeeStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -25,5 +26,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, Emplo
     boolean existsByPositionId(Long positionId);
 
     boolean existsByRoleId(Long roleId);
+
+    long countByStatusNot(EmployeeStatus status);
 
 }

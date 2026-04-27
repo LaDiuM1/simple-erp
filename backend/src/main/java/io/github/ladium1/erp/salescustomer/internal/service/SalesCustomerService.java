@@ -7,6 +7,8 @@ import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.salescontact.api.SalesContactApi;
 import io.github.ladium1.erp.salescontact.api.dto.SalesContactInfo;
+import io.github.ladium1.erp.salescustomer.api.SalesCustomerApi;
+import io.github.ladium1.erp.salescustomer.api.dto.RecentSalesActivityInfo;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityCreateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityResponse;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityUpdateRequest;
@@ -24,9 +26,12 @@ import io.github.ladium1.erp.salescustomer.internal.repository.AggregatedActivit
 import io.github.ladium1.erp.salescustomer.internal.repository.SalesActivityRepository;
 import io.github.ladium1.erp.salescustomer.internal.repository.SalesAssignmentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -42,7 +47,7 @@ import static java.util.stream.Collectors.toMap;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class SalesCustomerService {
+public class SalesCustomerService implements SalesCustomerApi {
 
     private final SalesActivityRepository activityRepository;
     private final SalesAssignmentRepository assignmentRepository;
@@ -50,6 +55,46 @@ public class SalesCustomerService {
     private final CustomerApi customerApi;
     private final EmployeeApi employeeApi;
     private final SalesContactApi salesContactApi;
+
+    @Override
+    public long countActivitiesSince(LocalDateTime since) {
+        return activityRepository.countByActivityDateGreaterThanEqual(since);
+    }
+
+    @Override
+    public List<RecentSalesActivityInfo> findRecentActivities(int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        List<SalesActivity> activities = activityRepository.findAllByOrderByActivityDateDesc(pageable);
+        if (activities.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> customerIds = activities.stream().map(SalesActivity::getCustomerId).distinct().toList();
+        Map<Long, CustomerInfo> customerMap = customerApi.findByIds(customerIds).stream()
+                .collect(toMap(CustomerInfo::id, c -> c));
+
+        List<Long> employeeIds = activities.stream().map(SalesActivity::getOurEmployeeId).distinct().toList();
+        Map<Long, EmployeeInfo> employeeMap = employeeApi.findByIds(employeeIds).stream()
+                .collect(toMap(EmployeeInfo::id, e -> e));
+
+        return activities.stream()
+                .map(a -> {
+                    CustomerInfo customer = customerMap.get(a.getCustomerId());
+                    EmployeeInfo employee = employeeMap.get(a.getOurEmployeeId());
+                    return RecentSalesActivityInfo.builder()
+                            .id(a.getId())
+                            .customerId(a.getCustomerId())
+                            .customerCode(customer == null ? null : customer.code())
+                            .customerName(customer == null ? null : customer.name())
+                            .type(a.getType().name())
+                            .subject(a.getSubject())
+                            .activityDate(a.getActivityDate())
+                            .ourEmployeeId(a.getOurEmployeeId())
+                            .ourEmployeeName(employee == null ? null : employee.name())
+                            .build();
+                })
+                .toList();
+    }
 
     public SalesCustomerDetailResponse getDetail(Long customerId) {
         CustomerInfo customer = customerApi.getById(customerId);
