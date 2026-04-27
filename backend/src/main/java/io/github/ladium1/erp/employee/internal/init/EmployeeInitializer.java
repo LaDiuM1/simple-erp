@@ -11,6 +11,7 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import java.util.List;
 
 @Slf4j
 @Component
+@Order(200) // 의존: Department / Position / Role (Order=100). 인사 데이터가 먼저 채워져야 직원 시드 가능.
 @RequiredArgsConstructor
 public class EmployeeInitializer implements ApplicationRunner {
 

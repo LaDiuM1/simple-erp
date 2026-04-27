@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.time.LocalDate;
  */
 @Slf4j
 @Component
+@Order(100) // 의존 없음 — 다른 도메인 (영업 명부 등) 시드의 선결 조건. ddl-auto=create 환경에서 결정적 순서 보장.
 @RequiredArgsConstructor
 public class CustomerInitializer implements ApplicationRunner {
 

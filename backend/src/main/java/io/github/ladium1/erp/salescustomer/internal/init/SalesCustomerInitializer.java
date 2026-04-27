@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
+@Order(400) // 의존: customer (100), employee (200), salesContact (300).
 @RequiredArgsConstructor
 public class SalesCustomerInitializer implements ApplicationRunner {
 

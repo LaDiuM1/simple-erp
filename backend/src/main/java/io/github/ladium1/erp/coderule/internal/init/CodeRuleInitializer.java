@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
+@Order(100) // 의존 없음.
 @RequiredArgsConstructor
 public class CodeRuleInitializer implements ApplicationRunner {
 
