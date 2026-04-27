@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { api } from '@/shared/api/baseApi';
 import axiosInstance from '@/shared/api/axiosInstance';
+import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
 import { useAppSelector } from '@/app/hooks';
 import type { PageResponse } from '@/shared/types/api';
 import type {
@@ -102,31 +103,4 @@ export function useDownloadCustomersExcel() {
     },
     [token],
   );
-}
-
-function triggerBrowserDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-function extractFilename(contentDisposition: string | undefined): string | null {
-  if (!contentDisposition) return null;
-  const match = contentDisposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-  if (!match) return null;
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
-}
-
-function todayStamp(): string {
-  const d = new Date();
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 }

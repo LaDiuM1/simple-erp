@@ -1,4 +1,8 @@
+import { useCallback } from 'react';
 import { api } from '@/shared/api/baseApi';
+import axiosInstance from '@/shared/api/axiosInstance';
+import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
+import { useAppSelector } from '@/app/hooks';
 import type { PageResponse } from '@/shared/types/api';
 import type {
   SalesContactCreateRequest,
@@ -7,16 +11,30 @@ import type {
   SalesContactEmploymentCreateRequest,
   SalesContactEmploymentTerminateRequest,
   SalesContactEmploymentUpdateRequest,
+  SalesContactListFilters,
   SalesContactSearchParams,
   SalesContactSummary,
   SalesContactUpdateRequest,
 } from '../types';
 
-function cleanParams<T extends object>(params: T): Partial<T> {
+/**
+ * undefined / null / 빈 문자열 / 빈 배열 제거. 배열은 그대로 보존하여 axios paramsSerializer 가
+ * `?key=v1&key=v2` 형태로 직렬화 (Spring `@RequestParam List<Long>` 와 호환).
+ */
+function cleanParams(params: object): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''),
-  ) as Partial<T>;
+    Object.entries(params).filter(([, v]) => {
+      if (v === undefined || v === null || v === '') return false;
+      if (Array.isArray(v) && v.length === 0) return false;
+      return true;
+    }),
+  );
 }
+
+/** 배열은 `key=v1&key=v2` 로, 그 외는 기본 직렬화. */
+const paramsSerializer = {
+  indexes: null as null | boolean,
+};
 
 const salesContactApi = api.injectEndpoints({
   endpoints: (builder) => ({
@@ -25,6 +43,7 @@ const salesContactApi = api.injectEndpoints({
         url: '/api/v1/sales-contacts',
         method: 'GET',
         params: cleanParams(params),
+        paramsSerializer,
       }),
       providesTags: (result) => [
         { type: 'SalesContact', id: 'LIST' },
@@ -56,6 +75,21 @@ const salesContactApi = api.injectEndpoints({
     deleteSalesContacts: builder.mutation<void, number[]>({
       query: (ids) => ({ url: '/api/v1/sales-contacts', method: 'DELETE', data: ids }),
       invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }],
+    }),
+
+    /**
+     * 휴대폰 번호 사용 가능 여부 — 디바운스된 입력값 기반 호출.
+     * excludeId 가 있으면 본인 자신은 제외 (수정 모드 본인 번호 그대로 두기 허용).
+     */
+    checkSalesContactMobilePhoneAvailability: builder.query<
+      { available: boolean },
+      { mobilePhone: string; excludeId?: number }
+    >({
+      query: ({ mobilePhone, excludeId }) => ({
+        url: '/api/v1/sales-contacts/mobile-phone-availability',
+        method: 'GET',
+        params: excludeId == null ? { mobilePhone } : { mobilePhone, excludeId },
+      }),
     }),
 
     /** 고객사별 재직 명부 — 고객사 영업 상세 페이지에서 호출. */
@@ -147,9 +181,36 @@ export const {
   useUpdateSalesContactMutation,
   useDeleteSalesContactMutation,
   useDeleteSalesContactsMutation,
+  useCheckSalesContactMobilePhoneAvailabilityQuery,
   useGetSalesContactEmploymentsByCustomerIdQuery,
   useCreateSalesContactEmploymentMutation,
   useUpdateSalesContactEmploymentMutation,
   useTerminateSalesContactEmploymentMutation,
   useDeleteSalesContactEmploymentMutation,
 } = salesContactApi;
+
+/**
+ * 엑셀 파일은 binary 응답이라 RTK Query baseQuery(JSON 파싱)와 맞지 않아 axios로 직접 호출.
+ * 필터 + 정렬 그대로 전송 (page/size 무시 — 필터링된 전체).
+ */
+export function useDownloadSalesContactsExcel() {
+  const token = useAppSelector((s) => s.auth.accessToken);
+
+  return useCallback(
+    async (params: SalesContactListFilters & { sort?: string }) => {
+      const response = await axiosInstance.get('/api/v1/sales-contacts/excel', {
+        params: cleanParams(params),
+        paramsSerializer: { indexes: null },
+        responseType: 'blob',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      const filename =
+        extractFilename(response.headers['content-disposition']) ??
+        `sales-contacts_${todayStamp()}.xlsx`;
+
+      triggerBrowserDownload(response.data, filename);
+    },
+    [token],
+  );
+}

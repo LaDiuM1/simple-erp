@@ -10,10 +10,12 @@ interface QueryArgs {
   method: Method;
   data?: unknown;
   params?: unknown;
+  /** axios paramsSerializer 옵션 — 배열 직렬화 형태 등을 엔드포인트별로 오버라이드. */
+  paramsSerializer?: { indexes?: null | boolean };
 }
 
 const axiosBaseQuery: BaseQueryFn<QueryArgs, unknown, ApiError> = async (
-  { url, method, data, params },
+  { url, method, data, params, paramsSerializer },
   { dispatch, getState },
 ) => {
   const token = (getState() as RootState).auth.accessToken;
@@ -24,6 +26,7 @@ const axiosBaseQuery: BaseQueryFn<QueryArgs, unknown, ApiError> = async (
       method,
       data,
       params,
+      paramsSerializer,
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
@@ -71,6 +74,7 @@ export const api = createApi({
     'SalesAggregate',
     'SalesContact',
     'SalesContactEmployment',
+    'AcquisitionSource',
   ],
   endpoints: () => ({}),
 });

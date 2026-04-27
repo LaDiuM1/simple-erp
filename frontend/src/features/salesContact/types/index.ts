@@ -1,3 +1,5 @@
+import type { AcquisitionSourceInfo } from '@/features/acquisitionSource/types';
+
 export type DepartureType = 'JOB_CHANGE' | 'RETIREMENT' | 'OTHER';
 
 export const DEPARTURE_TYPE_LABELS: Record<DepartureType, string> = {
@@ -21,6 +23,7 @@ export interface SalesContactSummary {
   currentPosition: string | null;
   currentDepartment: string | null;
   metAt: string | null;
+  sources: AcquisitionSourceInfo[];
 }
 
 export interface SalesContactEmployment {
@@ -48,8 +51,8 @@ export interface SalesContactDetail {
   email: string | null;
   personalEmail: string | null;
   metAt: string | null;
-  metVia: string | null;
   note: string | null;
+  sources: AcquisitionSourceInfo[];
   employments: SalesContactEmployment[];
 }
 
@@ -61,7 +64,7 @@ export interface SalesContactCreateRequest {
   email?: string | null;
   personalEmail?: string | null;
   metAt?: string | null;
-  metVia?: string | null;
+  sourceIds?: number[] | null;
   note?: string | null;
 }
 
@@ -71,6 +74,7 @@ export interface SalesContactSearchParams {
   nameKeyword?: string | null;
   emailKeyword?: string | null;
   phoneKeyword?: string | null;
+  sourceIds?: number[] | null;
   page: number;
   size?: number;
   sort?: string;
@@ -102,7 +106,7 @@ export interface SalesContactFormValues {
   email: string;
   personalEmail: string;
   metAt: string;
-  metVia: string;
+  sourceIds: number[];
   note: string;
 }
 
@@ -114,7 +118,7 @@ export const EMPTY_SALES_CONTACT_FORM: SalesContactFormValues = {
   email: '',
   personalEmail: '',
   metAt: '',
-  metVia: '',
+  sourceIds: [],
   note: '',
 };
 
@@ -127,7 +131,7 @@ export function salesContactDetailToFormValues(d: SalesContactDetail): SalesCont
     email: d.email ?? '',
     personalEmail: d.personalEmail ?? '',
     metAt: d.metAt ?? '',
-    metVia: d.metVia ?? '',
+    sourceIds: d.sources.map((s) => s.id),
     note: d.note ?? '',
   };
 }
@@ -141,7 +145,7 @@ export function salesContactFormToCreateRequest(v: SalesContactFormValues): Sale
     email: emptyToNull(v.email),
     personalEmail: emptyToNull(v.personalEmail),
     metAt: emptyToNull(v.metAt),
-    metVia: emptyToNull(v.metVia),
+    sourceIds: v.sourceIds,
     note: emptyToNull(v.note),
   };
 }
