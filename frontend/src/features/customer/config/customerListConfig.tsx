@@ -61,6 +61,43 @@ export const customerColumn: ColumnConfig<CustomerSummary>[] = [
   },
 ];
 
+/**
+ * 검색 모달용 컬럼 — 모바일에서는 고객사명 / 고객사 코드 / 전화번호만 노출.
+ * 목록 페이지(`customerColumn`)와 의도적으로 분리: 모달은 선택용이라 식별 정보만 필요.
+ */
+export const customerSearchColumn: ColumnConfig<CustomerSummary>[] = [
+  {
+    key: 'code',
+    label: '고객사 코드',
+    sortable: true,
+    sortDirection: 'asc',
+    render: (m) => (
+      <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+        {m.code}
+      </Typography>
+    ),
+  },
+  { key: 'name', label: '고객사명', sortable: true, sortDirection: 'asc' },
+  { key: 'phone', label: '전화' },
+  { key: 'bizRegNo', label: '사업자등록번호', hideOnMobile: true },
+  { key: 'representative', label: '대표자', hideOnMobile: true },
+  { key: 'roadAddress', label: '주소', hideOnMobile: true },
+  {
+    key: 'type',
+    label: '분류',
+    hideOnMobile: true,
+    render: (m) => CUSTOMER_TYPE_LABELS[m.type],
+  },
+  {
+    key: 'status',
+    label: '상태',
+    sortable: true,
+    sortDirection: 'asc',
+    hideOnMobile: true,
+    render: (m) => <CustomerStatusIndicator status={m.status} />,
+  },
+];
+
 export const customerSearchFilter: FilterConfig[] = [
   { type: 'search', key: 'codeKeyword', placeholder: '고객사 코드 검색' },
   { type: 'search', key: 'nameKeyword', placeholder: '고객사명 검색' },
