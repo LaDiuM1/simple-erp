@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
-import DialogTitle from '@mui/material/DialogTitle';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import {
   ListPagination,
@@ -11,41 +10,55 @@ import {
 } from '@/shared/ui/GenericList';
 import { getErrorMessage } from '@/shared/api/error';
 import SearchTable from './SearchTable';
-import { ModalContent, ModalFilterArea } from './CommonSearchModal.styles';
+import SelectionTray from './SelectionTray';
+import { ModalContent, ModalFilterArea, ModalTitleRow } from './CommonSearchModal.styles';
 import type { CommonSearchModalProps, CommonSearchSelectedItem } from './types';
 
 /**
- * 도메인 검색 모달 — 설정 구조를 받아 특정 도메인을 검색해서 (id, label) 을 부모로 반환.
- * GenericList 의 building blocks (ListSearchFilter / useListState / ListPagination) 를 재사용.
+ * 도메인 검색 / 관리 공용 모달.
+ * - select 모드 (default): 행 선택 → (id, label) 부모로 반환. 다중 선택 가능.
+ *   - selectionStyle 'checkbox' (default): 행마다 체크박스.
+ *   - selectionStyle 'tray': 행 클릭 → 하단 트레이에 칩 누적, 칩 X 로 제거.
+ * - manage 모드: rowActions slot 으로 행별 액션 (예: 삭제). DialogActions 의 확인 대신 닫기 단일 버튼.
  *
- * 다중 선택 (multiple=true) 시 페이지를 넘나들며 선택 상태가 보존되도록 Map 으로 관리.
+ * 리스트 표현은 GenericList 의 데스크탑 Table / 모바일 카드 split 시각 톤을 따른다.
  */
-export default function CommonSearchModal<TRow, TFilters extends object>({
-  open,
-  onClose,
-  title,
-  multiple = false,
-  api,
-  searchFilter,
-  column,
-  onSelect,
-  initialSelected = [],
-  excludeIds,
-  emptyMessage,
-}: CommonSearchModalProps<TRow, TFilters>) {
+export default function CommonSearchModal<TRow, TFilters extends object>(
+  props: CommonSearchModalProps<TRow, TFilters>,
+) {
+  const {
+    open,
+    onClose,
+    title,
+    api,
+    searchFilter,
+    column,
+    emptyMessage,
+    hidePagination,
+    headerActions,
+  } = props;
+  const isManage = props.mode === 'manage';
+  const initialSelected = !isManage ? props.initialSelected ?? [] : [];
+  const selectionStyle = !isManage ? props.selectionStyle ?? 'checkbox' : 'checkbox';
+  const isTray = !isManage && selectionStyle === 'tray';
+  const confirmLabel = !isManage ? props.confirmLabel ?? '확인' : '확인';
+  const renderTrayItem = !isManage ? props.renderTrayItem : undefined;
+
   const [selectedMap, setSelectedMap] = useState<Map<number, CommonSearchSelectedItem>>(
     () => new Map(),
   );
 
-  // 모달이 열릴 때마다 initialSelected 로 선택 상태 리셋.
+  // 모달이 열릴 때마다 initialSelected 로 선택 상태 리셋 (select 모드 전용).
   useEffect(() => {
-    if (open) {
+    if (open && !isManage) {
       setSelectedMap(new Map(initialSelected.map((x) => [x.id, x])));
     }
-  }, [open, initialSelected]);
+    // initialSelected 는 호출자가 매번 새 array 를 만들 수 있어 effect 의존성에서 제외.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isManage]);
 
   const state = useListState<TFilters>({
-    searchFilter,
+    searchFilter: searchFilter ?? [],
     column,
     pageSize: api.pageSize ?? 5,
   });
@@ -54,23 +67,26 @@ export default function CommonSearchModal<TRow, TFilters extends object>({
 
   const visibleRows = useMemo(() => {
     const rows = data?.content ?? [];
+    if (isManage) return rows;
+    const excludeIds = props.excludeIds;
     if (!excludeIds || excludeIds.length === 0) return rows;
     const excludeSet = new Set(excludeIds);
     return rows.filter((row) => !excludeSet.has(api.rowKey(row)));
-  }, [data, excludeIds, api]);
+  }, [data, api, isManage, props]);
 
   const isSelected = (id: number) => selectedMap.has(id);
 
   const toggleSelect = (row: TRow) => {
+    if (isManage) return;
     const id = api.rowKey(row);
-    const label = api.rowLabel(row);
+    const label = api.rowLabel ? api.rowLabel(row) : String(id);
+    const multiple = props.multiple ?? false;
     setSelectedMap((prev) => {
       const next = new Map(prev);
       if (multiple) {
         if (next.has(id)) next.delete(id);
         else next.set(id, { id, label });
       } else {
-        // 단일 선택 — 기존 선택을 모두 비우고 새 항목만 유지.
         next.clear();
         next.set(id, { id, label });
       }
@@ -78,12 +94,24 @@ export default function CommonSearchModal<TRow, TFilters extends object>({
     });
   };
 
+  const removeFromTray = (id: number) => {
+    setSelectedMap((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
   const handleConfirm = () => {
-    onSelect(Array.from(selectedMap.values()));
+    if (isManage) return;
+    props.onSelect(Array.from(selectedMap.values()));
     onClose();
   };
 
   const selectedCount = selectedMap.size;
+  const selectedItems = useMemo(() => Array.from(selectedMap.values()), [selectedMap]);
+  const hasFilter = !!searchFilter && searchFilter.length > 0;
 
   return (
     <Dialog
@@ -93,18 +121,23 @@ export default function CommonSearchModal<TRow, TFilters extends object>({
       fullWidth
       slotProps={{ paper: { sx: { height: '85vh' } } }}
     >
-      <DialogTitle>{title}</DialogTitle>
+      <ModalTitleRow>
+        <span>{title}</span>
+        {headerActions && <span>{headerActions}</span>}
+      </ModalTitleRow>
       <ModalContent>
-        <ModalFilterArea>
-          <ListSearchFilter
-            searchFilter={searchFilter}
-            filters={state.filters as Record<string, unknown>}
-            onUpdate={(key, value) =>
-              state.updateFilter(key as keyof TFilters, value as TFilters[keyof TFilters])
-            }
-            onReset={state.resetFilters}
-          />
-        </ModalFilterArea>
+        {hasFilter && (
+          <ModalFilterArea>
+            <ListSearchFilter
+              searchFilter={searchFilter!}
+              filters={state.filters as Record<string, unknown>}
+              onUpdate={(key, value) =>
+                state.updateFilter(key as keyof TFilters, value as TFilters[keyof TFilters])
+              }
+              onReset={state.resetFilters}
+            />
+          </ModalFilterArea>
+        )}
 
         {isError ? (
           <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />
@@ -113,33 +146,44 @@ export default function CommonSearchModal<TRow, TFilters extends object>({
             rows={visibleRows}
             columns={column}
             rowKey={api.rowKey}
+            mode={isManage ? 'manage' : 'select'}
+            selectionStyle={selectionStyle}
             isSelected={isSelected}
             onToggleSelect={toggleSelect}
-            multiple={multiple}
+            multiple={!isManage && (props.multiple ?? false)}
+            rowActions={isManage ? props.rowActions : undefined}
             isLoading={isFetching}
-            emptyMessage={emptyMessage ?? '검색 결과가 없습니다.'}
+            emptyMessage={emptyMessage ?? '결과가 없습니다.'}
             page={state.page}
             pageSize={state.pageSize}
           />
         )}
 
-        <ListPagination
-          page={state.page}
-          totalPages={data?.totalPages ?? 0}
-          totalElements={data?.totalElements}
-          onPageChange={state.setPage}
-        />
+        {isTray && (
+          <SelectionTray items={selectedItems} onRemove={removeFromTray} renderItem={renderTrayItem} />
+        )}
+
+        {!hidePagination && (
+          <ListPagination
+            page={state.page}
+            totalPages={data?.totalPages ?? 0}
+            totalElements={data?.totalElements}
+            onPageChange={state.setPage}
+          />
+        )}
       </ModalContent>
       <DialogActions>
-        <Button onClick={onClose}>취소</Button>
-        <Button
-          variant="contained"
-          onClick={handleConfirm}
-          disabled={selectedCount === 0}
-          disableElevation
-        >
-          확인{selectedCount > 0 ? ` (${selectedCount})` : ''}
-        </Button>
+        <Button onClick={onClose}>{isManage ? '닫기' : '취소'}</Button>
+        {!isManage && (
+          <Button
+            variant="contained"
+            onClick={handleConfirm}
+            disabled={selectedCount === 0}
+            disableElevation
+          >
+            {confirmLabel}{selectedCount > 0 ? ` (${selectedCount})` : ''}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );
