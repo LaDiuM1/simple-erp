@@ -20,6 +20,14 @@ public class CustomerRepositoryImpl implements CustomerRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 
+    /**
+     * FE 응답 DTO 가 평탄화 (예: roadAddress) 한 필드를 엔티티 임베디드 경로 (address.roadAddress) 로 매핑.
+     * 향후 다른 임베디드 컬럼이 정렬 대상이 되면 여기에 항목 추가.
+     */
+    private static final java.util.Map<String, String> SORT_PROPERTY_ALIAS = java.util.Map.of(
+            "roadAddress", "address.roadAddress"
+    );
+
     @Override
     public Page<Customer> search(CustomerSearchCondition condition, Pageable pageable) {
         QCustomer c = QCustomer.customer;
@@ -28,7 +36,7 @@ public class CustomerRepositoryImpl implements CustomerRepositoryCustom {
         List<Customer> content = queryFactory
                 .selectFrom(c)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), c, c.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(remapSort(pageable.getSort()), c, c.id.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -48,8 +56,21 @@ public class CustomerRepositoryImpl implements CustomerRepositoryCustom {
         return queryFactory
                 .selectFrom(c)
                 .where(buildPredicate(condition, c))
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, c, c.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(remapSort(sort), c, c.id.desc()))
                 .fetch();
+    }
+
+    private static Sort remapSort(Sort sort) {
+        if (sort == null || sort.isUnsorted()) {
+            return sort;
+        }
+        List<Sort.Order> remapped = sort.stream()
+                .map(o -> {
+                    String mapped = SORT_PROPERTY_ALIAS.get(o.getProperty());
+                    return mapped == null ? o : new Sort.Order(o.getDirection(), mapped);
+                })
+                .toList();
+        return Sort.by(remapped);
     }
 
     private BooleanBuilder buildPredicate(CustomerSearchCondition condition, QCustomer c) {
