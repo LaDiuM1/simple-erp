@@ -32,7 +32,7 @@ import { getErrorMessage } from '@/shared/api/error';
  * <p>
  * 대상은 enum 으로 관리되어 항목 수가 적고 추가/삭제가 없으므로 GenericList 의 페이징·검색·삭제는 불필요.
  * 시각 톤은 GenericList 와 동일하게 styled primitives (ListRoot/ListSurface/HeaderCell/BodyCell/BodyRow) 를 재사용.
- * 행 전체 클릭으로 편집 진입 — 별도 액션 아이콘 없이 hover 효과로 가이드.
+ * 행 클릭 → 상세 페이지 진입 — 다른 도메인과 동일한 UX (목록 → 상세 → 수정).
  */
 export default function CodeRuleListPage() {
   const navigate = useNavigate();
@@ -75,7 +75,7 @@ export default function CodeRuleListPage() {
                       <ClickableRow
                         key={rule.target}
                         hover
-                        onClick={() => navigate(`/code-rules/${rule.target}/edit`)}
+                        onClick={() => navigate(`/code-rules/${rule.target}`)}
                       >
                         <BodyCell align="center" sx={{ color: 'text.secondary', width: 64 }}>
                           {idx + 1}

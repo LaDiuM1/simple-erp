@@ -16,9 +16,11 @@ interface Props {
   form: EmployeeFormStateBase;
   /** 재직 상태 셀렉트 노출 여부. create 페이지에서는 ACTIVE 고정이므로 숨김. */
   showStatus?: boolean;
+  /** 상세 페이지용 — 모든 입력 컨트롤 disabled. */
+  readOnly?: boolean;
 }
 
-export default function AffiliationSection({ form, showStatus = false }: Props) {
+export default function AffiliationSection({ form, showStatus = false, readOnly = false }: Props) {
   const { values, update, validation } = form;
 
   const description = showStatus
@@ -36,15 +38,18 @@ export default function AffiliationSection({ form, showStatus = false }: Props) 
           value={values.roleId}
           onChange={(v) => update('roleId', v)}
           required
-          helperText={validation.errorMessage('roleId')}
+          helperText={!readOnly ? validation.errorMessage('roleId') : undefined}
+          disabled={readOnly}
         />
         <DepartmentSelectField
           value={values.departmentId}
           onChange={(v) => update('departmentId', v)}
+          disabled={readOnly}
         />
         <PositionSelectField
           value={values.positionId}
           onChange={(v) => update('positionId', v)}
+          disabled={readOnly}
         />
         {showStatus && (
           <TextField
@@ -54,6 +59,7 @@ export default function AffiliationSection({ form, showStatus = false }: Props) 
             required
             value={values.status}
             onChange={(e) => update('status', e.target.value as EmployeeStatus)}
+            disabled={readOnly}
           >
             {EMPLOYEE_STATUS_OPTIONS.map((opt) => (
               <MenuItem key={opt.value} value={opt.value}>

@@ -10,7 +10,13 @@ import {
   FieldGrid,
 } from './employeeForm.styles';
 
-export default function AddressSection({ form }: { form: EmployeeFormStateBase }) {
+interface Props {
+  form: EmployeeFormStateBase;
+  /** 상세 페이지용 — 주소 검색 버튼 숨김 + 상세 주소 입력 disabled. */
+  readOnly?: boolean;
+}
+
+export default function AddressSection({ form, readOnly = false }: Props) {
   const { values, update, handleAddressSearch } = form;
 
   return (
@@ -29,14 +35,16 @@ export default function AddressSection({ form }: { form: EmployeeFormStateBase }
             disabled
             sx={{ flex: 1 }}
           />
-          <AddressSearchButton
-            type="button"
-            variant="outlined"
-            startIcon={<SearchRoundedIcon sx={{ fontSize: 18 }} />}
-            onClick={handleAddressSearch}
-          >
-            주소 검색
-          </AddressSearchButton>
+          {!readOnly && (
+            <AddressSearchButton
+              type="button"
+              variant="outlined"
+              startIcon={<SearchRoundedIcon sx={{ fontSize: 18 }} />}
+              onClick={handleAddressSearch}
+            >
+              주소 검색
+            </AddressSearchButton>
+          )}
         </AddressSearchRow>
         <FieldFull>
           <TextField
@@ -54,6 +62,7 @@ export default function AddressSection({ form }: { form: EmployeeFormStateBase }
             label="상세 주소"
             value={values.detailAddress}
             onChange={(e) => update('detailAddress', e.target.value)}
+            disabled={readOnly}
           />
         </FieldFull>
       </FieldGrid>

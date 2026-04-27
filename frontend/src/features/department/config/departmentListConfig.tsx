@@ -52,5 +52,6 @@ export function useDepartmentListApi(): ListApiConfig<DepartmentSummary, Departm
     useBulkDelete: useDeleteDepartmentsMutation,
     rowKey: (m) => m.id,
     onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.DEPARTMENTS]}/${m.id}/edit`),
+    onRowClick: (m) => navigate(`${MENU_PATH[MENU_CODE.DEPARTMENTS]}/${m.id}`),
   };
 }

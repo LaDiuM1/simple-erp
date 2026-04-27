@@ -56,7 +56,7 @@ function CustomerEditFormBody({ id, detail }: { id: number; detail: CustomerDeta
       <ConfirmModal
         isOpen={form.confirmOpen}
         title="고객사 수정"
-        message={`${form.values.name.trim() || '입력한 고객사'} 의 정보를 저장하시겠습니까?`}
+        message={`${form.values.name.trim() || '입력한 고객사'}의 정보를 저장하시겠습니까?`}
         confirmLabel={form.isSaving ? '저장 중...' : '저장'}
         onConfirm={form.handleConfirmedSubmit}
         onCancel={form.closeConfirm}

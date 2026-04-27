@@ -31,11 +31,15 @@ interface DynamicRule {
 
 const DYNAMIC_RULES: DynamicRule[] = [
   { test: (p) => /^\/employees\/\d+\/edit$/.test(p), title: '직원 수정' },
+  { test: (p) => /^\/employees\/\d+$/.test(p), title: '직원 상세' },
   { test: (p) => /^\/departments\/\d+\/edit$/.test(p), title: '부서 수정' },
+  { test: (p) => /^\/departments\/\d+$/.test(p), title: '부서 상세' },
   { test: (p) => /^\/positions\/\d+\/edit$/.test(p), title: '직책 수정' },
+  { test: (p) => /^\/positions\/\d+$/.test(p), title: '직책 상세' },
   { test: (p) => /^\/roles\/\d+\/edit$/.test(p), title: '권한 수정' },
   { test: (p) => /^\/roles\/\d+$/.test(p), title: '권한 상세' },
   { test: (p) => /^\/code-rules\/[^/]+\/edit$/.test(p), title: '코드 채번 규칙 수정' },
+  { test: (p) => /^\/code-rules\/[^/]+$/.test(p), title: '코드 채번 규칙 상세' },
   { test: (p) => /^\/customers\/\d+\/edit$/.test(p), title: '고객사 수정' },
   { test: (p) => /^\/customers\/\d+$/.test(p), title: '고객사 상세' },
   { test: (p) => /^\/sales-customers\/\d+$/.test(p), title: '고객사 영업 상세' },

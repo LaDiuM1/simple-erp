@@ -4,7 +4,13 @@ import type { EmployeeFormStateBase } from '@/features/employee/hooks/employeeFo
 import { FormSection } from '@/shared/ui/GenericForm';
 import { FieldGrid } from './employeeForm.styles';
 
-export default function BasicInfoSection({ form }: { form: EmployeeFormStateBase }) {
+interface Props {
+  form: EmployeeFormStateBase;
+  /** 상세 페이지용 — 모든 입력 컨트롤 disabled. */
+  readOnly?: boolean;
+}
+
+export default function BasicInfoSection({ form, readOnly = false }: Props) {
   const { values, update, validation } = form;
 
   return (
@@ -21,8 +27,9 @@ export default function BasicInfoSection({ form }: { form: EmployeeFormStateBase
           value={values.name}
           onChange={(e) => update('name', e.target.value)}
           onBlur={validation.onBlur('name')}
-          error={validation.isInvalid('name')}
-          helperText={validation.errorMessage('name')}
+          error={!readOnly && validation.isInvalid('name')}
+          helperText={!readOnly ? validation.errorMessage('name') : undefined}
+          disabled={readOnly}
         />
         <TextField
           size="small"
@@ -31,9 +38,10 @@ export default function BasicInfoSection({ form }: { form: EmployeeFormStateBase
           value={values.email}
           onChange={(e) => update('email', e.target.value)}
           onBlur={validation.onBlur('email')}
-          error={validation.isInvalid('email')}
-          helperText={validation.errorMessage('email')}
+          error={!readOnly && validation.isInvalid('email')}
+          helperText={!readOnly ? validation.errorMessage('email') : undefined}
           placeholder="name@example.com"
+          disabled={readOnly}
         />
         <TextField
           size="small"
@@ -42,6 +50,7 @@ export default function BasicInfoSection({ form }: { form: EmployeeFormStateBase
           value={values.phone}
           onChange={(e) => update('phone', e.target.value)}
           placeholder="010-0000-0000"
+          disabled={readOnly}
         />
         <TextField
           size="small"
@@ -50,6 +59,7 @@ export default function BasicInfoSection({ form }: { form: EmployeeFormStateBase
           value={values.joinDate}
           onChange={(e) => update('joinDate', e.target.value)}
           slotProps={{ inputLabel: { shrink: true } }}
+          disabled={readOnly}
         />
       </FieldGrid>
     </FormSection>

@@ -60,5 +60,6 @@ export function usePositionListApi(): ListApiConfig<PositionSummary, PositionLis
     useBulkDelete: useDeletePositionsMutation,
     rowKey: (m) => m.id,
     onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.POSITIONS]}/${m.id}/edit`),
+    onRowClick: (m) => navigate(`${MENU_PATH[MENU_CODE.POSITIONS]}/${m.id}`),
   };
 }

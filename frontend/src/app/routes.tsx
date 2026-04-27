@@ -6,19 +6,23 @@ import EmployeeMePage from '@/pages/employee/EmployeeMePage';
 import EmployeeListPage from '@/pages/employee/EmployeeListPage';
 import EmployeeCreatePage from '@/pages/employee/EmployeeCreatePage';
 import EmployeeEditPage from '@/pages/employee/EmployeeEditPage';
+import EmployeeDetailPage from '@/pages/employee/EmployeeDetailPage';
 import DepartmentListPage from '@/pages/department/DepartmentListPage';
 import DepartmentCreatePage from '@/pages/department/DepartmentCreatePage';
 import DepartmentEditPage from '@/pages/department/DepartmentEditPage';
+import DepartmentDetailPage from '@/pages/department/DepartmentDetailPage';
 import DepartmentHierarchyPage from '@/pages/department/DepartmentHierarchyPage';
 import PositionListPage from '@/pages/position/PositionListPage';
 import PositionCreatePage from '@/pages/position/PositionCreatePage';
 import PositionEditPage from '@/pages/position/PositionEditPage';
+import PositionDetailPage from '@/pages/position/PositionDetailPage';
 import PositionRankingPage from '@/pages/position/PositionRankingPage';
 import RoleListPage from '@/pages/role/RoleListPage';
 import RoleCreatePage from '@/pages/role/RoleCreatePage';
 import RoleEditPage from '@/pages/role/RoleEditPage';
 import RoleDetailPage from '@/pages/role/RoleDetailPage';
 import CodeRuleListPage from '@/pages/codeRule/CodeRuleListPage';
+import CodeRuleDetailPage from '@/pages/codeRule/CodeRuleDetailPage';
 import CodeRuleEditPage from '@/pages/codeRule/CodeRuleEditPage';
 import CustomerListPage from '@/pages/customer/CustomerListPage';
 import CustomerCreatePage from '@/pages/customer/CustomerCreatePage';
@@ -41,20 +45,24 @@ export default function AppRoutes() {
         <Route path="/employees" element={<EmployeeListPage />} />
         <Route path="/employees/new" element={<EmployeeCreatePage />} />
         <Route path="/employees/:id/edit" element={<EmployeeEditPage />} />
+        <Route path="/employees/:id" element={<EmployeeDetailPage />} />
         <Route path="/departments" element={<DepartmentListPage />} />
         <Route path="/departments/hierarchy" element={<DepartmentHierarchyPage />} />
         <Route path="/departments/new" element={<DepartmentCreatePage />} />
         <Route path="/departments/:id/edit" element={<DepartmentEditPage />} />
+        <Route path="/departments/:id" element={<DepartmentDetailPage />} />
         <Route path="/positions" element={<PositionListPage />} />
         <Route path="/positions/ranking" element={<PositionRankingPage />} />
         <Route path="/positions/new" element={<PositionCreatePage />} />
         <Route path="/positions/:id/edit" element={<PositionEditPage />} />
+        <Route path="/positions/:id" element={<PositionDetailPage />} />
         <Route path="/roles" element={<RoleListPage />} />
         <Route path="/roles/new" element={<RoleCreatePage />} />
         <Route path="/roles/:id/edit" element={<RoleEditPage />} />
         <Route path="/roles/:id" element={<RoleDetailPage />} />
         <Route path="/code-rules" element={<CodeRuleListPage />} />
         <Route path="/code-rules/:target/edit" element={<CodeRuleEditPage />} />
+        <Route path="/code-rules/:target" element={<CodeRuleDetailPage />} />
         <Route path="/customers" element={<CustomerListPage />} />
         <Route path="/customers/new" element={<CustomerCreatePage />} />
         <Route path="/customers/:id/edit" element={<CustomerEditPage />} />
