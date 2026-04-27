@@ -1,177 +1,76 @@
-import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
-import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
-import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
+import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded';
+import ContactsRoundedIcon from '@mui/icons-material/ContactsRounded';
+import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
-import { MENU_CONFIG } from '@/shared/config/menuConfig';
-import Muted from '@/shared/ui/atoms/Muted';
-import type {
-  EmployeeProfileResponse,
-  MenuPermission,
-} from '@/features/employee/types';
-import {
-  DashboardRoot,
-  ProfileGrid,
-  ProfileLabel,
-  ProfileRow,
-  ProfileValue,
-  RoleBadge,
-  SectionCount,
-  SectionHeader,
-  SectionSurface,
-  SectionTitle,
-  ShortcutArrow,
-  ShortcutBody,
-  ShortcutEmpty,
-  ShortcutIcon,
-  ShortcutItem,
-  ShortcutList,
-  ShortcutName,
-  ShortcutPath,
-  WelcomeDate,
-  WelcomeGreeting,
-  WelcomeHeader,
-  WelcomeText,
-} from './DashboardPage.styles';
-
-const SHORTCUT_ICONS: Record<string, ReactNode> = {
-  EMPLOYEES: <GroupsRoundedIcon sx={{ fontSize: 20 }} />,
-};
-
-const DEFAULT_SHORTCUT_ICON = <DashboardRoundedIcon sx={{ fontSize: 20 }} />;
+import { useGetDashboardSummaryQuery } from '@/features/dashboard/api/dashboardApi';
+import HeroBanner from '@/features/dashboard/components/HeroBanner/HeroBanner';
+import KpiCard from '@/features/dashboard/components/KpiCard/KpiCard';
+import RecentCustomers from '@/features/dashboard/components/RecentCustomers/RecentCustomers';
+import RecentActivities from '@/features/dashboard/components/RecentActivities/RecentActivities';
+import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
+import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
+import { getErrorMessage } from '@/shared/api/error';
+import { DashboardRoot, KpiGrid, RecentGrid } from './DashboardPage.styles';
 
 export default function DashboardPage() {
-  const { data: profile } = useGetMyProfileQuery();
+  const navigate = useNavigate();
+  const profileQuery = useGetMyProfileQuery();
+  const summaryQuery = useGetDashboardSummaryQuery();
 
-  if (!profile) return null;
+  if (profileQuery.isLoading || summaryQuery.isLoading) return <LoadingScreen />;
+  if (profileQuery.isError) {
+    return <ErrorScreen message={getErrorMessage(profileQuery.error)} onRetry={profileQuery.refetch} />;
+  }
+  if (summaryQuery.isError) {
+    return <ErrorScreen message={getErrorMessage(summaryQuery.error)} onRetry={summaryQuery.refetch} />;
+  }
+  if (!profileQuery.data || !summaryQuery.data) return null;
 
-  const shortcuts = accessibleShortcuts(profile.menuPermissions);
+  const { kpi, recentCustomers, recentActivities } = summaryQuery.data;
+  const monthLabel = `${new Date().getMonth() + 1}월`;
 
   return (
     <DashboardRoot>
-      <WelcomeSection profile={profile} />
-      <ProfileSection profile={profile} />
-      <ShortcutSection shortcuts={shortcuts} />
+      <HeroBanner profile={profileQuery.data} />
+
+      <KpiGrid>
+        <KpiCard
+          label="총 고객사"
+          value={kpi.totalCustomers}
+          unit="개사"
+          icon={<BusinessRoundedIcon />}
+          onClick={() => navigate('/customers')}
+        />
+        <KpiCard
+          label="영업 명부"
+          value={kpi.totalSalesContacts}
+          unit="명"
+          icon={<ContactsRoundedIcon />}
+          onClick={() => navigate('/sales-contacts')}
+        />
+        <KpiCard
+          label="재직 직원"
+          value={kpi.activeEmployees}
+          unit="명"
+          icon={<GroupsRoundedIcon />}
+          onClick={() => navigate('/employees')}
+        />
+        <KpiCard
+          label={`${monthLabel} 영업 활동`}
+          value={kpi.monthlySalesActivities}
+          unit="건"
+          suffix="이번 달 누적"
+          icon={<TrendingUpRoundedIcon />}
+          onClick={() => navigate('/sales-customers')}
+        />
+      </KpiGrid>
+
+      <RecentGrid>
+        <RecentCustomers items={recentCustomers} />
+        <RecentActivities items={recentActivities} />
+      </RecentGrid>
     </DashboardRoot>
-  );
-}
-
-function WelcomeSection({ profile }: { profile: EmployeeProfileResponse }) {
-  const today = new Date().toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-  });
-
-  return (
-    <WelcomeHeader>
-      <WelcomeText>
-        <WelcomeGreeting>
-          안녕하세요, <strong>{profile.name}</strong> 님
-        </WelcomeGreeting>
-        <WelcomeDate>{today}</WelcomeDate>
-      </WelcomeText>
-      <RoleBadge>
-        <VerifiedUserRoundedIcon sx={{ fontSize: 15 }} />
-        {profile.roleName}
-      </RoleBadge>
-    </WelcomeHeader>
-  );
-}
-
-function ProfileSection({ profile }: { profile: EmployeeProfileResponse }) {
-  return (
-    <SectionSurface>
-      <SectionHeader>
-        <SectionTitle>내 프로필</SectionTitle>
-      </SectionHeader>
-      <ProfileGrid>
-        <ProfileRow>
-          <ProfileLabel>아이디</ProfileLabel>
-          <ProfileValue>{profile.loginId}</ProfileValue>
-        </ProfileRow>
-        <ProfileRow>
-          <ProfileLabel>부서</ProfileLabel>
-          <ProfileValue>{profile.departmentName ?? <Muted />}</ProfileValue>
-        </ProfileRow>
-        <ProfileRow>
-          <ProfileLabel>직위</ProfileLabel>
-          <ProfileValue>{profile.positionName ?? <Muted />}</ProfileValue>
-        </ProfileRow>
-        <ProfileRow>
-          <ProfileLabel>권한</ProfileLabel>
-          <ProfileValue>{profile.roleName}</ProfileValue>
-        </ProfileRow>
-      </ProfileGrid>
-    </SectionSurface>
-  );
-}
-
-interface Shortcut {
-  code: string;
-  name: string;
-  groupName: string;
-  to: string;
-  icon: ReactNode;
-}
-
-function accessibleShortcuts(permissions: MenuPermission[]): Shortcut[] {
-  const readable = new Set(
-    permissions.filter((p) => p.canRead).map((p) => p.menuCode),
-  );
-  const result: Shortcut[] = [];
-  MENU_CONFIG.forEach((group) => {
-    group.children?.forEach((child) => {
-      if (child.to && readable.has(child.code)) {
-        result.push({
-          code: child.code,
-          name: child.name,
-          groupName: group.name,
-          to: child.to,
-          icon: SHORTCUT_ICONS[child.code] ?? DEFAULT_SHORTCUT_ICON,
-        });
-      }
-    });
-  });
-  return result;
-}
-
-function ShortcutSection({ shortcuts }: { shortcuts: Shortcut[] }) {
-  const navigate = useNavigate();
-
-  return (
-    <SectionSurface>
-      <SectionHeader>
-        <SectionTitle>
-          바로가기
-          <SectionCount>{shortcuts.length}</SectionCount>
-        </SectionTitle>
-      </SectionHeader>
-      {shortcuts.length === 0 ? (
-        <ShortcutEmpty>접근 가능한 메뉴가 없습니다.</ShortcutEmpty>
-      ) : (
-        <ShortcutList>
-          {shortcuts.map((shortcut) => (
-            <ShortcutItem
-              key={shortcut.code}
-              type="button"
-              onClick={() => navigate(shortcut.to)}
-            >
-              <ShortcutIcon>{shortcut.icon}</ShortcutIcon>
-              <ShortcutBody>
-                <ShortcutName>{shortcut.name}</ShortcutName>
-                <ShortcutPath>{shortcut.groupName}</ShortcutPath>
-              </ShortcutBody>
-              <ShortcutArrow>
-                <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
-              </ShortcutArrow>
-            </ShortcutItem>
-          ))}
-        </ShortcutList>
-      )}
-    </SectionSurface>
   );
 }
