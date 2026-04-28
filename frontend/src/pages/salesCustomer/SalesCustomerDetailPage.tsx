@@ -7,11 +7,14 @@ import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import GenericHeaderDetails, {
   type HeaderDetailField,
 } from '@/shared/ui/GenericHeaderDetails';
-import { SideBySideGrid } from '@/shared/ui/layout/SideBySideGrid';
+import GenericTabbedTable from '@/shared/ui/GenericTabbedTable';
 import { useGetSalesCustomerDetailQuery } from '@/features/salesCustomer/api/salesCustomerApi';
-import ActivityList from '@/features/salesCustomer/components/ActivityList';
-import AssignmentList from '@/features/salesCustomer/components/AssignmentList';
-import CustomerEmploymentList from '@/features/salesCustomer/components/CustomerEmploymentList';
+import { useGetSalesContactEmploymentsByCustomerIdQuery } from '@/features/salesContact/api/salesContactApi';
+import type { SalesCustomerDetail } from '@/features/salesCustomer/types';
+import type { SalesContactEmployment } from '@/features/salesContact/types';
+import { useActivityTab } from '@/features/salesCustomer/hooks/useActivityTab';
+import { useAssignmentTab } from '@/features/salesCustomer/hooks/useAssignmentTab';
+import { useCustomerEmploymentTab } from '@/features/salesContact/hooks/useCustomerEmploymentTab';
 import { DetailRoot } from '@/features/salesCustomer/components/salesCustomerDetail.styles';
 import { useGetCustomerQuery } from '@/features/customer/api/customerApi';
 import {
@@ -29,21 +32,51 @@ export default function SalesCustomerDetailPage() {
 }
 
 function Body({ customerId }: { customerId: number }) {
-  const navigate = useNavigate();
   const salesQuery = useGetSalesCustomerDetailQuery(customerId);
   const customerQuery = useGetCustomerQuery(customerId);
+  const employmentsQuery = useGetSalesContactEmploymentsByCustomerIdQuery(customerId);
 
-  if (salesQuery.isLoading || customerQuery.isLoading) return <LoadingScreen />;
+  if (salesQuery.isLoading || customerQuery.isLoading || employmentsQuery.isLoading) {
+    return <LoadingScreen />;
+  }
   if (salesQuery.isError) {
     return <ErrorScreen message={getErrorMessage(salesQuery.error)} onRetry={salesQuery.refetch} />;
   }
   if (customerQuery.isError) {
     return <ErrorScreen message={getErrorMessage(customerQuery.error)} onRetry={customerQuery.refetch} />;
   }
-  if (!salesQuery.data || !customerQuery.data) return null;
+  if (employmentsQuery.isError) {
+    return (
+      <ErrorScreen
+        message={getErrorMessage(employmentsQuery.error)}
+        onRetry={employmentsQuery.refetch}
+      />
+    );
+  }
+  if (!salesQuery.data || !customerQuery.data || !employmentsQuery.data) return null;
 
-  const sales = salesQuery.data;
-  const customer = customerQuery.data;
+  return (
+    <Content
+      customerId={customerId}
+      sales={salesQuery.data}
+      customer={customerQuery.data}
+      employments={employmentsQuery.data}
+    />
+  );
+}
+
+interface ContentProps {
+  customerId: number;
+  sales: SalesCustomerDetail;
+  customer: CustomerDetail;
+  employments: SalesContactEmployment[];
+}
+
+function Content({ customerId, sales, customer, employments }: ContentProps) {
+  const navigate = useNavigate();
+  const activityTab = useActivityTab(customerId, sales.activities);
+  const assignmentTab = useAssignmentTab(customerId, sales.assignments);
+  const customerEmploymentTab = useCustomerEmploymentTab(employments);
 
   return (
     <>
@@ -60,13 +93,13 @@ function Body({ customerId }: { customerId: number }) {
 
       <DetailRoot>
         <GenericHeaderDetails fields={customerInfoFields(customer)} />
-
-        <SideBySideGrid>
-          <ActivityList customerId={customerId} activities={sales.activities} />
-          <AssignmentList customerId={customerId} assignments={sales.assignments} />
-          <CustomerEmploymentList customerId={customerId} />
-        </SideBySideGrid>
+        <GenericTabbedTable
+          tabs={[assignmentTab.tab, activityTab.tab, customerEmploymentTab.tab]}
+        />
       </DetailRoot>
+
+      {assignmentTab.modals}
+      {activityTab.modals}
     </>
   );
 }

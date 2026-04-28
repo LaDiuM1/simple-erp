@@ -6,16 +6,21 @@ import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { usePermission } from '@/shared/hooks/usePermission';
+import { getErrorMessage } from '@/shared/api/error';
 import GenericHeaderDetails, {
   type HeaderDetailField,
 } from '@/shared/ui/GenericHeaderDetails';
-import { SideBySideGrid } from '@/shared/ui/layout/SideBySideGrid';
+import GenericTabbedTable from '@/shared/ui/GenericTabbedTable';
 import { useGetSalesContactQuery } from '@/features/salesContact/api/salesContactApi';
-import EmploymentList from '@/features/salesContact/components/EmploymentList';
-import ContactActivityList from '@/features/salesContact/components/ContactActivityList';
+import { useGetSalesActivitiesByContactQuery } from '@/features/salesCustomer/api/salesCustomerApi';
+import { useSourceTab } from '@/features/salesContact/hooks/useSourceTab';
+import { useEmploymentTab } from '@/features/salesContact/hooks/useEmploymentTab';
+import { useActivityTab } from '@/features/salesContact/hooks/useActivityTab';
 import { DetailRoot } from '@/features/salesContact/components/salesContactDetail.styles';
-import type { SalesContactDetail } from '@/features/salesContact/types';
-import type { ApiError } from '@/shared/types/api';
+import type {
+  SalesContactDetail,
+} from '@/features/salesContact/types';
+import type { SalesActivity } from '@/features/salesCustomer/types';
 
 export default function SalesContactDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,13 +30,45 @@ export default function SalesContactDetailPage() {
 }
 
 function Body({ contactId }: { contactId: number }) {
-  const navigate = useNavigate();
   const { canWrite } = usePermission(MENU_CODE.SALES_CONTACTS);
-  const { data, isLoading, isError, error, refetch } = useGetSalesContactQuery(contactId);
+  const detailQuery = useGetSalesContactQuery(contactId);
+  const activitiesQuery = useGetSalesActivitiesByContactQuery(contactId);
 
-  if (isLoading) return <LoadingScreen />;
-  if (isError) return <ErrorScreen message={(error as ApiError)?.message} onRetry={refetch} />;
-  if (!data) return null;
+  if (detailQuery.isLoading || activitiesQuery.isLoading) return <LoadingScreen />;
+  if (detailQuery.isError) {
+    return (
+      <ErrorScreen message={getErrorMessage(detailQuery.error)} onRetry={detailQuery.refetch} />
+    );
+  }
+  if (activitiesQuery.isError) {
+    return (
+      <ErrorScreen message={getErrorMessage(activitiesQuery.error)} onRetry={activitiesQuery.refetch} />
+    );
+  }
+  if (!detailQuery.data || !activitiesQuery.data) return null;
+
+  return (
+    <Content
+      contactId={contactId}
+      data={detailQuery.data}
+      activities={activitiesQuery.data}
+      canWrite={canWrite}
+    />
+  );
+}
+
+interface ContentProps {
+  contactId: number;
+  data: SalesContactDetail;
+  activities: SalesActivity[];
+  canWrite: boolean;
+}
+
+function Content({ contactId, data, activities, canWrite }: ContentProps) {
+  const navigate = useNavigate();
+  const sourceTab = useSourceTab(data.sources);
+  const employmentTab = useEmploymentTab(contactId, data.employments);
+  const activityTab = useActivityTab(activities);
 
   return (
     <>
@@ -59,11 +96,13 @@ function Body({ contactId }: { contactId: number }) {
 
       <DetailRoot>
         <GenericHeaderDetails fields={contactInfoFields(data)} />
-        <SideBySideGrid>
-          <EmploymentList contactId={contactId} employments={data.employments} />
-          <ContactActivityList contactId={contactId} />
-        </SideBySideGrid>
+        <GenericTabbedTable
+          tabs={[employmentTab.tab, activityTab.tab, sourceTab.tab]}
+        />
       </DetailRoot>
+
+      {employmentTab.modals}
+      {activityTab.modals}
     </>
   );
 }
@@ -77,7 +116,6 @@ function contactInfoFields(d: SalesContactDetail): HeaderDetailField[] {
     { label: '회사 이메일', value: d.email },
     { label: '개인 이메일', value: d.personalEmail },
     { label: '최초 미팅일', value: d.metAt },
-    { label: '만난 경로', value: d.metVia },
-    { label: '비고', value: d.note, fullWidth: true },
+    { label: '비고', value: d.note },
   ];
 }
