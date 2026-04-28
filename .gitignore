@@ -16,3 +16,4 @@ frontend/dist/
 *.env.local
 !frontend/.env
 !frontend/.env.production
+/simple-erp.pem

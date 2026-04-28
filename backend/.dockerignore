@@ -1,0 +1,23 @@
+# build / IDE
+.gradle
+build
+out
+.idea
+.vscode
+*.iml
+
+# 테스트는 -x test 라 컴파일 안 됨 — 컨텍스트만 부풀림
+src/test
+
+# docs
+HELP.md
+*.md
+
+# git
+.git
+.gitignore
+.gitattributes
+
+# OS
+.DS_Store
+Thumbs.db
