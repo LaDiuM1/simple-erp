@@ -1,0 +1,29 @@
+# 기본 — text 로 판단되는 모든 파일을 저장소엔 LF 로 저장.
+* text=auto eol=lf
+
+# Linux 컨테이너 / 서버에서 실행되는 모든 파일 — 무조건 LF
+*.sh text eol=lf
+gradlew text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+Caddyfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.properties text eol=lf
+
+# Windows 전용 스크립트
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 바이너리 (자동 감지 실수 방지)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.jar binary
+*.pem binary
