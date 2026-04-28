@@ -1,10 +1,10 @@
 import { useTheme } from '@mui/material/styles';
-import StatusDot from '@/shared/ui/atoms/StatusDot';
+import Typography from '@mui/material/Typography';
 import { EMPLOYEE_STATUS_LABELS, type EmployeeStatus } from '@/features/employee/types';
 
 /**
- * EmployeeStatus 전용 래퍼.
- * 상태값을 받아 색/라벨 매핑과 함께 공용 StatusDot 에 전달한다.
+ * EmployeeStatus 전용 텍스트 표시.
+ * GenericTabbedTable 컨벤션과 동일하게 시각 차등은 텍스트 색만 — dot/chip/badge 미사용.
  */
 export default function EmployeeStatusIndicator({ status }: { status: EmployeeStatus }) {
   const theme = useTheme();
@@ -13,5 +13,12 @@ export default function EmployeeStatusIndicator({ status }: { status: EmployeeSt
     LEAVE: theme.palette.statusPending,
     RESIGNED: theme.palette.text.disabled,
   };
-  return <StatusDot color={colorMap[status]} label={EMPLOYEE_STATUS_LABELS[status]} />;
+  return (
+    <Typography
+      component="span"
+      sx={{ fontSize: '0.875rem', color: colorMap[status], fontWeight: 500 }}
+    >
+      {EMPLOYEE_STATUS_LABELS[status]}
+    </Typography>
+  );
 }

@@ -37,23 +37,20 @@ export const salesCustomerListColumn: ColumnConfig<SalesCustomerListRow>[] = [
     sortable: true,
     sortDirection: 'asc',
     mobilePrimary: true,
+    flex: 1,
     render: (m) => (
       <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
         {m.code}
       </Typography>
     ),
   },
-  { key: 'name', label: '고객사명', sortable: true, sortDirection: 'asc' },
-  {
-    key: 'status',
-    label: '거래 상태',
-    render: (m) => <CustomerStatusIndicator status={m.status} />,
-  },
-  { key: 'primaryAssigneeName', label: '주담당자' },
+  { key: 'name', label: '고객사명', sortable: true, sortDirection: 'asc', flex: 1 },
+  { key: 'primaryAssigneeName', label: '주담당자', flex: 1 },
   {
     key: 'activeAssigneeCount',
     label: '담당 인원',
     align: 'right',
+    flex: 1,
     render: (m) => `${m.activeAssigneeCount}명`,
   },
   {
@@ -61,13 +58,21 @@ export const salesCustomerListColumn: ColumnConfig<SalesCustomerListRow>[] = [
     label: '활동 수',
     align: 'right',
     hideOnMobile: true,
+    flex: 1,
     render: (m) => `${m.activityCount}건`,
   },
   {
     key: 'lastActivityDate',
     label: '마지막 활동일',
     hideOnMobile: true,
+    flex: 1,
     render: (m) => (m.lastActivityDate ? m.lastActivityDate.replace('T', ' ').slice(0, 16) : null),
+  },
+  {
+    key: 'status',
+    label: '거래 상태',
+    width: 110,
+    render: (m) => <CustomerStatusIndicator status={m.status} />,
   },
 ];
 

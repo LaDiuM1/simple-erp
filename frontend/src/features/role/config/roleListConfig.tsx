@@ -25,6 +25,7 @@ export const roleColumn: ColumnConfig<RoleSummary>[] = [
     sortDirection: 'asc',
     defaultSort: true,
     mobilePrimary: true,
+    flex: 1,
     render: (m) => (
       <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
         {m.code}
@@ -34,8 +35,8 @@ export const roleColumn: ColumnConfig<RoleSummary>[] = [
       </Typography>
     ),
   },
-  { key: 'name', label: '권한명', sortable: true, sortDirection: 'asc' },
-  { key: 'description', label: '설명' },
+  { key: 'name', label: '권한명', sortable: true, sortDirection: 'asc', flex: 1.2 },
+  { key: 'description', label: '설명', flex: 2.5 },
 ];
 
 export const roleSearchFilter: FilterConfig[] = [

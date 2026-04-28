@@ -19,7 +19,11 @@ interface Props {
   permissions: RoleFormValues['permissions'];
   onChange: (next: RoleFormValues['permissions']) => void;
   readOnly?: boolean;
-  /** readOnly 시 노출되는 안내 문구. 미지정 시 기본 문구. */
+  /**
+   * readOnly 시 노출되는 안내 배너 문구. **미지정 시 배너 미노출** —
+   * 비활성 회색 체크박스만으로도 "변경 불가" 의미가 충분히 전달되므로
+   * 시스템 권한처럼 추가 설명이 필요한 경우에만 명시 전달.
+   */
   readOnlyMessage?: string;
 }
 
@@ -95,11 +99,7 @@ export default function MenuPermissionMatrix({
 
   return (
     <>
-      {readOnly && (
-        <Banner>
-          {readOnlyMessage ?? '시스템 권한이라 메뉴 권한 매트릭스는 편집할 수 없습니다.'}
-        </Banner>
-      )}
+      {readOnly && readOnlyMessage && <Banner>{readOnlyMessage}</Banner>}
       <MatrixRoot>
         <MatrixHeader>
           <span>메뉴</span>

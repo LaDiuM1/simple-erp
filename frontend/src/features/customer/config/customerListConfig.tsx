@@ -28,28 +28,22 @@ export const customerColumn: ColumnConfig<CustomerSummary>[] = [
     sortable: true,
     sortDirection: 'asc',
     mobilePrimary: true,
+    width: 120,
     render: (m) => (
       <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
         {m.code}
       </Typography>
     ),
   },
-  { key: 'name', label: '고객사명', sortable: true, sortDirection: 'asc' },
-  { key: 'bizRegNo', label: '사업자등록번호', hideOnMobile: true },
-  { key: 'representative', label: '대표자', hideOnMobile: true },
-  { key: 'phone', label: '전화', hideOnMobile: true },
-  { key: 'roadAddress', label: '주소', hideOnMobile: true },
+  { key: 'name', label: '고객사명', sortable: true, sortDirection: 'asc', flex: 1.2 },
+  { key: 'representative', label: '대표자', hideOnMobile: true, flex: 0.8 },
+  { key: 'phone', label: '전화', hideOnMobile: true, flex: 1 },
+  { key: 'roadAddress', label: '주소', sortable: true, sortDirection: 'asc', hideOnMobile: true, flex: 2.5 },
   {
     key: 'type',
     label: '분류',
+    width: 120,
     render: (m) => CUSTOMER_TYPE_LABELS[m.type],
-  },
-  {
-    key: 'status',
-    label: '상태',
-    sortable: true,
-    sortDirection: 'asc',
-    render: (m) => <CustomerStatusIndicator status={m.status} />,
   },
   {
     key: 'tradeStartDate',
@@ -58,6 +52,15 @@ export const customerColumn: ColumnConfig<CustomerSummary>[] = [
     sortDirection: 'desc',
     defaultSort: true,
     hideOnMobile: true,
+    width: 150,
+  },
+  {
+    key: 'status',
+    label: '상태',
+    sortable: true,
+    sortDirection: 'asc',
+    width: 100,
+    render: (m) => <CustomerStatusIndicator status={m.status} />,
   },
 ];
 
@@ -71,21 +74,23 @@ export const customerSearchColumn: ColumnConfig<CustomerSummary>[] = [
     label: '고객사 코드',
     sortable: true,
     sortDirection: 'asc',
+    width: 120,
     render: (m) => (
       <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
         {m.code}
       </Typography>
     ),
   },
-  { key: 'name', label: '고객사명', sortable: true, sortDirection: 'asc' },
-  { key: 'phone', label: '전화' },
-  { key: 'bizRegNo', label: '사업자등록번호', hideOnMobile: true },
-  { key: 'representative', label: '대표자', hideOnMobile: true },
-  { key: 'roadAddress', label: '주소', hideOnMobile: true },
+  { key: 'name', label: '고객사명', sortable: true, sortDirection: 'asc', flex: 1.6 },
+  { key: 'phone', label: '전화', flex: 1 },
+  { key: 'bizRegNo', label: '사업자등록번호', hideOnMobile: true, width: 140 },
+  { key: 'representative', label: '대표자', hideOnMobile: true, flex: 0.8 },
+  { key: 'roadAddress', label: '주소', hideOnMobile: true, flex: 2 },
   {
     key: 'type',
     label: '분류',
     hideOnMobile: true,
+    width: 80,
     render: (m) => CUSTOMER_TYPE_LABELS[m.type],
   },
   {
@@ -94,6 +99,7 @@ export const customerSearchColumn: ColumnConfig<CustomerSummary>[] = [
     sortable: true,
     sortDirection: 'asc',
     hideOnMobile: true,
+    width: 96,
     render: (m) => <CustomerStatusIndicator status={m.status} />,
   },
 ];
