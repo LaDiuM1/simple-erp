@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.idea
+.vscode
+*.log
+
+# 로컬 override 만 제외 — .env / .env.production 은 빌드 타임에 필요
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,58 @@
+name: Deploy to EC2
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '배포할 이미지 태그 (sha-... 또는 latest). 비우면 latest.'
+        required: false
+        default: 'latest'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lowercase repo owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Resolve image tag
+        run: |
+          TAG="${{ inputs.tag }}"
+          if [[ -z "$TAG" || "$TAG" == "latest" ]]; then
+            TAG="latest"
+          fi
+          echo "IMAGE_TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/simple-erp
+
+            # GHCR 로그인 — PAT (read:packages) 사용. private 패키지 일 때만 필수.
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            # 이미지 태그 override (.env 의 BACKEND_IMAGE / WEB_IMAGE 보다 우선)
+            export BACKEND_IMAGE="ghcr.io/${{ env.OWNER }}/simple-erp-backend:${{ env.IMAGE_TAG }}"
+            export WEB_IMAGE="ghcr.io/${{ env.OWNER }}/simple-erp-web:${{ env.IMAGE_TAG }}"
+
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+
+            # 헬스 검증 — 60초 polling
+            echo "Waiting for backend health..."
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost/actuator/health > /dev/null 2>&1; then
+                echo "✓ Backend healthy (after ${i} attempts)"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "✗ Backend health check failed — 컨테이너 로그 확인"
+            docker compose logs --tail=100 backend
+            exit 1
