@@ -5,8 +5,10 @@ import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import { usePermission } from '@/shared/hooks/usePermission';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
-import Muted from '@/shared/ui/atoms/Muted';
 import { FormSection } from '@/shared/ui/GenericForm';
+import GenericHeaderDetails, {
+  type HeaderDetailField,
+} from '@/shared/ui/GenericHeaderDetails';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { useGetRoleQuery } from '@/features/role/api/roleApi';
 import MenuPermissionMatrix, {
@@ -15,12 +17,8 @@ import MenuPermissionMatrix, {
 import type { RoleDetail, RoleFormValues } from '@/features/role/types';
 import { getErrorMessage } from '@/shared/api/error';
 import {
-  ContentBox,
-  InfoGrid,
-  InfoLabel,
-  InfoValue,
-  PageRoot,
-  PageSurface,
+  DetailRoot,
+  MatrixSection,
   SystemBadge,
 } from './RoleDetailPage.styles';
 
@@ -67,18 +65,31 @@ function Body({ id }: { id: number }) {
         ]}
       />
 
-      <PageRoot>
-        <PageSurface>
-          <ContentBox>
-            <DetailContent detail={data} />
-          </ContentBox>
-        </PageSurface>
-      </PageRoot>
+      <DetailRoot>
+        <GenericHeaderDetails fields={roleInfoFields(data)} />
+        <MatrixSection>
+          <FormSection
+            title="메뉴 권한"
+            description="현재 부여된 메뉴별 읽기/쓰기 권한입니다. 수정은 [수정] 버튼으로 진입하세요."
+          >
+            <MenuPermissionMatrix
+              permissions={buildPermissions(data)}
+              onChange={() => {/* readonly */}}
+              readOnly
+              readOnlyMessage={
+                data.system
+                  ? '시스템 권한입니다. 메뉴 권한이 자동으로 모두 부여됩니다.'
+                  : undefined
+              }
+            />
+          </FormSection>
+        </MatrixSection>
+      </DetailRoot>
     </>
   );
 }
 
-function DetailContent({ detail }: { detail: RoleDetail }) {
+function buildPermissions(detail: RoleDetail): RoleFormValues['permissions'] {
   const permissions: RoleFormValues['permissions'] = {};
   for (const m of MATRIX_MENUS) {
     permissions[m] = { canRead: false, canWrite: false };
@@ -86,45 +97,26 @@ function DetailContent({ detail }: { detail: RoleDetail }) {
   for (const p of detail.menuPermissions) {
     permissions[p.menuCode] = { canRead: p.canRead, canWrite: p.canWrite };
   }
+  return permissions;
+}
 
-  return (
-    <>
-      <FormSection title="권한 정보" description="권한 코드/이름/설명은 등록된 값을 그대로 보여줍니다.">
-        <InfoGrid>
-          <InfoLabel>권한 코드</InfoLabel>
-          <InfoValue>
-            {detail.code}
-            {detail.system && (
-              <SystemBadge>
-                <LockRoundedIcon sx={{ fontSize: 12 }} />
-                시스템 권한
-              </SystemBadge>
-            )}
-          </InfoValue>
-
-          <InfoLabel>권한명</InfoLabel>
-          <InfoValue>{detail.name}</InfoValue>
-
-          <InfoLabel>설명</InfoLabel>
-          <InfoValue>{detail.description ?? <Muted />}</InfoValue>
-        </InfoGrid>
-      </FormSection>
-
-      <FormSection
-        title="메뉴 권한"
-        description="현재 부여된 메뉴별 읽기/쓰기 권한입니다. 수정은 [수정] 버튼으로 진입하세요."
-      >
-        <MenuPermissionMatrix
-          permissions={permissions}
-          onChange={() => {/* readonly */}}
-          readOnly
-          readOnlyMessage={
-            detail.system
-              ? '시스템 권한입니다. 메뉴 권한이 자동으로 모두 부여됩니다.'
-              : '읽기 전용 보기입니다. 변경하려면 [수정] 으로 진입하세요.'
-          }
-        />
-      </FormSection>
-    </>
-  );
+function roleInfoFields(d: RoleDetail): HeaderDetailField[] {
+  return [
+    {
+      label: '권한 코드',
+      value: d.system ? (
+        <>
+          {d.code}
+          <SystemBadge>
+            <LockRoundedIcon sx={{ fontSize: 12 }} />
+            시스템 권한
+          </SystemBadge>
+        </>
+      ) : (
+        d.code
+      ),
+    },
+    { label: '권한명', value: d.name },
+    { label: '설명', value: d.description, fullWidth: true },
+  ];
 }
