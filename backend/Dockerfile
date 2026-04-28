@@ -7,6 +7,8 @@ WORKDIR /workspace
 COPY gradlew gradlew.bat ./
 COPY gradle ./gradle
 COPY settings.gradle.kts build.gradle.kts ./
+# Windows 체크아웃 시 git index 의 executable bit 가 누락되는 케이스 방어
+RUN chmod +x ./gradlew
 RUN --mount=type=cache,target=/root/.gradle ./gradlew --version
 
 COPY src ./src
