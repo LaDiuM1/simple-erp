@@ -27,7 +27,8 @@ DATE="$(date +%Y%m%d_%H%M%S)"
 DUMP_FILE="/tmp/${DB_NAME}_${DATE}.sql.gz"
 
 echo "$(date -Iseconds) INFO: dump 시작"
-docker compose exec -T db mysqldump \
+# MariaDB 11 부터 mysqldump 가 mariadb-dump 로 이름 변경됨 (호환 심볼릭 링크 미제공)
+docker compose exec -T db mariadb-dump \
   -u root -p"${DB_PASSWORD}" \
   --single-transaction \
   --routines \
