@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   build:
+    name: build (${{ matrix.component.name }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
