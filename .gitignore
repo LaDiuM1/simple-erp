@@ -9,3 +9,10 @@ backend/out/
 # 프론트엔드
 frontend/node_modules/
 frontend/dist/
+
+# 환경변수 / 시크릿 — docker compose / 로컬 override 용
+.env
+.env.local
+*.env.local
+!frontend/.env
+!frontend/.env.production
