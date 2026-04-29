@@ -309,7 +309,11 @@ public class SalesContactService implements SalesContactApi {
         Map<Long, String> customerNames = loadCustomerNames(employments);
 
         List<SalesContactEmploymentResponse> employmentResponses = employments.stream()
-                .map(e -> salesContactMapper.toEmploymentResponse(e, contact, customerNames.get(e.getCustomerId())))
+                .map(e -> salesContactMapper.toEmploymentResponse(
+                        e,
+                        contact,
+                        e.getCustomerId() == null ? null : customerNames.get(e.getCustomerId())
+                ))
                 .toList();
 
         List<AcquisitionSourceInfo> sources = loadSourcesByContact(List.of(id))
