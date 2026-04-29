@@ -15,6 +15,7 @@ import io.github.ladium1.erp.customer.internal.dto.CustomerSummaryResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerUpdateRequest;
 import io.github.ladium1.erp.customer.internal.entity.Address;
 import io.github.ladium1.erp.customer.internal.entity.Customer;
+import io.github.ladium1.erp.customer.internal.entity.CustomerType;
 import io.github.ladium1.erp.customer.internal.excel.CustomerExcelExporter;
 import io.github.ladium1.erp.customer.internal.excel.CustomerExcelImporter;
 import io.github.ladium1.erp.customer.internal.excel.CustomerExcelImporter.Holder;
@@ -42,6 +43,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -140,7 +142,7 @@ public class CustomerService implements CustomerApi {
 
             String code;
             try {
-                code = resolveCode(holder.code);
+                code = resolveCode(holder.code, holder.type);
             } catch (BusinessException e) {
                 errors.add(ExcelRowError.of(rowNum, "고객사 코드", e.getMessage()));
                 continue;
@@ -218,7 +220,7 @@ public class CustomerService implements CustomerApi {
 
     @Transactional
     public Long create(CustomerCreateRequest request) {
-        String code = resolveCode(request.code());
+        String code = resolveCode(request.code(), request.type());
 
         if (customerRepository.existsByCode(code)) {
             throw new BusinessException(CustomerErrorCode.DUPLICATE_CODE);
@@ -306,14 +308,17 @@ public class CustomerService implements CustomerApi {
     /**
      * 채번 규칙의 inputMode 에 따라 최종 코드 결정.
      * AUTO: 항상 시스템 생성 / MANUAL: 사용자 입력 필수 + 패턴 검증 / AUTO_OR_MANUAL: 입력 있으면 검증, 없으면 생성.
+     * <p>
+     * 코드 규칙이 {TYPE} 토큰을 사용하면 customer.type 이 분류값으로 채번에 전달된다.
      */
-    private String resolveCode(String requested) {
+    private String resolveCode(String requested, CustomerType type) {
         CodeRuleInfo rule = codeRuleApi.getRule(CodeRuleTarget.CUSTOMER);
         InputMode mode = rule.inputMode();
         boolean hasInput = requested != null && !requested.isBlank();
 
         if (mode == InputMode.AUTO || (mode == InputMode.AUTO_OR_MANUAL && !hasInput)) {
-            return codeRuleApi.generate(CodeRuleTarget.CUSTOMER, CodeGenerationContext.empty());
+            Map<String, String> attrs = type != null ? Map.of("TYPE", type.name()) : Map.of();
+            return codeRuleApi.generate(CodeRuleTarget.CUSTOMER, CodeGenerationContext.withAttributes(attrs));
         }
         if (!hasInput) {
             throw new BusinessException(CustomerErrorCode.CODE_REQUIRED);
