@@ -1,6 +1,8 @@
 import { api } from '@/shared/api/baseApi';
 import type {
   CodeRule,
+  CodeRuleAttributeDescriptor,
+  CodeRuleAttributeMapping,
   CodeRulePreviewRequest,
   CodeRulePreviewResponse,
   CodeRuleTarget,
@@ -33,6 +35,14 @@ const codeRuleApi = api.injectEndpoints({
     >({
       query: ({ target, body }) => ({ url: `/api/v1/code-rules/${target}/preview`, method: 'POST', data: body }),
     }),
+    getCodeRuleAttributes: builder.query<CodeRuleAttributeDescriptor[], CodeRuleTarget>({
+      query: (target) => ({ url: `/api/v1/code-rules/${target}/attributes`, method: 'GET' }),
+      providesTags: (_result, _error, target) => [{ type: 'CodeRule', id: `${target}:ATTRS` }],
+    }),
+    getCodeRuleAttributeMappings: builder.query<CodeRuleAttributeMapping[], CodeRuleTarget>({
+      query: (target) => ({ url: `/api/v1/code-rules/${target}/attribute-mappings`, method: 'GET' }),
+      providesTags: (_result, _error, target) => [{ type: 'CodeRule', id: `${target}:MAPPINGS` }],
+    }),
   }),
 });
 
@@ -41,4 +51,6 @@ export const {
   useGetCodeRuleQuery,
   useUpdateCodeRuleMutation,
   usePreviewCodeRuleMutation,
+  useGetCodeRuleAttributesQuery,
+  useGetCodeRuleAttributeMappingsQuery,
 } = codeRuleApi;

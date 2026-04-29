@@ -1,5 +1,5 @@
 /**
- * 백엔드 io.github.ladium1.erp.global.coderule.api 의 enum / DTO 미러.
+ * 백엔드 io.github.ladium1.erp.coderule.api 의 enum / DTO 미러.
  * BE 변경 시 함께 갱신.
  */
 
@@ -15,22 +15,6 @@ export const CODE_RULE_TARGET_LABEL: Record<CodeRuleTarget, string> = {
   DEPARTMENT: '부서 코드',
   POSITION: '직책 코드',
   CUSTOMER: '고객사 코드',
-};
-
-export const RESET_POLICY = {
-  NEVER: 'NEVER',
-  YEARLY: 'YEARLY',
-  MONTHLY: 'MONTHLY',
-  DAILY: 'DAILY',
-} as const;
-
-export type ResetPolicy = (typeof RESET_POLICY)[keyof typeof RESET_POLICY];
-
-export const RESET_POLICY_LABEL: Record<ResetPolicy, string> = {
-  NEVER: '초기화 없음',
-  YEARLY: '매년',
-  MONTHLY: '매월',
-  DAILY: '매일',
 };
 
 export const INPUT_MODE = {
@@ -53,35 +37,40 @@ export interface CodeRule {
   id: number;
   target: CodeRuleTarget;
   targetLabel: string;
-  prefix: string | null;
   pattern: string;
-  defaultSeqLength: number;
-  resetPolicy: ResetPolicy;
   inputMode: InputMode;
-  parentScoped: boolean;
+  /** 도메인이 부모 개념을 갖는지 — 토큰 만들기 UI 의 부모 토큰 노출 여부 */
+  hasParent: boolean;
   description: string | null;
-  /** {PARENT} 토큰 사용 시 null (parent 알 수 없음) */
+  /** PARENT / 분류 토큰 사용 시 null */
   nextCode: string | null;
 }
 
+export interface CodeRuleAttributeDescriptor {
+  key: string;
+  label: string;
+  values: { value: string; label: string }[];
+}
+
+export interface CodeRuleAttributeMapping {
+  attributeKey: string;
+  sourceValue: string;
+  codeValue: string;
+}
+
 export interface CodeRuleUpdateRequest {
-  prefix: string | null;
   pattern: string;
-  defaultSeqLength: number;
-  resetPolicy: ResetPolicy;
   inputMode: InputMode;
-  parentScoped: boolean;
   description: string | null;
+  attributeMappings: CodeRuleAttributeMapping[] | null;
 }
 
 export interface CodeRulePreviewRequest {
-  prefix: string | null;
   pattern: string;
-  defaultSeqLength: number;
-  resetPolicy: ResetPolicy;
   inputMode: InputMode;
-  parentScoped: boolean;
   parentCode: string | null;
+  previewAttributes: Record<string, string> | null;
+  attributeMappings: CodeRuleAttributeMapping[] | null;
 }
 
 export interface CodeRulePreviewResponse {
@@ -89,57 +78,58 @@ export interface CodeRulePreviewResponse {
   samples: string[];
 }
 
-// Form values — MUI 호환 위해 숫자도 string 보관, 서버 전송 시 변환
+// Form values
 
 export interface CodeRuleFormValues {
-  prefix: string;
   pattern: string;
-  defaultSeqLength: string;
-  resetPolicy: ResetPolicy;
   inputMode: InputMode;
-  parentScoped: boolean;
   description: string;
   /** 미리보기용 부모 코드 (저장에는 영향 없음) */
   previewParentCode: string;
+  /** 편집 중인 분류 매핑 — 저장 시 BE 가 replace */
+  attributeMappings: CodeRuleAttributeMapping[];
+  /** 미리보기 시 사용할 attribute sourceValue (key -> value) */
+  previewAttributes: Record<string, string>;
 }
 
-export function codeRuleToFormValues(rule: CodeRule): CodeRuleFormValues {
+export function codeRuleToFormValues(
+  rule: CodeRule,
+  mappings: CodeRuleAttributeMapping[] = [],
+): CodeRuleFormValues {
   return {
-    prefix: rule.prefix ?? '',
     pattern: rule.pattern,
-    defaultSeqLength: String(rule.defaultSeqLength),
-    resetPolicy: rule.resetPolicy,
     inputMode: rule.inputMode,
-    parentScoped: rule.parentScoped,
     description: rule.description ?? '',
     previewParentCode: '',
+    attributeMappings: mappings,
+    previewAttributes: {},
   };
 }
 
+/** 빈 codeValue (사용자가 미입력) 매핑은 BE 의 @NotBlank 검증에 걸리므로 사전 제거. */
+function filledMappings(mappings: CodeRuleAttributeMapping[]): CodeRuleAttributeMapping[] {
+  return mappings.filter(
+    (m) => m.codeValue !== null && m.codeValue !== undefined && m.codeValue.trim() !== '',
+  );
+}
+
 export function codeRuleFormToUpdateRequest(v: CodeRuleFormValues): CodeRuleUpdateRequest {
-  const trimmedPrefix = v.prefix.trim();
   const trimmedDescription = v.description.trim();
   return {
-    prefix: trimmedPrefix === '' ? null : trimmedPrefix,
     pattern: v.pattern.trim(),
-    defaultSeqLength: Number(v.defaultSeqLength),
-    resetPolicy: v.resetPolicy,
     inputMode: v.inputMode,
-    parentScoped: v.parentScoped,
     description: trimmedDescription === '' ? null : trimmedDescription,
+    attributeMappings: filledMappings(v.attributeMappings),
   };
 }
 
 export function codeRuleFormToPreviewRequest(v: CodeRuleFormValues): CodeRulePreviewRequest {
-  const trimmedPrefix = v.prefix.trim();
   const trimmedParent = v.previewParentCode.trim();
   return {
-    prefix: trimmedPrefix === '' ? null : trimmedPrefix,
     pattern: v.pattern,
-    defaultSeqLength: Number(v.defaultSeqLength) || 1,
-    resetPolicy: v.resetPolicy,
     inputMode: v.inputMode,
-    parentScoped: v.parentScoped,
     parentCode: trimmedParent === '' ? null : trimmedParent,
+    previewAttributes: v.previewAttributes,
+    attributeMappings: filledMappings(v.attributeMappings),
   };
 }
