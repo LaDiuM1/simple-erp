@@ -2,7 +2,6 @@ package io.github.ladium1.erp.coderule.internal.init;
 
 import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
 import io.github.ladium1.erp.coderule.api.InputMode;
-import io.github.ladium1.erp.coderule.api.ResetPolicy;
 import io.github.ladium1.erp.coderule.internal.entity.CodeRule;
 import io.github.ladium1.erp.coderule.internal.repository.CodeRuleRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +24,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@Order(100) // 의존 없음.
+@Order(100)
 @RequiredArgsConstructor
 public class CodeRuleInitializer implements ApplicationRunner {
 
@@ -34,34 +33,22 @@ public class CodeRuleInitializer implements ApplicationRunner {
     static {
         DEFAULTS.put(CodeRuleTarget.DEPARTMENT, CodeRule.builder()
                 .target(CodeRuleTarget.DEPARTMENT)
-                .prefix("D")
-                .pattern("{PREFIX}{SEQ:3}")
-                .defaultSeqLength(3)
-                .resetPolicy(ResetPolicy.NEVER)
+                .pattern("D{SEQ:3}")
                 .inputMode(InputMode.AUTO_OR_MANUAL)
-                .parentScoped(false)
                 .description("부서 코드 — 기본: D001, D002, ...")
                 .build());
 
         DEFAULTS.put(CodeRuleTarget.POSITION, CodeRule.builder()
                 .target(CodeRuleTarget.POSITION)
-                .prefix("P")
-                .pattern("{PREFIX}{SEQ:3}")
-                .defaultSeqLength(3)
-                .resetPolicy(ResetPolicy.NEVER)
+                .pattern("P{SEQ:3}")
                 .inputMode(InputMode.AUTO_OR_MANUAL)
-                .parentScoped(false)
                 .description("직책 코드 — 기본: P001, P002, ...")
                 .build());
 
         DEFAULTS.put(CodeRuleTarget.CUSTOMER, CodeRule.builder()
                 .target(CodeRuleTarget.CUSTOMER)
-                .prefix("C")
-                .pattern("{PREFIX}{SEQ:4}")
-                .defaultSeqLength(4)
-                .resetPolicy(ResetPolicy.NEVER)
+                .pattern("C{SEQ:4}")
                 .inputMode(InputMode.AUTO_OR_MANUAL)
-                .parentScoped(false)
                 .description("고객사 코드 — 기본: C0001, C0002, ...")
                 .build());
     }
@@ -82,12 +69,8 @@ public class CodeRuleInitializer implements ApplicationRunner {
             }
             codeRuleRepository.save(CodeRule.builder()
                     .target(template.getTarget())
-                    .prefix(template.getPrefix())
                     .pattern(template.getPattern())
-                    .defaultSeqLength(template.getDefaultSeqLength())
-                    .resetPolicy(template.getResetPolicy())
                     .inputMode(template.getInputMode())
-                    .parentScoped(template.isParentScoped())
                     .description(template.getDescription())
                     .build());
             log.info("기본 채번 규칙 생성: {}", target);

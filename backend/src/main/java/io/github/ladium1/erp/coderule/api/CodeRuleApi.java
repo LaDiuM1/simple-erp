@@ -1,7 +1,10 @@
 package io.github.ladium1.erp.coderule.api;
 
 import io.github.ladium1.erp.coderule.api.dto.CodeGenerationContext;
+import io.github.ladium1.erp.coderule.api.dto.CodeRuleAttributeDescriptor;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
+
+import java.util.List;
 
 public interface CodeRuleApi {
 
@@ -30,4 +33,12 @@ public interface CodeRuleApi {
      * 부합하지 않으면 BusinessException 을 throw 한다. 유일성 검증은 도메인 책임.
      */
     void validate(CodeRuleTarget target, String code);
+
+    /**
+     * 도메인이 {@link CodeRuleAttributeProvider} 로 등록한 attribute 후보 목록.
+     * <p>
+     * 채번 규칙 화면이 토큰 만들기 옵션과 매핑 관리 UI 를 그리기 위해 사용한다.
+     * 도메인이 attribute 를 등록하지 않으면 빈 리스트.
+     */
+    List<CodeRuleAttributeDescriptor> getAttributes(CodeRuleTarget target);
 }

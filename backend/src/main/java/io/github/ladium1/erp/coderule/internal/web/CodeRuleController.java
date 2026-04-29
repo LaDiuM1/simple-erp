@@ -1,6 +1,8 @@
 package io.github.ladium1.erp.coderule.internal.web;
 
 import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
+import io.github.ladium1.erp.coderule.api.dto.CodeRuleAttributeDescriptor;
+import io.github.ladium1.erp.coderule.internal.dto.CodeRuleAttributeMappingPayload;
 import io.github.ladium1.erp.coderule.internal.dto.CodeRulePreviewRequest;
 import io.github.ladium1.erp.coderule.internal.dto.CodeRulePreviewResponse;
 import io.github.ladium1.erp.coderule.internal.dto.CodeRuleResponse;
@@ -40,6 +42,18 @@ public class CodeRuleController {
     @PreAuthorize(CAN_READ)
     public CodeRuleResponse get(@PathVariable CodeRuleTarget target) {
         return codeRuleService.get(target);
+    }
+
+    @GetMapping("/{target}/attributes")
+    @PreAuthorize(CAN_READ)
+    public List<CodeRuleAttributeDescriptor> getAttributes(@PathVariable CodeRuleTarget target) {
+        return codeRuleService.getAttributes(target);
+    }
+
+    @GetMapping("/{target}/attribute-mappings")
+    @PreAuthorize(CAN_READ)
+    public List<CodeRuleAttributeMappingPayload> getMappings(@PathVariable CodeRuleTarget target) {
+        return codeRuleService.getMappings(target);
     }
 
     @PutMapping("/{target}")

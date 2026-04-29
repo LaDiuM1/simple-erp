@@ -309,12 +309,8 @@ class CustomerServiceTest {
     private CodeRuleInfo ruleWithMode(InputMode mode) {
         return CodeRuleInfo.builder()
                 .target(CodeRuleTarget.CUSTOMER)
-                .prefix("C")
-                .pattern("{PREFIX}{SEQ:4}")
-                .defaultSeqLength(4)
-                .resetPolicy(ResetPolicy.NEVER)
+                .pattern("C{SEQ:4}")
                 .inputMode(mode)
-                .parentScoped(false)
                 .description("테스트")
                 .build();
     }

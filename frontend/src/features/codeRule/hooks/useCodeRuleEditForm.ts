@@ -1,26 +1,24 @@
 import * as React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_PATH, MENU_CODE } from '@/shared/config/menuConfig';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation, type FieldValidation } from '@/shared/hooks/useFieldValidation';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
+  useGetCodeRuleAttributeMappingsQuery,
+  useGetCodeRuleAttributesQuery,
   usePreviewCodeRuleMutation,
   useUpdateCodeRuleMutation,
 } from '@/features/codeRule/api/codeRuleApi';
 import {
-  detectPreset,
-  extractSeqLen,
-  PRESET_BY_ID,
-  summarize,
-  type PresetId,
-} from '@/features/codeRule/config/presets';
-import {
   codeRuleFormToPreviewRequest,
   codeRuleFormToUpdateRequest,
   codeRuleToFormValues,
+  INPUT_MODE,
   type CodeRule,
+  type CodeRuleAttributeDescriptor,
+  type CodeRuleAttributeMapping,
   type CodeRuleFormValues,
   type CodeRulePreviewResponse,
   type CodeRuleTarget,
@@ -43,26 +41,37 @@ export interface CodeRuleEditFormState {
   previewError: string | null;
   patternUsesParent: boolean;
   needsParentInput: boolean;
-  /** 현재 선택된 프리셋 — UI 분기용 (서버 전송 X). */
-  selectedPreset: PresetId;
-  /** 카드 클릭 시 호출 — pattern/resetPolicy/parentScoped 일괄 갱신. */
-  selectPreset: (id: PresetId) => void;
-  /** 인라인 prefix 변경. preset 모드면 pattern 까지 재빌드. */
-  setPrefix: (prefix: string) => void;
-  /** 인라인 자릿수 변경. preset 모드면 pattern 까지 재빌드. */
-  setSeqLen: (seqLen: number) => void;
-  /** 사람말 요약 — 미리보기 패널에 표시. */
-  summary: string;
+  showAutoOptions: boolean;
+  patternInputRef: React.RefObject<HTMLInputElement | null>;
+  /** 도메인 attribute key 집합 — TokenChipsCard / 검증 용 */
+  attributeKeySet: Set<string>;
+  tokenModalOpen: boolean;
+  openTokenModal: () => void;
+  closeTokenModal: () => void;
+  /** 사용자 입력값 literal 을 토큰 카드에 추가 */
+  addCustomLiteral: (literal: string) => void;
+  removeCustomLiteral: (literal: string) => void;
+  customLiterals: string[];
+  /** 토큰 카드 chip 클릭 시 — 패턴의 cursor 위치에 토큰 삽입 */
+  insertTokenAtCursor: (token: string) => void;
+  /** 분류값 종류로 진입 시 — 두번째 모달 호출 */
+  attributeDialogOpen: boolean;
+  openAttributeDialog: () => void;
+  closeAttributeDialog: () => void;
+  /** 두번째 모달의 추가 — 매핑 1건 + 패턴에 {KEY} 토큰 보장 */
+  onAttributeMappingConfirm: (mapping: CodeRuleAttributeMapping) => void;
+  /** chip 의 매핑 entry 우측 X — 매핑 1건 제거 */
+  removeMapping: (attributeKey: string, sourceValue: string) => void;
+  attributes: CodeRuleAttributeDescriptor[];
+  setPreviewAttribute: (attributeKey: string, sourceValue: string) => void;
+  needsAttributeInput: boolean;
+  usedAttributeKeys: string[];
   handleSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void;
   handleConfirmedSubmit: () => Promise<void>;
   closeConfirm: () => void;
   handleCancel: () => void;
 }
 
-/**
- * rule 이 이미 로드된 시점에 호출. 로딩/에러 분기는 호출자가 처리.
- * Employee 의 useEmployeeEditForm 과 동일한 시그니처 패턴 (id, detail) → (target, rule).
- */
 export function useCodeRuleEditForm(
   target: CodeRuleTarget,
   rule: CodeRule,
@@ -70,93 +79,134 @@ export function useCodeRuleEditForm(
   const navigate = useNavigate();
   const snackbar = useSnackbar();
 
+  const { data: attributes = [] } = useGetCodeRuleAttributesQuery(target);
+  const { data: fetchedMappings } = useGetCodeRuleAttributeMappingsQuery(target);
+
   const [values, setValues] = useState<CodeRuleFormValues>(() => codeRuleToFormValues(rule));
-  const [selectedPreset, setSelectedPreset] = useState<PresetId>(() =>
-    detectPreset({
-      pattern: rule.pattern,
-      resetPolicy: rule.resetPolicy,
-      parentScoped: rule.parentScoped,
-    }),
-  );
+  const [mappingsInitialized, setMappingsInitialized] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [preview, setPreview] = useState<CodeRulePreviewResponse | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [tokenModalOpen, setTokenModalOpen] = useState(false);
+  const [attributeDialogOpen, setAttributeDialogOpen] = useState(false);
+  const [customLiterals, setCustomLiterals] = useState<string[]>([]);
+
+  const patternInputRef = useRef<HTMLInputElement | null>(null);
 
   const [updateCodeRule, { isLoading: isSaving }] = useUpdateCodeRuleMutation();
   const [previewCodeRule, { isLoading: isPreviewing }] = usePreviewCodeRuleMutation();
+
+  // 매핑 fetch 완료 시 form values 에 1회 주입 (raw — 빈 row 자동 생성 X)
+  useEffect(() => {
+    if (mappingsInitialized || fetchedMappings === undefined) return;
+    setValues((prev) => ({ ...prev, attributeMappings: fetchedMappings }));
+    setMappingsInitialized(true);
+  }, [fetchedMappings, mappingsInitialized]);
 
   const update = <K extends keyof CodeRuleFormValues>(key: K, v: CodeRuleFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));
 
   const validation = useFieldValidation(values, codeRuleValidators);
 
+  const showAutoOptions =
+    values.inputMode === INPUT_MODE.AUTO || values.inputMode === INPUT_MODE.AUTO_OR_MANUAL;
+
   const patternUsesParent = useMemo(
     () => patternUsesParentToken(values.pattern),
     [values.pattern],
   );
-  const needsParentInput = patternUsesParent || values.parentScoped;
+  const needsParentInput = rule.hasParent && patternUsesParent;
 
-  /* ---- 프리셋 변경 시 pattern/resetPolicy/parentScoped 일괄 갱신 ---- */
-  const selectPreset = (id: PresetId) => {
-    setSelectedPreset(id);
-    if (id === 'custom') {
-      // custom 으로 전환 시 현재 pattern 그대로 유지하고 모든 옵션 자유 편집 허용
-      return;
-    }
-    const seqLen = (extractSeqLen(values.pattern) ?? Number(values.defaultSeqLength)) || 3;
-    const built = PRESET_BY_ID[id].build(values.prefix, seqLen);
+  const attributeKeySet = useMemo(
+    () => new Set(attributes.map((a) => a.key)),
+    [attributes],
+  );
+  const usedAttributeKeys = useMemo(
+    () => extractUsedAttributeKeys(values.pattern, attributeKeySet),
+    [values.pattern, attributeKeySet],
+  );
+  const needsAttributeInput = usedAttributeKeys.length > 0;
+
+  const openTokenModal = () => setTokenModalOpen(true);
+  const closeTokenModal = () => setTokenModalOpen(false);
+
+  const insertTokenAtCursor = (token: string) => {
+    setValues((prev) => {
+      const input = patternInputRef.current;
+      const start = input?.selectionStart ?? prev.pattern.length;
+      const end = input?.selectionEnd ?? prev.pattern.length;
+      const nextPattern = prev.pattern.slice(0, start) + token + prev.pattern.slice(end);
+      return { ...prev, pattern: nextPattern };
+    });
+    queueMicrotask(() => {
+      const input = patternInputRef.current;
+      if (!input) return;
+      input.focus();
+      const start = input.selectionStart ?? 0;
+      input.setSelectionRange(start + token.length, start + token.length);
+    });
+  };
+
+  const addCustomLiteral = (literal: string) => {
+    const trimmed = literal.trim();
+    if (!trimmed) return;
+    setCustomLiterals((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    setTokenModalOpen(false);
+  };
+
+  const removeCustomLiteral = (literal: string) => {
+    setCustomLiterals((prev) => prev.filter((l) => l !== literal));
+  };
+
+  const openAttributeDialog = () => setAttributeDialogOpen(true);
+  const closeAttributeDialog = () => setAttributeDialogOpen(false);
+
+  /** 두번째 모달의 추가 — 매핑 1건 추가/갱신 + 패턴에 {KEY} 가 없으면 끝에 추가 */
+  const onAttributeMappingConfirm = (mapping: CodeRuleAttributeMapping) => {
+    setValues((prev) => {
+      const tokenLiteral = `{${mapping.attributeKey}}`;
+      const hasToken = prev.pattern.includes(tokenLiteral);
+      const nextPattern = hasToken ? prev.pattern : prev.pattern + tokenLiteral;
+
+      const idx = prev.attributeMappings.findIndex(
+        (m) => m.attributeKey === mapping.attributeKey && m.sourceValue === mapping.sourceValue,
+      );
+      const nextMappings = [...prev.attributeMappings];
+      if (idx >= 0) {
+        nextMappings[idx] = mapping;
+      } else {
+        nextMappings.push(mapping);
+      }
+      return { ...prev, pattern: nextPattern, attributeMappings: nextMappings };
+    });
+    setAttributeDialogOpen(false);
+  };
+
+  const removeMapping = (attributeKey: string, sourceValue: string) => {
     setValues((prev) => ({
       ...prev,
-      pattern: built.pattern,
-      resetPolicy: built.resetPolicy,
-      parentScoped: built.parentScoped,
-      defaultSeqLength: String(seqLen),
+      attributeMappings: prev.attributeMappings.filter(
+        (m) => !(m.attributeKey === attributeKey && m.sourceValue === sourceValue),
+      ),
     }));
   };
 
-  /* ---- 인라인 prefix/seqLen 편집 — preset 모드일 때만 pattern 재빌드 ---- */
-  const setPrefix = (prefix: string) => {
-    setValues((prev) => {
-      if (selectedPreset === 'custom') {
-        return { ...prev, prefix };
-      }
-      const seqLen = (extractSeqLen(prev.pattern) ?? Number(prev.defaultSeqLength)) || 3;
-      const built = PRESET_BY_ID[selectedPreset].build(prefix, seqLen);
-      return { ...prev, prefix, pattern: built.pattern };
-    });
+  const setPreviewAttribute = (attributeKey: string, sourceValue: string) => {
+    setValues((prev) => ({
+      ...prev,
+      previewAttributes: { ...prev.previewAttributes, [attributeKey]: sourceValue },
+    }));
   };
 
-  const setSeqLen = (seqLen: number) => {
-    setValues((prev) => {
-      if (selectedPreset === 'custom') {
-        return { ...prev, defaultSeqLength: String(seqLen) };
-      }
-      const built = PRESET_BY_ID[selectedPreset].build(prev.prefix, seqLen);
-      return {
-        ...prev,
-        pattern: built.pattern,
-        defaultSeqLength: String(seqLen),
-      };
-    });
-  };
-
-  /* ---- 사람말 요약 (미리보기 패널 헤드라인) ---- */
-  const summary = useMemo(
-    () => summarize({
-      preset: selectedPreset,
-      prefix: values.prefix,
-      seqLen: (extractSeqLen(values.pattern) ?? Number(values.defaultSeqLength)) || 3,
-      pattern: values.pattern,
-      inputMode: values.inputMode,
-    }),
-    [selectedPreset, values.prefix, values.pattern, values.defaultSeqLength, values.inputMode],
-  );
-
-  // 미리보기 — 패턴/접두사/시퀀스/정책/parent 변경 시 debounced 호출
   const debounced = useDebouncedValue(values, 350);
 
   useEffect(() => {
-    const patternError = validatePattern(debounced.pattern, Number(debounced.defaultSeqLength));
+    if (debounced.inputMode === INPUT_MODE.MANUAL) {
+      setPreview(null);
+      setPreviewError(null);
+      return;
+    }
+    const patternError = validatePattern(debounced.pattern, attributeKeySet);
     if (patternError) {
       setPreview(null);
       setPreviewError(null);
@@ -180,7 +230,7 @@ export function useCodeRuleEditForm(
     return () => {
       cancelled = true;
     };
-  }, [debounced, previewCodeRule, target]);
+  }, [debounced, previewCodeRule, target, attributeKeySet]);
 
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -195,7 +245,10 @@ export function useCodeRuleEditForm(
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
     try {
-      await updateCodeRule({ target, body: codeRuleFormToUpdateRequest(values) }).unwrap();
+      await updateCodeRule({
+        target,
+        body: codeRuleFormToUpdateRequest(values),
+      }).unwrap();
       snackbar.success('저장되었습니다.');
       navigate(MENU_PATH[MENU_CODE.CODE_RULES]);
     } catch (err) {
@@ -214,14 +267,43 @@ export function useCodeRuleEditForm(
     previewError,
     patternUsesParent,
     needsParentInput,
-    selectedPreset,
-    selectPreset,
-    setPrefix,
-    setSeqLen,
-    summary,
+    showAutoOptions,
+    patternInputRef,
+    attributeKeySet,
+    tokenModalOpen,
+    openTokenModal,
+    closeTokenModal,
+    addCustomLiteral,
+    removeCustomLiteral,
+    customLiterals,
+    insertTokenAtCursor,
+    attributeDialogOpen,
+    openAttributeDialog,
+    closeAttributeDialog,
+    onAttributeMappingConfirm,
+    removeMapping,
+    attributes,
+    setPreviewAttribute,
+    needsAttributeInput,
+    usedAttributeKeys,
     handleSubmit,
     handleConfirmedSubmit,
     closeConfirm: () => setConfirmOpen(false),
     handleCancel: () => navigate(MENU_PATH[MENU_CODE.CODE_RULES]),
   };
+}
+
+const TOKEN_REGEX = /\{([A-Z]+)(?::\d+)?}/g;
+
+function extractUsedAttributeKeys(pattern: string, attributeKeys: Set<string>): string[] {
+  const used: string[] = [];
+  TOKEN_REGEX.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = TOKEN_REGEX.exec(pattern)) !== null) {
+    const name = match[1];
+    if (attributeKeys.has(name) && !used.includes(name)) {
+      used.push(name);
+    }
+  }
+  return used;
 }

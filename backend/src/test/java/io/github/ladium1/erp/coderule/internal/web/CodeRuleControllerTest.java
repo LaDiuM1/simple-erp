@@ -2,7 +2,6 @@ package io.github.ladium1.erp.coderule.internal.web;
 
 import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
 import io.github.ladium1.erp.coderule.api.InputMode;
-import io.github.ladium1.erp.coderule.api.ResetPolicy;
 import io.github.ladium1.erp.coderule.internal.dto.CodeRulePreviewRequest;
 import io.github.ladium1.erp.coderule.internal.dto.CodeRulePreviewResponse;
 import io.github.ladium1.erp.coderule.internal.dto.CodeRuleResponse;
@@ -57,67 +56,49 @@ class CodeRuleControllerTest {
         given(menuPermissionEvaluator.canWrite(any(), any())).willReturn(true);
     }
 
-    @Test
-    @DisplayName("채번 규칙 목록 조회 성공")
-    void find_all_success() throws Exception {
-        // given
-        CodeRuleResponse response = CodeRuleResponse.builder()
+    private static CodeRuleResponse sampleResponse() {
+        return CodeRuleResponse.builder()
                 .id(1L)
                 .target(CodeRuleTarget.DEPARTMENT)
                 .targetLabel("부서 코드")
-                .prefix("D")
-                .pattern("{PREFIX}{SEQ:3}")
-                .defaultSeqLength(3)
-                .resetPolicy(ResetPolicy.NEVER)
+                .pattern("D{SEQ:3}")
                 .inputMode(InputMode.AUTO)
-                .parentScoped(false)
+                .hasParent(true)
                 .description("부서")
                 .nextCode("D001")
                 .build();
-        given(codeRuleService.findAll()).willReturn(List.of(response));
+    }
 
-        // when & then
+    @Test
+    @DisplayName("채번 규칙 목록 조회 성공")
+    void find_all_success() throws Exception {
+        given(codeRuleService.findAll()).willReturn(List.of(sampleResponse()));
+
         mockMvc.perform(get("/api/v1/code-rules"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].target").value("DEPARTMENT"))
-                .andExpect(jsonPath("$.data[0].pattern").value("{PREFIX}{SEQ:3}"))
+                .andExpect(jsonPath("$.data[0].pattern").value("D{SEQ:3}"))
                 .andExpect(jsonPath("$.data[0].nextCode").value("D001"));
     }
 
     @Test
     @DisplayName("채번 규칙 단건 조회 성공")
     void get_success() throws Exception {
-        // given
-        CodeRuleResponse response = CodeRuleResponse.builder()
-                .id(1L)
-                .target(CodeRuleTarget.DEPARTMENT)
-                .targetLabel("부서 코드")
-                .prefix("D")
-                .pattern("{PREFIX}{SEQ:3}")
-                .defaultSeqLength(3)
-                .resetPolicy(ResetPolicy.NEVER)
-                .inputMode(InputMode.AUTO)
-                .parentScoped(false)
-                .nextCode("D001")
-                .build();
-        given(codeRuleService.get(CodeRuleTarget.DEPARTMENT)).willReturn(response);
+        given(codeRuleService.get(CodeRuleTarget.DEPARTMENT)).willReturn(sampleResponse());
 
-        // when & then
         mockMvc.perform(get("/api/v1/code-rules/{target}", "DEPARTMENT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.target").value("DEPARTMENT"))
-                .andExpect(jsonPath("$.data.prefix").value("D"));
+                .andExpect(jsonPath("$.data.pattern").value("D{SEQ:3}"));
     }
 
     @Test
-    @DisplayName("존재하지 않는 채번 규칙 조회 시 404")
+    @DisplayName("채번 규칙 조회 — RULE_NOT_FOUND 시 404")
     void get_fail_not_found() throws Exception {
-        // given
-        given(codeRuleService.get(CodeRuleTarget.DEPARTMENT))
-                .willThrow(new BusinessException(CodeRuleErrorCode.RULE_NOT_FOUND));
+        willThrow(new BusinessException(CodeRuleErrorCode.RULE_NOT_FOUND))
+                .given(codeRuleService).get(CodeRuleTarget.DEPARTMENT);
 
-        // when & then
         mockMvc.perform(get("/api/v1/code-rules/{target}", "DEPARTMENT"))
                 .andExpect(status().isNotFound());
     }
@@ -125,46 +106,27 @@ class CodeRuleControllerTest {
     @Test
     @DisplayName("채번 규칙 수정 성공")
     void update_success() throws Exception {
-        // given
         CodeRuleUpdateRequest request = new CodeRuleUpdateRequest(
-                "EMP", "{PREFIX}-{YYYY}-{SEQ:4}", 4,
-                ResetPolicy.YEARLY, InputMode.AUTO_OR_MANUAL, false, "수정"
+                "EMP-{YYYY}-{SEQ:4}", InputMode.AUTO_OR_MANUAL, "수정", null
         );
-        CodeRuleResponse response = CodeRuleResponse.builder()
-                .id(1L)
-                .target(CodeRuleTarget.DEPARTMENT)
-                .targetLabel("부서 코드")
-                .prefix("EMP")
-                .pattern("{PREFIX}-{YYYY}-{SEQ:4}")
-                .defaultSeqLength(4)
-                .resetPolicy(ResetPolicy.YEARLY)
-                .inputMode(InputMode.AUTO_OR_MANUAL)
-                .parentScoped(false)
-                .nextCode("EMP-2026-0001")
-                .build();
-        given(codeRuleService.update(eq(CodeRuleTarget.DEPARTMENT), any())).willReturn(response);
+        given(codeRuleService.update(eq(CodeRuleTarget.DEPARTMENT), any())).willReturn(sampleResponse());
 
-        // when & then
         mockMvc.perform(put("/api/v1/code-rules/{target}", "DEPARTMENT")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.prefix").value("EMP"))
-                .andExpect(jsonPath("$.data.pattern").value("{PREFIX}-{YYYY}-{SEQ:4}"));
+                .andExpect(jsonPath("$.data.target").value("DEPARTMENT"));
     }
 
     @Test
     @DisplayName("잘못된 패턴으로 수정 시 400")
     void update_fail_invalid_pattern() throws Exception {
-        // given
         CodeRuleUpdateRequest request = new CodeRuleUpdateRequest(
-                "D", "{BAD}{SEQ:3}", 3,
-                ResetPolicy.NEVER, InputMode.AUTO, false, null
+                "{BAD}{SEQ:3}", InputMode.AUTO, null, null
         );
         willThrow(new BusinessException(CodeRuleErrorCode.INVALID_PATTERN))
                 .given(codeRuleService).update(eq(CodeRuleTarget.DEPARTMENT), any());
 
-        // when & then
         mockMvc.perform(put("/api/v1/code-rules/{target}", "DEPARTMENT")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -174,10 +136,8 @@ class CodeRuleControllerTest {
     @Test
     @DisplayName("미리보기 성공 — nextCode + samples 반환")
     void preview_success() throws Exception {
-        // given
         CodeRulePreviewRequest request = new CodeRulePreviewRequest(
-                "D", "{PREFIX}{SEQ:3}", 3,
-                ResetPolicy.NEVER, InputMode.AUTO, false, null
+                "D{SEQ:3}", InputMode.AUTO, null, null, null
         );
         CodeRulePreviewResponse response = CodeRulePreviewResponse.builder()
                 .nextCode("D004")
@@ -186,7 +146,6 @@ class CodeRuleControllerTest {
         given(codeRuleService.previewFromRequest(eq(CodeRuleTarget.DEPARTMENT), any()))
                 .willReturn(response);
 
-        // when & then
         mockMvc.perform(post("/api/v1/code-rules/{target}/preview", "DEPARTMENT")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

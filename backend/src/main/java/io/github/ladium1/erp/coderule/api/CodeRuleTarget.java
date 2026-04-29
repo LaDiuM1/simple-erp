@@ -12,9 +12,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum CodeRuleTarget {
 
-    DEPARTMENT("부서 코드"),
-    POSITION("직책 코드"),
-    CUSTOMER("고객사 코드");
+    DEPARTMENT("부서 코드", true),
+    POSITION("직책 코드", false),
+    CUSTOMER("고객사 코드", false);
 
     private final String label;
+    /** 도메인이 부모 개념을 갖는지 — 토큰 만들기 UI 에서 부모 토큰 노출 여부 결정 */
+    private final boolean hasParent;
 }

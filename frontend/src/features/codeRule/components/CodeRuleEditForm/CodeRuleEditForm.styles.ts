@@ -33,7 +33,16 @@ export const FieldsColumn = styled(Box)({
   minWidth: 0,
 });
 
-export const PreviewColumn = styled(Box)(({ theme }) => ({
+export const PreviewColumn = styled(Box)({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.875rem',
+});
+
+/**
+ * 미리보기 영역만 sticky — 메모 카드는 스크롤 따라 흐름.
+ */
+export const PreviewSticky = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   gap: '0.875rem',
@@ -73,81 +82,49 @@ export const FieldHint = styled(Typography)(({ theme }) => ({
   marginTop: '0.375rem',
 }));
 
-export const InlineEditorRow = styled(Box)(({ theme }) => ({
+/**
+ * InputMode 라디오 — 가로 3분할, 동일 width. 설명은 미리보기 영역으로 이전.
+ */
+export const InputModeChoices = styled(Box)({
   display: 'grid',
-  gridTemplateColumns: '1fr',
-  gap: '1.25rem',
-  alignItems: 'start',
-  [theme.breakpoints.up('sm')]: {
-    gridTemplateColumns: 'minmax(0, 16rem) minmax(0, 1fr)',
-    gap: '1.5rem',
-  },
-}));
-
-export const TargetReadout = styled(Box)(({ theme }) => ({
-  display: 'inline-flex',
-  flexDirection: 'column',
-  alignSelf: 'flex-start',
-  border: `1px solid ${theme.palette.divider}`,
-  borderRadius: 0,
-  backgroundColor: theme.palette.background.paper,
-  overflow: 'hidden',
-  minWidth: '12rem',
-  '& .label': {
-    fontSize: '0.875rem',
-    fontWeight: 600,
-    color: theme.palette.text.secondary,
-    backgroundColor: theme.palette.headerBg,
-    padding: '0.5rem 1rem',
-    textAlign: 'center',
-    borderBottom: `1px solid ${theme.palette.divider}`,
-  },
-  '& .value': {
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: theme.palette.text.primary,
-    letterSpacing: '-0.01em',
-    lineHeight: 1.2,
-    padding: '0.625rem 1rem',
-    textAlign: 'center',
-  },
-}));
-
-export const SliderRow = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '1.25rem',
-  paddingLeft: '0.25rem',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gap: '0.5rem',
 });
 
-export const SliderValueChip = styled(Box)(({ theme }) => ({
-  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-  fontSize: '0.8125rem',
-  fontWeight: 600,
-  color: theme.palette.primary.main,
-  padding: '0.25rem 0.625rem',
-  borderRadius: 4,
-  backgroundColor: theme.palette.primarySubtle,
-  minWidth: '5rem',
+export const InputModeChoice = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '0.625rem 0.5rem',
+  border: `1px solid ${theme.palette.divider}`,
+  cursor: 'pointer',
   textAlign: 'center',
-  whiteSpace: 'nowrap',
+  transition: 'background-color 0.15s, border-color 0.15s',
+  '&[data-selected="true"]': {
+    borderColor: theme.palette.primary.main,
+    backgroundColor: theme.palette.primarySubtle,
+  },
+  '&:hover': {
+    borderColor: theme.palette.primary.main,
+  },
 }));
 
-export const AdvancedSection = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.5rem',
-  padding: '1.5rem 1.625rem',
-  borderRadius: 8,
+export const InputModeChoiceLabel = styled(Typography)(({ theme }) => ({
+  fontSize: '0.875rem',
+  fontWeight: 600,
+  color: theme.palette.text.primary,
+  letterSpacing: '-0.005em',
+  '[data-selected="true"] &': {
+    color: theme.palette.primary.main,
+  },
+}));
+
+/** 미리보기 영역의 InputMode 설명 박스 */
+export const InputModeHintBox = styled(Box)(({ theme }) => ({
+  padding: '0.625rem 0.875rem',
   border: `1px solid ${theme.palette.divider}`,
   backgroundColor: theme.palette.background.default,
-}));
-
-export const AdvancedTitle = styled(Typography)(({ theme }) => ({
   fontSize: '0.75rem',
-  fontWeight: 700,
-  color: theme.palette.primary.main,
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  marginBottom: '-0.25rem',
+  color: theme.palette.text.secondary,
+  lineHeight: 1.5,
 }));
