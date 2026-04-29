@@ -33,8 +33,9 @@ jobs:
             set -euo pipefail
             cd /opt/simple-erp
 
-            # GHCR 로그인 — PAT (read:packages) 사용. private 패키지 일 때만 필수.
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            # GHCR 패키지가 public 이라 anonymous pull 가능 — docker login 불필요.
+            # 추후 패키지를 private 로 전환하면 GHCR_PAT secret 등록 후 아래 라인 부활:
+            #   echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             # 이미지 태그 override (.env 의 BACKEND_IMAGE / WEB_IMAGE 보다 우선)
             export BACKEND_IMAGE="ghcr.io/${{ env.OWNER }}/simple-erp-backend:${{ env.IMAGE_TAG }}"
