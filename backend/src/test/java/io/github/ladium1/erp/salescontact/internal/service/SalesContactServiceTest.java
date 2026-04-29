@@ -185,6 +185,22 @@ class SalesContactServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", SalesContactErrorCode.EMPLOYMENT_NOT_FOUND);
     }
 
+    @Test
+    @DisplayName("getDetail 성공 — 외부 회사 재직 (customerId == null) 가 섞여도 NPE 없이 응답")
+    void get_detail_external_company_employment() {
+        SalesContact contact = mockContact("정대성");
+        ReflectionTestUtils.setField(contact, "id", 1L);
+        given(contactRepository.findById(1L)).willReturn(Optional.of(contact));
+        given(employmentRepository.findByContactIdOrderByEndDateAscStartDateDesc(1L))
+                .willReturn(List.of(mockEmployment(1L, null, "외부회사")));
+        given(contactSourceRepository.findByContactIdIn(List.of(1L))).willReturn(List.of());
+
+        salesContactService.getDetail(1L);
+
+        // customerApi.findByIds 는 호출되지 않아야 함 — customerId 가 모두 null 이므로 lookup 스킵.
+        verify(customerApi, never()).findByIds(any());
+    }
+
     private SalesContact mockContact(String name) {
         return SalesContact.builder().name(name).build();
     }
