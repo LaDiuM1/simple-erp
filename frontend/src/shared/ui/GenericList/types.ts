@@ -126,6 +126,18 @@ export type UseExcelDownload<TFilters> = () => (
   params: TFilters & { sort?: string },
 ) => unknown;
 
+/**
+ * 엑셀 업로드 mutation — RTK Query 가 반환하는 [trigger, state] 튜플.
+ * trigger 는 FormData 를 받고 unwrap() 으로 ExcelUploadResult 를 promise 로 노출.
+ */
+export type UseExcelUpload = () => readonly [
+  (form: FormData) => { unwrap: () => Promise<unknown> },
+  { isLoading?: boolean },
+];
+
+/** 업로드 양식 다운로드 훅 — 인자 없이 호출, void / Promise<void> 반환. */
+export type UseExcelTemplate = () => () => Promise<void> | void;
+
 export interface DeleteConfirmMessages {
   title: string;
   /** message 내 `{no}` 가 있으면 삭제 대상 행의 No (글로벌 데이터 순번) 로 치환된다. */
@@ -159,6 +171,16 @@ export interface ListApiConfig<TRow, TFilters extends object> {
   useBulkDelete?: UseBulkDeleteMutation;
   /** 지정 시 리스트 툴바 우측에 엑셀 다운로드 버튼이 자동 노출 */
   useExcel?: UseExcelDownload<TFilters>;
+  /**
+   * 지정 시 다운로드 버튼 옆에 [엑셀 업로드] 버튼이 자동 노출 — 클릭 시 가이드 / 양식 / 드롭존 통합 모달.
+   * useExcelTemplate 도 함께 지정하면 모달 안에서 양식 다운로드 링크 노출.
+   */
+  useExcelUpload?: UseExcelUpload;
+  useExcelTemplate?: UseExcelTemplate;
+  /** 업로드 모달 제목 — 도메인별 차이 (예: "고객사 엑셀 업로드"). 미지정 시 공통 기본값. */
+  excelUploadTitle?: string;
+  /** 업로드 모달 가이드 — 공통 가이드 뒤에 추가로 노출할 도메인별 설명. */
+  excelUploadGuide?: ReactNode;
 
   rowKey: (row: TRow) => number;
 

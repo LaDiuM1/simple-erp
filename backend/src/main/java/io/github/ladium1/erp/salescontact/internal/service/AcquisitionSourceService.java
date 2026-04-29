@@ -43,6 +43,13 @@ public class AcquisitionSourceService {
         return sourceMapper.toInfos(sourceRepository.findAllById(ids));
     }
 
+    public List<AcquisitionSourceInfo> findByNames(List<String> names) {
+        if (names == null || names.isEmpty()) {
+            return List.of();
+        }
+        return sourceMapper.toInfos(sourceRepository.findAllByNameIn(names));
+    }
+
     /**
      * 누락된 id 가 있으면 SOURCE_NOT_FOUND 로 실패.
      */

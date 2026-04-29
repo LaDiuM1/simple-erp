@@ -4,6 +4,7 @@ import axiosInstance from '@/shared/api/axiosInstance';
 import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
 import { useAppSelector } from '@/app/hooks';
 import type { PageResponse } from '@/shared/types/api';
+import type { ExcelUploadResult } from '@/shared/ui/ExcelUpload';
 import type {
   SalesContactCreateRequest,
   SalesContactDetail,
@@ -74,6 +75,10 @@ const salesContactApi = api.injectEndpoints({
     }),
     deleteSalesContacts: builder.mutation<void, number[]>({
       query: (ids) => ({ url: '/api/v1/sales-contacts', method: 'DELETE', data: ids }),
+      invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }],
+    }),
+    uploadSalesContactsExcel: builder.mutation<ExcelUploadResult, FormData>({
+      query: (form) => ({ url: '/api/v1/sales-contacts/excel/upload', method: 'POST', data: form }),
       invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }],
     }),
 
@@ -181,6 +186,7 @@ export const {
   useUpdateSalesContactMutation,
   useDeleteSalesContactMutation,
   useDeleteSalesContactsMutation,
+  useUploadSalesContactsExcelMutation,
   useCheckSalesContactMobilePhoneAvailabilityQuery,
   useGetSalesContactEmploymentsByCustomerIdQuery,
   useCreateSalesContactEmploymentMutation,
@@ -213,4 +219,21 @@ export function useDownloadSalesContactsExcel() {
     },
     [token],
   );
+}
+
+/**
+ * 업로드 양식 (.xlsx) 다운로드 — 다운로드와 동일한 헤더 / 폭 / 톤. binary 응답이라 axios 직접 호출.
+ */
+export function useDownloadSalesContactsTemplate() {
+  const token = useAppSelector((s) => s.auth.accessToken);
+
+  return useCallback(async () => {
+    const response = await axiosInstance.get('/api/v1/sales-contacts/excel/template', {
+      responseType: 'blob',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const filename = extractFilename(response.headers['content-disposition'])
+      ?? 'sales-contacts_template.xlsx';
+    triggerBrowserDownload(response.data, filename);
+  }, [token]);
 }

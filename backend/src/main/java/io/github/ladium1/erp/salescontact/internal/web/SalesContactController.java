@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.salescontact.internal.web;
 
+import io.github.ladium1.erp.global.excel.ExcelUploadResult;
 import io.github.ladium1.erp.global.web.DownloadResponse;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.salescontact.internal.dto.AvailabilityResponse;
@@ -30,7 +31,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -99,6 +102,19 @@ public class SalesContactController {
         );
         String filename = "sales-contacts_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".xlsx";
         return DownloadResponse.xlsx(bytes, filename);
+    }
+
+    @GetMapping("/excel/template")
+    @PreAuthorize(CAN_WRITE)
+    public ResponseEntity<ByteArrayResource> downloadTemplate() {
+        byte[] bytes = salesContactService.exportTemplate();
+        return DownloadResponse.xlsx(bytes, "sales-contacts_template.xlsx");
+    }
+
+    @PostMapping("/excel/upload")
+    @PreAuthorize(CAN_WRITE)
+    public ExcelUploadResult uploadExcel(@RequestPart("file") MultipartFile file) {
+        return salesContactService.importExcel(file);
     }
 
     /**

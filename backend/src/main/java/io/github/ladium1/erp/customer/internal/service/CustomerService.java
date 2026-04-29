@@ -16,11 +16,19 @@ import io.github.ladium1.erp.customer.internal.dto.CustomerUpdateRequest;
 import io.github.ladium1.erp.customer.internal.entity.Address;
 import io.github.ladium1.erp.customer.internal.entity.Customer;
 import io.github.ladium1.erp.customer.internal.excel.CustomerExcelExporter;
+import io.github.ladium1.erp.customer.internal.excel.CustomerExcelImporter;
+import io.github.ladium1.erp.customer.internal.excel.CustomerExcelImporter.Holder;
 import io.github.ladium1.erp.customer.internal.exception.CustomerErrorCode;
 import io.github.ladium1.erp.customer.internal.mapper.CustomerMapper;
 import io.github.ladium1.erp.customer.internal.repository.CustomerRepository;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRow;
+import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRows;
+import io.github.ladium1.erp.global.excel.ExcelRowError;
+import io.github.ladium1.erp.global.excel.ExcelUploadResult;
 import io.github.ladium1.erp.global.web.PageResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,8 +36,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +53,8 @@ public class CustomerService implements CustomerApi {
     private final CustomerMapper customerMapper;
     private final CodeRuleApi codeRuleApi;
     private final CustomerExcelExporter customerExcelExporter;
+    private final CustomerExcelImporter customerExcelImporter;
+    private final Validator validator;
 
     @Override
     public CustomerInfo getById(Long id) {
@@ -94,6 +109,84 @@ public class CustomerService implements CustomerApi {
                 .map(customerMapper::toSummaryResponse)
                 .toList();
         return customerExcelExporter.export(rows);
+    }
+
+    /**
+     * 엑셀 업로드용 빈 템플릿 — 다운로드 헤더 / 폭 / 톤 그대로, 데이터 행 없음.
+     */
+    public byte[] exportTemplate() {
+        return customerExcelImporter.exportTemplate();
+    }
+
+    /**
+     * 엑셀 업로드 — all-or-nothing. 한 행이라도 검증 실패 시 전체 롤백 + 에러 행 정보 반환.
+     */
+    @Transactional
+    public ExcelUploadResult importExcel(MultipartFile file) {
+        ParsedRows<Holder> parsed = customerExcelImporter.parse(file);
+        List<ExcelRowError> errors = new ArrayList<>(parsed.errors());
+
+        Set<String> seenCodes = new HashSet<>();
+        Set<String> seenBizRegNos = new HashSet<>();
+
+        for (ParsedRow<Holder> pr : parsed.builders()) {
+            int rowNum = pr.rowNum();
+            Holder holder = pr.builder();
+            CustomerCreateRequest req = holder.toRequest();
+
+            for (ConstraintViolation<CustomerCreateRequest> v : validator.validate(req)) {
+                errors.add(ExcelRowError.of(rowNum, v.getPropertyPath().toString(), v.getMessage()));
+            }
+
+            String code;
+            try {
+                code = resolveCode(holder.code);
+            } catch (BusinessException e) {
+                errors.add(ExcelRowError.of(rowNum, "고객사 코드", e.getMessage()));
+                continue;
+            }
+            holder.code = code;
+
+            if (!seenCodes.add(code)) {
+                errors.add(ExcelRowError.of(rowNum, "고객사 코드", "엑셀 내에서 중복된 코드입니다."));
+            } else if (customerRepository.existsByCode(code)) {
+                errors.add(ExcelRowError.of(rowNum, "고객사 코드", CustomerErrorCode.DUPLICATE_CODE.getMessage()));
+            }
+
+            String bizRegNo = trimToNull(holder.bizRegNo);
+            if (bizRegNo != null) {
+                if (!seenBizRegNos.add(bizRegNo)) {
+                    errors.add(ExcelRowError.of(rowNum, "사업자등록번호", "엑셀 내에서 중복된 사업자등록번호입니다."));
+                } else if (customerRepository.existsByBizRegNo(bizRegNo)) {
+                    errors.add(ExcelRowError.of(rowNum, "사업자등록번호", CustomerErrorCode.DUPLICATE_BIZ_REG_NO.getMessage()));
+                }
+                holder.bizRegNo = bizRegNo;
+            }
+        }
+
+        if (!errors.isEmpty()) {
+            // 시퀀스가 이미 증가했더라도 트랜잭션 롤백으로 복구.
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            return ExcelUploadResult.failure(parsed.totalRows(), errors);
+        }
+
+        for (ParsedRow<Holder> pr : parsed.builders()) {
+            Holder h = pr.builder();
+            Customer customer = Customer.builder()
+                    .code(h.code)
+                    .name(h.name)
+                    .bizRegNo(h.bizRegNo)
+                    .representative(h.representative)
+                    .phone(h.phone)
+                    .email(h.email)
+                    .address(toAddress(null, h.roadAddress, null))
+                    .type(h.type)
+                    .status(h.status)
+                    .tradeStartDate(h.tradeStartDate)
+                    .build();
+            customerRepository.save(customer);
+        }
+        return ExcelUploadResult.success(parsed.totalRows());
     }
 
     public CustomerDetailResponse getDetail(Long id) {
