@@ -4,6 +4,7 @@ import axiosInstance from '@/shared/api/axiosInstance';
 import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
 import { useAppSelector } from '@/app/hooks';
 import type { PageResponse } from '@/shared/types/api';
+import type { ExcelUploadResult } from '@/shared/ui/ExcelUpload';
 import type {
   CustomerCreateRequest,
   CustomerDetail,
@@ -54,6 +55,10 @@ const customerApi = api.injectEndpoints({
       query: (ids) => ({ url: '/api/v1/customers', method: 'DELETE', data: ids }),
       invalidatesTags: [{ type: 'Customer', id: 'LIST' }],
     }),
+    uploadCustomersExcel: builder.mutation<ExcelUploadResult, FormData>({
+      query: (form) => ({ url: '/api/v1/customers/excel/upload', method: 'POST', data: form }),
+      invalidatesTags: [{ type: 'Customer', id: 'LIST' }],
+    }),
     checkCustomerCodeAvailability: builder.query<{ available: boolean }, string>({
       query: (code) => ({
         url: '/api/v1/customers/code-availability',
@@ -78,6 +83,7 @@ export const {
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
   useDeleteCustomersMutation,
+  useUploadCustomersExcelMutation,
   useCheckCustomerCodeAvailabilityQuery,
   useCheckCustomerBizRegNoAvailabilityQuery,
 } = customerApi;
@@ -103,4 +109,21 @@ export function useDownloadCustomersExcel() {
     },
     [token],
   );
+}
+
+/**
+ * 업로드 양식 (.xlsx) 다운로드 — 다운로드와 동일한 헤더 / 폭 / 톤. binary 응답이라 axios 직접 호출.
+ */
+export function useDownloadCustomersTemplate() {
+  const token = useAppSelector((s) => s.auth.accessToken);
+
+  return useCallback(async () => {
+    const response = await axiosInstance.get('/api/v1/customers/excel/template', {
+      responseType: 'blob',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const filename = extractFilename(response.headers['content-disposition'])
+      ?? 'customers_template.xlsx';
+    triggerBrowserDownload(response.data, filename);
+  }, [token]);
 }

@@ -10,7 +10,9 @@ import {
   useDeleteCustomerMutation,
   useDeleteCustomersMutation,
   useDownloadCustomersExcel,
+  useDownloadCustomersTemplate,
   useGetCustomersQuery,
+  useUploadCustomersExcelMutation,
 } from '@/features/customer/api/customerApi';
 import CustomerStatusIndicator from '@/features/customer/components/CustomerStatusIndicator';
 import {
@@ -124,6 +126,15 @@ export function useCustomerListApi(): ListApiConfig<CustomerSummary, CustomerLis
     useDelete: useDeleteCustomerMutation,
     useBulkDelete: useDeleteCustomersMutation,
     useExcel: useDownloadCustomersExcel,
+    useExcelTemplate: useDownloadCustomersTemplate,
+    useExcelUpload: useUploadCustomersExcelMutation,
+    excelUploadTitle: '고객사 엑셀 업로드',
+    excelUploadGuide: (
+      <>
+        <div><strong>·</strong> [*] 표시는 필수 입력 항목입니다.</div>
+        <div><strong>·</strong> 입력 형식 및 예시는 양식 내 안내 시트를 참고해 주세요.</div>
+      </>
+    ),
     rowKey: (m) => m.id,
     onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.CUSTOMERS]}/${m.id}/edit`),
     onRowClick: (m) => navigate(`${MENU_PATH[MENU_CODE.CUSTOMERS]}/${m.id}`),

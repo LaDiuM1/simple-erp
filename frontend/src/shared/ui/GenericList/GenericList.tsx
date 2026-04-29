@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import DownloadIcon from '@mui/icons-material/FileDownloadOutlined';
+import UploadIcon from '@mui/icons-material/FileUploadOutlined';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { getErrorMessage } from '@/shared/api/error';
+import { ExcelUploadModal, type ExcelUploadResult } from '@/shared/ui/ExcelUpload';
 import ListSearchFilter from './ListSearchFilter';
 import ListTable from './ListTable';
 import ListPagination from './ListPagination';
@@ -28,6 +30,8 @@ import type {
   UseBulkDeleteMutation,
   UseDeleteMutation,
   UseExcelDownload,
+  UseExcelTemplate,
+  UseExcelUpload,
 } from './types';
 
 const DEFAULT_DELETE_SUCCESS = '삭제되었습니다.';
@@ -47,6 +51,9 @@ const noopDeleteHook: UseDeleteMutation = () =>
 /** api.useBulkDelete 가 미지정인 페이지에서 hooks 호출 순서 유지용 placeholder. */
 const noopBulkDeleteHook: UseBulkDeleteMutation = () =>
   [() => ({ unwrap: async () => undefined }), undefined] as const;
+
+/** api.useExcelTemplate 미지정인 경우의 placeholder — 호출되면 no-op. */
+const noopTemplateHook: UseExcelTemplate = () => () => undefined;
 
 export interface GenericListProps<TRow, TFilters extends object> {
   api: ListApiConfig<TRow, TFilters>;
@@ -178,6 +185,14 @@ export default function GenericList<TRow, TFilters extends object>({
                       sort={state.sort}
                     />
                   )}
+                  {canWrite && api.useExcelUpload && (
+                    <ExcelUploadTrigger
+                      useUpload={api.useExcelUpload}
+                      useTemplate={api.useExcelTemplate}
+                      modalTitle={api.excelUploadTitle}
+                      extraGuide={api.excelUploadGuide}
+                    />
+                  )}
                 </FilterBarTrailing>
               ) : null
             }
@@ -256,5 +271,44 @@ function ExcelButton<TFilters extends object>({
     >
       엑셀
     </ExcelDownloadButton>
+  );
+}
+
+function ExcelUploadTrigger({
+  useUpload,
+  useTemplate,
+  modalTitle,
+  extraGuide,
+}: {
+  useUpload: UseExcelUpload;
+  useTemplate?: UseExcelTemplate;
+  modalTitle?: string;
+  extraGuide?: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [upload, { isLoading }] = useUpload();
+  const templateHook = useTemplate ?? noopTemplateHook;
+  const downloadTemplate = templateHook();
+
+  return (
+    <>
+      <ExcelDownloadButton
+        startIcon={<UploadIcon />}
+        onClick={() => setOpen(true)}
+        variant="outlined"
+        size="small"
+      >
+        엑셀 업로드
+      </ExcelDownloadButton>
+      <ExcelUploadModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={modalTitle}
+        upload={(form) => upload(form) as { unwrap: () => Promise<ExcelUploadResult> }}
+        isUploading={isLoading}
+        onDownloadTemplate={useTemplate ? downloadTemplate : undefined}
+        extraGuide={extraGuide}
+      />
+    </>
   );
 }

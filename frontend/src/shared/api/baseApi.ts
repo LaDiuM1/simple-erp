@@ -21,13 +21,18 @@ const axiosBaseQuery: BaseQueryFn<QueryArgs, unknown, ApiError> = async (
   const token = (getState() as RootState).auth.accessToken;
 
   try {
+    // FormData 일 때는 Content-Type 을 명시하지 않아 axios 가 boundary 포함 multipart 헤더를 자동 생성하도록 함.
+    const headers: Record<string, string | undefined> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (data instanceof FormData) headers['Content-Type'] = undefined;
+
     const result = await axiosInstance({
       url,
       method,
       data,
       params,
       paramsSerializer,
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers,
     });
 
     const body = result.data as ApiResponse<unknown>;
