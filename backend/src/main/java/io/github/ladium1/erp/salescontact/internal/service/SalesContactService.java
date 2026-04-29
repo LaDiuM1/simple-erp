@@ -22,11 +22,19 @@ import io.github.ladium1.erp.salescontact.internal.entity.SalesContact;
 import io.github.ladium1.erp.salescontact.internal.entity.SalesContactEmployment;
 import io.github.ladium1.erp.salescontact.internal.entity.SalesContactSource;
 import io.github.ladium1.erp.salescontact.internal.excel.SalesContactExcelExporter;
+import io.github.ladium1.erp.salescontact.internal.excel.SalesContactExcelImporter;
+import io.github.ladium1.erp.salescontact.internal.excel.SalesContactExcelImporter.Holder;
 import io.github.ladium1.erp.salescontact.internal.exception.SalesContactErrorCode;
 import io.github.ladium1.erp.salescontact.internal.mapper.SalesContactMapper;
 import io.github.ladium1.erp.salescontact.internal.repository.SalesContactEmploymentRepository;
 import io.github.ladium1.erp.salescontact.internal.repository.SalesContactRepository;
 import io.github.ladium1.erp.salescontact.internal.repository.SalesContactSourceRepository;
+import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRow;
+import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRows;
+import io.github.ladium1.erp.global.excel.ExcelRowError;
+import io.github.ladium1.erp.global.excel.ExcelUploadResult;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,8 +42,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -58,8 +70,10 @@ public class SalesContactService implements SalesContactApi {
     private final SalesContactSourceRepository contactSourceRepository;
     private final SalesContactMapper salesContactMapper;
     private final SalesContactExcelExporter excelExporter;
+    private final SalesContactExcelImporter excelImporter;
     private final CustomerApi customerApi;
     private final AcquisitionSourceService acquisitionSourceService;
+    private final Validator validator;
 
     @Override
     public SalesContactInfo getById(Long id) {
@@ -178,6 +192,114 @@ public class SalesContactService implements SalesContactApi {
                 })
                 .toList();
         return excelExporter.export(rows);
+    }
+
+    public byte[] exportTemplate() {
+        return excelImporter.exportTemplate();
+    }
+
+    /**
+     * 엑셀 일괄 업로드 — all-or-nothing.
+     * <p>
+     * 만난 경로는 acquisition_sources.name 으로 lookup (없는 이름은 에러). 현재 회사 / 직책 / 부서가 채워지면
+     * 활성 재직 이력 (외부 회사 자유 입력) 으로 함께 생성. customerId 매핑은 지원 안 함 — 회사명은 free-form 입력.
+     */
+    @Transactional
+    public ExcelUploadResult importExcel(MultipartFile file) {
+        ParsedRows<Holder> parsed = excelImporter.parse(file);
+        List<ExcelRowError> errors = new ArrayList<>(parsed.errors());
+
+        Set<String> seenMobilePhones = new HashSet<>();
+
+        // 모든 행에서 참조된 source 이름 lookup 1번에 처리.
+        Set<String> allSourceNames = new HashSet<>();
+        for (ParsedRow<Holder> pr : parsed.builders()) {
+            allSourceNames.addAll(pr.builder().sourceNames);
+        }
+        Map<String, Long> sourceIdByName = acquisitionSourceService.findByNames(new ArrayList<>(allSourceNames)).stream()
+                .collect(java.util.stream.Collectors.toMap(s -> s.name(), s -> s.id()));
+
+        for (ParsedRow<Holder> pr : parsed.builders()) {
+            int rowNum = pr.rowNum();
+            Holder holder = pr.builder();
+            holder.mobilePhone = trimToNull(holder.mobilePhone);
+            holder.email = trimToNull(holder.email);
+            holder.personalEmail = trimToNull(holder.personalEmail);
+
+            SalesContactCreateRequest req = new SalesContactCreateRequest(
+                    holder.name, holder.nameEn, holder.mobilePhone, holder.officePhone,
+                    holder.email, holder.personalEmail, holder.metAt, List.of(), holder.note
+            );
+            for (ConstraintViolation<SalesContactCreateRequest> v : validator.validate(req)) {
+                errors.add(ExcelRowError.of(rowNum, v.getPropertyPath().toString(), v.getMessage()));
+            }
+
+            if (holder.mobilePhone != null) {
+                if (!seenMobilePhones.add(holder.mobilePhone)) {
+                    errors.add(ExcelRowError.of(rowNum, "휴대폰", "엑셀 내에서 중복된 휴대폰 번호입니다."));
+                } else if (contactRepository.existsByMobilePhone(holder.mobilePhone)) {
+                    errors.add(ExcelRowError.of(rowNum, "휴대폰", SalesContactErrorCode.DUPLICATE_MOBILE_PHONE.getMessage()));
+                }
+            }
+
+            for (String sourceName : holder.sourceNames) {
+                if (!sourceIdByName.containsKey(sourceName)) {
+                    errors.add(ExcelRowError.of(rowNum, "만난 경로",
+                            "등록되지 않은 경로입니다: '" + sourceName + "' (시스템에 미리 등록된 경로명만 사용 가능합니다)"));
+                }
+            }
+
+            // 재직 이력은 회사명이 채워진 경우에만 생성. 시작일이 없으면 metAt 또는 오늘.
+            if (trimToNull(holder.currentCompanyName) == null
+                    && (trimToNull(holder.currentPosition) != null || trimToNull(holder.currentDepartment) != null)) {
+                errors.add(ExcelRowError.of(rowNum, "현재 회사",
+                        "직책 / 부서를 입력하려면 현재 회사도 함께 입력해야 합니다."));
+            }
+        }
+
+        if (!errors.isEmpty()) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            return ExcelUploadResult.failure(parsed.totalRows(), errors);
+        }
+
+        for (ParsedRow<Holder> pr : parsed.builders()) {
+            Holder h = pr.builder();
+            SalesContact contact = SalesContact.builder()
+                    .name(h.name)
+                    .nameEn(h.nameEn)
+                    .mobilePhone(h.mobilePhone)
+                    .officePhone(h.officePhone)
+                    .email(h.email)
+                    .personalEmail(h.personalEmail)
+                    .metAt(h.metAt)
+                    .note(h.note)
+                    .build();
+            Long contactId = contactRepository.save(contact).getId();
+
+            if (!h.sourceNames.isEmpty()) {
+                List<SalesContactSource> rows = h.sourceNames.stream()
+                        .map(name -> SalesContactSource.builder()
+                                .contactId(contactId)
+                                .sourceId(sourceIdByName.get(name))
+                                .build())
+                        .toList();
+                contactSourceRepository.saveAll(rows);
+            }
+
+            String company = trimToNull(h.currentCompanyName);
+            if (company != null) {
+                LocalDate startDate = h.metAt != null ? h.metAt : LocalDate.now();
+                SalesContactEmployment employment = SalesContactEmployment.builder()
+                        .contactId(contactId)
+                        .externalCompanyName(company)
+                        .position(trimToNull(h.currentPosition))
+                        .department(trimToNull(h.currentDepartment))
+                        .startDate(startDate)
+                        .build();
+                employmentRepository.save(employment);
+            }
+        }
+        return ExcelUploadResult.success(parsed.totalRows());
     }
 
     public SalesContactDetailResponse getDetail(Long id) {

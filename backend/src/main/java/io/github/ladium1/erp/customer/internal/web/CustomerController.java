@@ -9,6 +9,7 @@ import io.github.ladium1.erp.customer.internal.dto.CustomerUpdateRequest;
 import io.github.ladium1.erp.customer.internal.entity.CustomerStatus;
 import io.github.ladium1.erp.customer.internal.entity.CustomerType;
 import io.github.ladium1.erp.customer.internal.service.CustomerService;
+import io.github.ladium1.erp.global.excel.ExcelUploadResult;
 import io.github.ladium1.erp.global.web.DownloadResponse;
 import io.github.ladium1.erp.global.web.PageResponse;
 import jakarta.validation.Valid;
@@ -28,7 +29,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -90,6 +93,19 @@ public class CustomerController {
         );
         String filename = "customers_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".xlsx";
         return DownloadResponse.xlsx(bytes, filename);
+    }
+
+    @GetMapping("/excel/template")
+    @PreAuthorize(CAN_WRITE)
+    public ResponseEntity<ByteArrayResource> downloadTemplate() {
+        byte[] bytes = customerService.exportTemplate();
+        return DownloadResponse.xlsx(bytes, "customers_template.xlsx");
+    }
+
+    @PostMapping("/excel/upload")
+    @PreAuthorize(CAN_WRITE)
+    public ExcelUploadResult uploadExcel(@RequestPart("file") MultipartFile file) {
+        return customerService.importExcel(file);
     }
 
     @GetMapping("/code-availability")
