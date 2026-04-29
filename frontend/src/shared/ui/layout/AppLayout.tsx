@@ -44,6 +44,7 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [pageHeaderActionsNode, setPageHeaderActionsNode] = useState<HTMLElement | null>(null);
+  const [titleOverride, setTitleOverride] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(initialExpandedGroups);
 
   const navigate = useNavigate();
@@ -65,7 +66,7 @@ export default function AppLayout() {
     setPageHeaderActionsNode(el);
   }, []);
 
-  const pageTitle = getPageTitle(location.pathname);
+  const pageTitle = titleOverride ?? getPageTitle(location.pathname);
 
   const handleLogout = () => {
     snackbar.success('로그아웃되었습니다.');
@@ -182,7 +183,7 @@ export default function AppLayout() {
             }
           />
           <MainContent>
-            <Outlet context={{ pageHeaderActionsNode }} />
+            <Outlet context={{ pageHeaderActionsNode, setTitleOverride }} />
           </MainContent>
         </ContentColumn>
       </LayoutBody>

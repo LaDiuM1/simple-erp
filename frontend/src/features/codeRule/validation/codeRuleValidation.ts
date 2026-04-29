@@ -1,15 +1,16 @@
 import type { ValidatorMap } from '@/shared/hooks/useFieldValidation';
-import type { CodeRuleFormValues } from '@/features/codeRule/types';
+import { INPUT_MODE, type CodeRuleFormValues } from '@/features/codeRule/types';
 
 const TOKEN_REGEX = /\{([A-Z]+)(?::(\d+))?}/g;
-const KNOWN_TOKENS = new Set(['PREFIX', 'YYYY', 'YY', 'MM', 'DD', 'SEQ', 'PARENT']);
+const BUILT_IN_TOKENS = new Set(['YYYY', 'YY', 'MM', 'DD', 'SEQ', 'PARENT']);
 const MAX_SEQ_LENGTH = 18;
 
 /**
- * 클라이언트 사전 검증 — BE PatternCompiler.validate 와 동일한 룰을 미러.
- * 서버가 최종 검증이지만 즉시 피드백 위해 동일 로직 보유.
+ * 클라이언트 사전 검증 — BE PatternCompiler.validate 미러.
+ *
+ * @param attributeKeys 도메인이 등록한 attribute key (예: TYPE) — 이들은 unknown 으로 거부 안 함.
  */
-export function validatePattern(pattern: string, defaultSeqLength: number): string | null {
+export function validatePattern(pattern: string, attributeKeys: Set<string> = new Set()): string | null {
   const trimmed = pattern.trim();
   if (trimmed === '') return '패턴을 입력해주세요.';
   if (trimmed.length > 200) return '패턴은 200자 이하여야 합니다.';
@@ -19,7 +20,9 @@ export function validatePattern(pattern: string, defaultSeqLength: number): stri
   let match: RegExpExecArray | null;
   while ((match = TOKEN_REGEX.exec(trimmed)) !== null) {
     const [, name, arg] = match;
-    if (!KNOWN_TOKENS.has(name)) {
+    const isBuiltIn = BUILT_IN_TOKENS.has(name);
+    const isAttribute = attributeKeys.has(name);
+    if (!isBuiltIn && !isAttribute) {
       return `알 수 없는 토큰: {${name}}`;
     }
     if (arg !== undefined && name !== 'SEQ') {
@@ -27,19 +30,17 @@ export function validatePattern(pattern: string, defaultSeqLength: number): stri
     }
     if (name === 'SEQ') {
       hasSeq = true;
-      if (arg !== undefined) {
-        const n = Number(arg);
-        if (n < 1 || n > MAX_SEQ_LENGTH) {
-          return `SEQ 자릿수는 1~${MAX_SEQ_LENGTH} 사이여야 합니다.`;
-        }
+      if (arg === undefined) {
+        return '{SEQ:n} 형식으로 자릿수를 명시해주세요.';
+      }
+      const n = Number(arg);
+      if (n < 1 || n > MAX_SEQ_LENGTH) {
+        return `SEQ 자릿수는 1~${MAX_SEQ_LENGTH} 사이여야 합니다.`;
       }
     }
   }
   if (!hasSeq) {
-    return '{SEQ} 토큰을 최소 한 번 포함해야 합니다.';
-  }
-  if (Number.isNaN(defaultSeqLength) || defaultSeqLength < 1 || defaultSeqLength > MAX_SEQ_LENGTH) {
-    return null; // defaultSeqLength 오류는 별도 필드에서 표시
+    return '{SEQ:n} 토큰을 최소 한 번 포함해야 합니다.';
   }
   return null;
 }
@@ -54,19 +55,8 @@ export function patternUsesParentToken(pattern: string): boolean {
 }
 
 export const codeRuleValidators: ValidatorMap<CodeRuleFormValues> = {
-  prefix: (v) => {
-    if (v.length > 50) return '접두사는 50자 이하여야 합니다.';
-    return null;
-  },
-  pattern: (v, all) => validatePattern(v, Number(all.defaultSeqLength)),
-  defaultSeqLength: (v) => {
-    if (v.trim() === '') return '기본 자릿수를 입력해주세요.';
-    const n = Number(v);
-    if (!Number.isInteger(n) || n < 1 || n > MAX_SEQ_LENGTH) {
-      return `1~${MAX_SEQ_LENGTH} 사이의 정수여야 합니다.`;
-    }
-    return null;
-  },
+  // MANUAL 모드는 패턴이 의미 없어 검증 skip — 사용자가 자동에서 패턴 오류 상태로 수동으로 이동해도 저장 가능
+  pattern: (v, all) => (all.inputMode === INPUT_MODE.MANUAL ? null : validatePattern(v)),
   description: (v) => {
     if (v.length > 500) return '메모는 500자 이하여야 합니다.';
     return null;
