@@ -403,12 +403,8 @@ class PositionServiceTest {
     private CodeRuleInfo ruleWithMode(InputMode mode) {
         return CodeRuleInfo.builder()
                 .target(CodeRuleTarget.POSITION)
-                .prefix("P")
-                .pattern("{PREFIX}{SEQ:3}")
-                .defaultSeqLength(3)
-                .resetPolicy(ResetPolicy.NEVER)
+                .pattern("P{SEQ:3}")
                 .inputMode(mode)
-                .parentScoped(false)
                 .description("테스트")
                 .build();
     }
