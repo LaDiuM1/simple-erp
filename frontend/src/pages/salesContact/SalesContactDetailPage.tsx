@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import Link from '@mui/material/Link';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
@@ -111,10 +112,66 @@ function contactInfoFields(d: SalesContactDetail): HeaderDetailField[] {
   return [
     { label: '이름', value: d.name },
     { label: '영문명', value: d.nameEn },
-    { label: '휴대폰', value: d.mobilePhone },
-    { label: '전화번호', value: d.officePhone },
-    { label: '회사 이메일', value: d.email },
-    { label: '개인 이메일', value: d.personalEmail },
+    {
+      label: '휴대폰',
+      value: d.mobilePhone ? (
+        <Link 
+          href={`tel:${d.mobilePhone}`} 
+          underline="hover" 
+          color="primary"
+          sx={{ fontWeight: 500 }}
+        >
+          {d.mobilePhone}
+        </Link>
+      ) : (
+        d.mobilePhone
+      ),
+    },
+    {
+      label: '전화번호',
+      value: d.officePhone ? (
+        <Link 
+          href={`tel:${d.officePhone}`} 
+          underline="hover" 
+          color="primary"
+          sx={{ fontWeight: 500 }}
+        >
+          {d.officePhone}
+        </Link>
+      ) : (
+        d.officePhone
+      ),
+    },
+    {
+      label: '회사 이메일',
+      value: d.email ? (
+        <Link 
+          href={`mailto:${d.email}`} 
+          underline="hover" 
+          color="primary"
+          sx={{ fontWeight: 500 }}
+        >
+          {d.email}
+        </Link>
+      ) : (
+        d.email
+      ),
+    },
+    {
+      label: '개인 이메일',
+      value: d.personalEmail ? (
+        <Link 
+          href={`mailto:${d.personalEmail}`} 
+          underline="hover" 
+          color="primary"
+          sx={{ fontWeight: 500 }}
+        >
+          {d.personalEmail}
+        </Link>
+      ) : (
+        d.personalEmail
+      ),
+    },
     { label: '최초 미팅일', value: d.metAt },
     { label: '비고', value: d.note },
   ];
