@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -6,6 +7,7 @@ import StopCircleOutlinedIcon from '@mui/icons-material/StopCircleOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import {
+  InlineLinkButton,
   NowrapText,
   RowActions,
   StatusText,
@@ -16,7 +18,7 @@ import {
   type TabHookResult,
 } from '@/shared/ui/GenericTabbedTable';
 import { usePermission } from '@/shared/hooks/usePermission';
-import { MENU_CODE } from '@/shared/config/menuConfig';
+import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import Muted from '@/shared/ui/atoms/Muted';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
@@ -37,6 +39,7 @@ export function useEmploymentTab(
   contactId: number,
   employments: SalesContactEmployment[],
 ): TabHookResult {
+  const navigate = useNavigate();
   const { canWrite } = usePermission(MENU_CODE.SALES_CONTACTS);
   const snackbar = useSnackbar();
   const [deleteMut, { isLoading: isDeleting }] = useDeleteSalesContactEmploymentMutation();
@@ -78,7 +81,23 @@ export function useEmploymentTab(
     {
       key: 'company',
       header: '회사',
-      render: (e) => e.customerName ?? e.externalCompanyName ?? <Muted />,
+      render: (e) => {
+        if (e.customerId) {
+          return (
+            <InlineLinkButton
+              type="button"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                navigate(`${MENU_PATH[MENU_CODE.SALES_CUSTOMERS]}/${e.customerId}`);
+              }}
+              sx={{ textDecoration: 'underline', fontWeight: 500 }}
+            >
+              {e.customerName}
+            </InlineLinkButton>
+          );
+        }
+        return e.externalCompanyName ?? <Muted />;
+      },
     },
     {
       key: 'position',
