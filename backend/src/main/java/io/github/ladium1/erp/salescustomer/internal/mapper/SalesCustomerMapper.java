@@ -25,9 +25,11 @@ public interface SalesCustomerMapper {
     @Mapping(source = "ourEmployee.departmentName", target = "ourEmployeeDepartmentName")
     @Mapping(source = "activity.customerContactId", target = "customerContactId")
     @Mapping(source = "customerContact.name", target = "customerContactRegisteredName")
-    @Mapping(source = "activity.customerContactName", target = "customerContactName")
-    @Mapping(source = "activity.customerContactPosition", target = "customerContactPosition")
-    SalesActivityResponse toActivityResponse(SalesActivity activity, CustomerInfo customer, EmployeeInfo ourEmployee, SalesContactInfo customerContact);
+    @Mapping(source = "customerContact.currentPosition", target = "customerContactPosition")
+    SalesActivityResponse toActivityResponse(SalesActivity activity,
+                                             CustomerInfo customer,
+                                             EmployeeInfo ourEmployee,
+                                             SalesContactInfo customerContact);
 
     @Mapping(source = "assignment.id", target = "id")
     @Mapping(source = "assignment.customerId", target = "customerId")

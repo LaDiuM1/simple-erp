@@ -302,14 +302,14 @@ class SalesCustomerServiceTest {
     private SalesActivityCreateRequest baseActivityCreateRequest(Long customerId, Long employeeId) {
         return new SalesActivityCreateRequest(
                 customerId, SalesActivityType.VISIT, LocalDateTime.now(),
-                "신규 미팅", "내용", employeeId, null, "고객 담당자", "팀장"
+                "신규 미팅", "내용", employeeId, null
         );
     }
 
     private SalesActivityUpdateRequest baseActivityUpdateRequest(Long employeeId) {
         return new SalesActivityUpdateRequest(
                 SalesActivityType.CALL, LocalDateTime.now(),
-                "수정된 제목", "수정된 내용", employeeId, null, "고객 담당자", "팀장"
+                "수정된 제목", "수정된 내용", employeeId, null
         );
     }
 }

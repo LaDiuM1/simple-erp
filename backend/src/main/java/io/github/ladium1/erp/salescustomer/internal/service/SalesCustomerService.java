@@ -226,8 +226,6 @@ public class SalesCustomerService implements SalesCustomerApi {
                 .content(request.content())
                 .ourEmployeeId(request.ourEmployeeId())
                 .customerContactId(request.customerContactId())
-                .customerContactName(request.customerContactName())
-                .customerContactPosition(request.customerContactPosition())
                 .build();
         return activityRepository.save(activity).getId();
     }
@@ -247,9 +245,7 @@ public class SalesCustomerService implements SalesCustomerApi {
                 request.subject(),
                 request.content(),
                 request.ourEmployeeId(),
-                request.customerContactId(),
-                request.customerContactName(),
-                request.customerContactPosition()
+                request.customerContactId()
         );
     }
 

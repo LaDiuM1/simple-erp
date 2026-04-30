@@ -22,13 +22,7 @@ public record SalesActivityUpdateRequest(
         @NotNull
         Long ourEmployeeId,
 
-        /** 영업 명부 식별자 — null 이면 customerContactName / Position 자유 입력 fallback. */
-        Long customerContactId,
-
-        @Size(max = 100)
-        String customerContactName,
-
-        @Size(max = 100)
-        String customerContactPosition
+        /** 영업 명부 식별자 */
+        Long customerContactId
 ) {
 }

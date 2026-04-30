@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
  * customerId / ourEmployeeId / customerContactId 는 모듈 경계를 넘는 참조라 bare Long 컬럼으로만 보유.
  * 무결성 검증은 service 레이어에서 CustomerApi / EmployeeApi / SalesContactApi 로.
  * <p>
- * customerContactId 가 있으면 영업 명부 모듈의 SalesContact 와 연결, 없으면 customerContactName / customerContactPosition 자유 입력 fallback.
+ * customerContactId 가 있으면 영업 명부 모듈의 SalesContact 와 연결.
  */
 @Entity
 @Getter
@@ -58,14 +58,8 @@ public class SalesActivity extends BaseEntity {
     @Column(name = "our_employee_id", nullable = false, comment = "우리쪽 담당 직원 식별자")
     private Long ourEmployeeId;
 
-    @Column(name = "customer_contact_id", comment = "고객사 담당자 (영업 명부 식별자) — 자유 입력 fallback 가능")
+    @Column(name = "customer_contact_id", comment = "고객사 담당자 (영업 명부 식별자)")
     private Long customerContactId;
-
-    @Column(name = "customer_contact_name", comment = "고객사 담당자 이름 (자유 입력 — customerContactId 없을 때 fallback)")
-    private String customerContactName;
-
-    @Column(name = "customer_contact_position", comment = "고객사 담당자 직책 / 부서 (자유 입력)")
-    private String customerContactPosition;
 
     @Builder
     SalesActivity(Long customerId,
@@ -74,9 +68,7 @@ public class SalesActivity extends BaseEntity {
                   String subject,
                   String content,
                   Long ourEmployeeId,
-                  Long customerContactId,
-                  String customerContactName,
-                  String customerContactPosition) {
+                  Long customerContactId) {
         this.customerId = customerId;
         this.type = type;
         this.activityDate = activityDate;
@@ -84,8 +76,6 @@ public class SalesActivity extends BaseEntity {
         this.content = content;
         this.ourEmployeeId = ourEmployeeId;
         this.customerContactId = customerContactId;
-        this.customerContactName = customerContactName;
-        this.customerContactPosition = customerContactPosition;
     }
 
     public void update(SalesActivityType type,
@@ -93,16 +83,12 @@ public class SalesActivity extends BaseEntity {
                        String subject,
                        String content,
                        Long ourEmployeeId,
-                       Long customerContactId,
-                       String customerContactName,
-                       String customerContactPosition) {
+                       Long customerContactId) {
         this.type = type;
         this.activityDate = activityDate;
         this.subject = subject;
         this.content = content;
         this.ourEmployeeId = ourEmployeeId;
         this.customerContactId = customerContactId;
-        this.customerContactName = customerContactName;
-        this.customerContactPosition = customerContactPosition;
     }
 }

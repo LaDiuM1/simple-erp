@@ -109,7 +109,7 @@ class SalesCustomerControllerTest {
     void create_activity_success() throws Exception {
         SalesActivityCreateRequest request = new SalesActivityCreateRequest(
                 1L, SalesActivityType.VISIT, LocalDateTime.now(),
-                "미팅", "내용", 10L, null, "고객 담당", "팀장");
+                "미팅", "내용", 10L, null);
         given(salesCustomerService.createActivity(any())).willReturn(42L);
 
         mockMvc.perform(post("/api/v1/sales-customers/activities")
@@ -124,7 +124,7 @@ class SalesCustomerControllerTest {
     void update_activity_fail_not_found() throws Exception {
         SalesActivityUpdateRequest request = new SalesActivityUpdateRequest(
                 SalesActivityType.CALL, LocalDateTime.now(),
-                "수정", "내용", 10L, null, null, null);
+                "수정", "내용", 10L, null);
         willThrow(new BusinessException(SalesCustomerErrorCode.ACTIVITY_NOT_FOUND))
                 .given(salesCustomerService).updateActivity(eq(99L), any());
 
