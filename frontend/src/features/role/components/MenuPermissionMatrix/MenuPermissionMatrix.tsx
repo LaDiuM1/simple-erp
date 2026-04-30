@@ -1,10 +1,10 @@
-import Checkbox from '@mui/material/Checkbox';
 import { MENU_CODE, MENU_LABEL, type MenuCode } from '@/shared/config/menuConfig';
 import {
   Banner,
   ColumnCenter,
   HeaderColumnCenter,
   HeaderToggleAll,
+  MatrixCheckbox,
   MatrixHeader,
   MatrixRoot,
   MatrixRow,
@@ -131,7 +131,7 @@ export default function MenuPermissionMatrix({
             <MatrixRow key={menu} readOnly={readOnly}>
               <MenuLabel>{MENU_LABEL[menu]}</MenuLabel>
               <ColumnCenter>
-                <Checkbox
+                <MatrixCheckbox
                   size="small"
                   checked={p.canRead}
                   disabled={readOnly}
@@ -139,7 +139,7 @@ export default function MenuPermissionMatrix({
                 />
               </ColumnCenter>
               <ColumnCenter>
-                <Checkbox
+                <MatrixCheckbox
                   size="small"
                   checked={p.canWrite}
                   disabled={readOnly}
