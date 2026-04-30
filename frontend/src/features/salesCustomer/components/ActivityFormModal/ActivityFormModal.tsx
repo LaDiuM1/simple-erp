@@ -10,8 +10,8 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import EmployeeSelectField from '@/features/employee/components/EmployeeSelectField';
 import SalesContactSelectField from '@/features/salesContact/components/SalesContactSelectField';
-import ModeChoiceSection from '@/shared/ui/ModeChoiceSection';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
+import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 import {
   useCreateSalesActivityMutation,
   useUpdateSalesActivityMutation,
@@ -25,8 +25,6 @@ import {
 } from '@/features/salesCustomer/types';
 import { getErrorMessage } from '@/shared/api/error';
 
-type ContactMode = 'lookup' | 'manual';
-
 interface FormValues {
   type: SalesActivityType;
   activityDate: string;
@@ -34,11 +32,8 @@ interface FormValues {
   content: string;
   ourEmployeeId: string;
   ourEmployeeName: string;
-  contactMode: ContactMode;
   customerContactId: string;
   customerContactSelectedName: string;
-  customerContactName: string;
-  customerContactPosition: string;
 }
 
 const EMPTY: FormValues = {
@@ -48,11 +43,8 @@ const EMPTY: FormValues = {
   content: '',
   ourEmployeeId: '',
   ourEmployeeName: '',
-  contactMode: 'lookup',
   customerContactId: '',
   customerContactSelectedName: '',
-  customerContactName: '',
-  customerContactPosition: '',
 };
 
 interface Props {
@@ -68,6 +60,7 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
   const snackbar = useSnackbar();
   const [createMut, { isLoading: isCreating }] = useCreateSalesActivityMutation();
   const [updateMut, { isLoading: isUpdating }] = useUpdateSalesActivityMutation();
+  const { data: myProfile } = useGetMyProfileQuery();
 
   const [values, setValues] = useState<FormValues>(() =>
     activity ? toFormValues(activity) : { ...EMPTY, activityDate: todayDateTimeLocal() },
@@ -75,19 +68,20 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
 
   React.useEffect(() => {
     if (!open) return;
-    setValues(activity ? toFormValues(activity) : { ...EMPTY, activityDate: todayDateTimeLocal() });
-  }, [open, activity]);
+    if (activity) {
+      setValues(toFormValues(activity));
+    } else {
+      setValues({
+        ...EMPTY,
+        activityDate: todayDateTimeLocal(),
+        ourEmployeeId: myProfile ? String(myProfile.id) : '',
+        ourEmployeeName: myProfile ? myProfile.name : '',
+      });
+    }
+  }, [open, activity, myProfile]);
 
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));
-
-  const switchContactMode = (mode: ContactMode) => {
-    setValues((prev) =>
-      mode === 'lookup'
-        ? { ...prev, contactMode: mode, customerContactName: '', customerContactPosition: '' }
-        : { ...prev, contactMode: mode, customerContactId: '', customerContactSelectedName: '' },
-    );
-  };
 
   const isSaving = isCreating || isUpdating;
 
@@ -108,16 +102,13 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
       return;
     }
 
-    const isLookup = values.contactMode === 'lookup';
     const payload = {
       type: values.type,
       activityDate: ensureSeconds(values.activityDate),
       subject: values.subject.trim(),
       content: emptyToNull(values.content),
       ourEmployeeId: Number(values.ourEmployeeId),
-      customerContactId: isLookup && values.customerContactId !== '' ? Number(values.customerContactId) : null,
-      customerContactName: isLookup ? null : emptyToNull(values.customerContactName),
-      customerContactPosition: isLookup ? null : emptyToNull(values.customerContactPosition),
+      customerContactId: values.customerContactId !== '' ? Number(values.customerContactId) : null,
     };
 
     try {
@@ -186,46 +177,15 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
               }}
             />
 
-            <ModeChoiceSection
-              title="고객사 담당자"
-              mode={values.contactMode}
-              onModeChange={switchContactMode}
-              options={[
-                { value: 'lookup', label: '영업 명부 검색' },
-                { value: 'manual', label: '직접 입력' },
-              ]}
-            >
-              {values.contactMode === 'lookup' ? (
-                <SalesContactSelectField
-                  label="영업 명부"
-                  value={values.customerContactId}
-                  valueLabel={values.customerContactSelectedName}
-                  onChange={(id, name) => {
-                    update('customerContactId', id);
-                    update('customerContactSelectedName', name);
-                  }}
-                />
-              ) : (
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                  <TextField
-                    size="small"
-                    label="이름"
-                    value={values.customerContactName}
-                    onChange={(e) => update('customerContactName', e.target.value)}
-                    sx={{ flex: 1 }}
-                    slotProps={{ htmlInput: { maxLength: 100 } }}
-                  />
-                  <TextField
-                    size="small"
-                    label="직책"
-                    value={values.customerContactPosition}
-                    onChange={(e) => update('customerContactPosition', e.target.value)}
-                    sx={{ flex: 1 }}
-                    slotProps={{ htmlInput: { maxLength: 100 } }}
-                  />
-                </Stack>
-              )}
-            </ModeChoiceSection>
+            <SalesContactSelectField
+              label="고객사 담당자 (영업 명부)"
+              value={values.customerContactId}
+              valueLabel={values.customerContactSelectedName}
+              onChange={(id, name) => {
+                update('customerContactId', id);
+                update('customerContactSelectedName', name);
+              }}
+            />
 
             <TextField
               size="small"
@@ -251,7 +211,6 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
 }
 
 function toFormValues(a: SalesActivity): FormValues {
-  const hasLookup = a.customerContactId != null;
   return {
     type: a.type,
     activityDate: isoToDateTimeLocal(a.activityDate),
@@ -259,11 +218,8 @@ function toFormValues(a: SalesActivity): FormValues {
     content: a.content ?? '',
     ourEmployeeId: String(a.ourEmployeeId),
     ourEmployeeName: a.ourEmployeeName ?? '',
-    contactMode: hasLookup ? 'lookup' : 'manual',
     customerContactId: a.customerContactId == null ? '' : String(a.customerContactId),
     customerContactSelectedName: a.customerContactRegisteredName ?? '',
-    customerContactName: a.customerContactName ?? '',
-    customerContactPosition: a.customerContactPosition ?? '',
   };
 }
 

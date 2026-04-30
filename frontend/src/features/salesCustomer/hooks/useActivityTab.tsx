@@ -62,7 +62,7 @@ export function useActivityTab(customerId: number, activities: SalesActivity[]):
       key: 'contactName',
       header: '고객 담당',
       width: 132,
-      render: (a) => a.customerContactRegisteredName ?? a.customerContactName ?? <Muted />,
+      render: (a) => a.customerContactRegisteredName ?? <Muted />,
     },
     {
       key: 'contactPosition',
@@ -106,7 +106,7 @@ export function useActivityTab(customerId: number, activities: SalesActivity[]):
         ...activityOurEmployeeDetailFields(detailTarget),
         {
           label: '고객 담당',
-          value: detailTarget.customerContactRegisteredName ?? detailTarget.customerContactName,
+          value: detailTarget.customerContactRegisteredName,
         },
         { label: '고객 직책', value: detailTarget.customerContactPosition },
       ]
