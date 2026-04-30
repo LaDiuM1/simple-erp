@@ -19,7 +19,6 @@ public record SalesActivityResponse(
         String ourEmployeeDepartmentName,
         Long customerContactId,
         String customerContactRegisteredName,
-        String customerContactName,
         String customerContactPosition
 ) {
 }

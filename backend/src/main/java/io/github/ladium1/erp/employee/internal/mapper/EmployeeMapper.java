@@ -24,10 +24,10 @@ public interface EmployeeMapper {
     @Mapping(source = "roleInfo.name", target = "roleName")
     @Mapping(source = "roleInfo.code", target = "roleCode")
     EmployeeProfileResponse toProfileResponse(Employee employee,
-                                            DepartmentInfo departmentInfo,
-                                            PositionInfo positionInfo,
-                                            RoleInfo roleInfo,
-                                            List<MenuPermission> menuPermissions);
+                                              DepartmentInfo departmentInfo,
+                                              PositionInfo positionInfo,
+                                              RoleInfo roleInfo,
+                                              List<MenuPermission> menuPermissions);
 
     @Mapping(source = "employee.id", target = "id")
     @Mapping(source = "employee.loginId", target = "loginId")
@@ -40,9 +40,9 @@ public interface EmployeeMapper {
     @Mapping(source = "positionName", target = "positionName")
     @Mapping(source = "roleName", target = "roleName")
     EmployeeSummaryResponse toSummaryResponse(Employee employee,
-                                            String departmentName,
-                                            String positionName,
-                                            String roleName);
+                                              String departmentName,
+                                              String positionName,
+                                              String roleName);
 
     @Mapping(source = "employee.id", target = "id")
     @Mapping(source = "employee.loginId", target = "loginId")
@@ -61,8 +61,8 @@ public interface EmployeeMapper {
     @Mapping(source = "employee.roleId", target = "roleId")
     @Mapping(source = "roleInfo.name", target = "roleName")
     EmployeeDetailResponse toDetailResponse(Employee employee,
-                                          DepartmentInfo departmentInfo,
-                                          PositionInfo positionInfo,
-                                          RoleInfo roleInfo);
+                                            DepartmentInfo departmentInfo,
+                                            PositionInfo positionInfo,
+                                            RoleInfo roleInfo);
 
 }
