@@ -147,7 +147,13 @@ export default function GenericList<TRow, TFilters extends object>({
   };
 
   if (isError) {
-    return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
+    return (
+      <ListRoot>
+        <ListSurface>
+          <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} fullScreen={false} />
+        </ListSurface>
+      </ListRoot>
+    );
   }
 
   const bulkConfirm = { ...DEFAULT_BULK_DELETE_CONFIRM, ...api.bulkDeleteConfirm };

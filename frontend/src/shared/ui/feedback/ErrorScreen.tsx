@@ -6,11 +6,22 @@ import { ErrorIconBox } from './ErrorScreen.styles';
 interface Props {
   message?: string;
   onRetry?: () => void;
+  fullScreen?: boolean;
 }
 
-export default function ErrorScreen({ message = '오류가 발생했습니다.', onRetry }: Props) {
+export default function ErrorScreen({ message = '오류가 발생했습니다.', onRetry, fullScreen = true }: Props) {
   return (
-    <ScreenContainer>
+    <ScreenContainer
+      sx={
+        !fullScreen
+          ? {
+              minHeight: '400px',
+              height: '100%',
+              backgroundColor: 'transparent',
+            }
+          : undefined
+      }
+    >
       <ErrorIconBox>!</ErrorIconBox>
       <Typography color="text.secondary" sx={{ fontSize: '0.9375rem', maxWidth: 360, lineHeight: 1.6 }}>
         {message}
