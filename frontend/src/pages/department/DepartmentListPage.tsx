@@ -1,42 +1,18 @@
-import { useNavigate } from 'react-router-dom';
-import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded';
-import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import GenericList from '@/shared/ui/GenericList';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import {
-  departmentColumn,
-  departmentSearchFilter,
-  useDepartmentListApi,
+  departmentListColumns,
+  departmentListFilters,
 } from '@/features/department/config/departmentListConfig';
+import { useDepartmentListPage } from '@/features/department/hooks/useDepartmentListPage';
 
 export default function DepartmentListPage() {
-  const navigate = useNavigate();
-  const api = useDepartmentListApi();
+  const { api, headerActions } = useDepartmentListPage();
 
   return (
     <>
-      <PageHeaderActions
-        actions={[
-          {
-            design: 'secondary',
-            label: '부서 계층 관리',
-            icon: <AccountTreeRoundedIcon />,
-            onClick: () => navigate(`${MENU_PATH[MENU_CODE.DEPARTMENTS]}/hierarchy`),
-          },
-          {
-            design: 'create',
-            label: '부서 등록',
-            onClick: () => navigate(`${MENU_PATH[MENU_CODE.DEPARTMENTS]}/new`),
-            menuCode: MENU_CODE.DEPARTMENTS,
-          },
-        ]}
-      />
-
-      <GenericList
-        api={api}
-        searchFilter={departmentSearchFilter}
-        column={departmentColumn}
-      />
+      <PageHeaderActions actions={headerActions} />
+      <GenericList api={api} searchFilter={departmentListFilters} column={departmentListColumns} />
     </>
   );
 }

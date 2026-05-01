@@ -1,11 +1,6 @@
-import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import Collapse from '@mui/material/Collapse';
-import { useAppDispatch, useAppSelector } from '@/app/hooks';
-import { useLoginMutation } from '@/features/auth/api/authApi';
-import { setToken } from '@/features/auth/store/authSlice';
-import { useSnackbar } from '@/shared/ui/feedback/snackbar';
-import { getErrorMessage } from '@/shared/api/error';
+import { useLoginPage } from '@/features/auth/hooks/useLoginPage';
 import {
   AppSubtitle,
   AppTitle,
@@ -22,28 +17,18 @@ import {
 } from './LoginPage.styles';
 
 export default function LoginPage() {
-  const navigate = useNavigate();
-  const dispatch = useAppDispatch();
-  const snackbar = useSnackbar();
-  const accessToken = useAppSelector((s) => s.auth.accessToken);
+  const {
+    isAuthenticated,
+    loginId,
+    setLoginId,
+    password,
+    setPassword,
+    isLoading,
+    errorMessage,
+    handleSubmit,
+  } = useLoginPage();
 
-  const [loginId, setLoginId] = useState('');
-  const [password, setPassword] = useState('');
-
-  const [login, { isLoading, error }] = useLoginMutation();
-  const errorMessage = getErrorMessage(error) ?? null;
-
-  if (accessToken) return <Navigate to="/" replace />;
-
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const result = await login({ loginId, password });
-    if ('data' in result && result.data) {
-      dispatch(setToken(result.data.accessToken));
-      snackbar.success('로그인되었습니다.');
-      navigate('/');
-    }
-  };
+  if (isAuthenticated) return <Navigate to="/" replace />;
 
   return (
     <LoginContainer>

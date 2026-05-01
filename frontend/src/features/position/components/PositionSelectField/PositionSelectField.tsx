@@ -7,8 +7,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import CommonSearchModal from '@/shared/ui/CommonSearchModal';
 import { useGetPositionsSummaryQuery } from '@/features/position/api/positionApi';
 import {
-  positionColumn,
-  positionSearchFilter,
+  positionListColumns,
+  positionListFilters,
 } from '@/features/position/config/positionListConfig';
 import type { PositionSummary } from '@/features/position/types';
 import { useGetPositionsQuery } from '@/features/reference/api/referenceApi';
@@ -117,8 +117,8 @@ export default function PositionSelectField({
           rowLabel: (m: PositionSummary) => m.name,
           pageSize: 5,
         }}
-        searchFilter={positionSearchFilter}
-        column={positionColumn}
+        searchFilter={positionListFilters}
+        column={positionListColumns}
         onSelect={(selected) => {
           const picked = selected[0];
           onChange(picked ? String(picked.id) : '');

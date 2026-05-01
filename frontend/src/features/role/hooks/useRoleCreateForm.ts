@@ -22,6 +22,7 @@ export interface RoleCreateFormState {
   errors: RoleErrors;
   /** 코드가 사용 가능한지 (debounce 후 갱신) */
   codeAvailable: boolean | null;
+  setCodeAvailable: (available: boolean | null) => void;
   setField: <K extends keyof RoleFormValues>(key: K, v: RoleFormValues[K]) => void;
   setPermissions: (next: RoleFormValues['permissions']) => void;
   isSaving: boolean;
@@ -32,16 +33,11 @@ export interface RoleCreateFormState {
   handleCancel: () => void;
 }
 
-interface Options {
-  /** code 사용 가능 여부 (CodeAvailability 컴포넌트에서 위임). 없으면 null. */
-  codeAvailable: boolean | null;
-}
-
 /**
  * 권한 등록 폼 상태 + 제출 흐름.
- * 코드 가용성 검사는 컴포넌트가 외부 hook 으로 처리하고 결과만 전달.
+ * 코드 가용성 검사 결과는 hook 이 owner — CodeField 컴포넌트가 setCodeAvailable 로 보고.
  */
-export function useRoleCreateForm({ codeAvailable }: Options): RoleCreateFormState {
+export function useRoleCreateForm(): RoleCreateFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
   const [createRole, { isLoading: isSaving }] = useCreateRoleMutation();
@@ -49,6 +45,7 @@ export function useRoleCreateForm({ codeAvailable }: Options): RoleCreateFormSta
   const [values, setValues] = useState<RoleFormValues>(() => emptyRoleForm(MATRIX_MENUS));
   const [errors, setErrors] = useState<RoleErrors>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [codeAvailable, setCodeAvailable] = useState<boolean | null>(null);
 
   const setField = <K extends keyof RoleFormValues>(key: K, v: RoleFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));
@@ -87,6 +84,7 @@ export function useRoleCreateForm({ codeAvailable }: Options): RoleCreateFormSta
     values,
     errors,
     codeAvailable,
+    setCodeAvailable,
     setField,
     setPermissions,
     isSaving,

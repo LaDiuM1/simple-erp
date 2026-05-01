@@ -4,12 +4,9 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import type { Theme } from '@mui/material/styles';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
-import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
-import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
-import { useGetCustomerQuery } from '@/features/customer/api/customerApi';
 import {
   customerDetailToFormValues,
   type CustomerDetail,
@@ -22,23 +19,15 @@ import ClassificationSection from '../customerForm/ClassificationSection';
 import ContactSection from '../customerForm/ContactSection';
 import AddressSection from '../customerForm/AddressSection';
 import { CreateForm, CreateRoot } from '../customerForm/customerForm.styles';
-import { getErrorMessage } from '@/shared/api/error';
 
-export default function CustomerDetailForm({ id }: { id: number }) {
-  const { data, isLoading, isError, error, refetch } = useGetCustomerQuery(id);
-
-  if (isLoading) return <LoadingScreen />;
-  if (isError) return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
-  if (!data) return null;
-
-  return <CustomerDetailFormBody id={id} detail={data} />;
-}
-
-function CustomerDetailFormBody({ id, detail }: { id: number; detail: CustomerDetail }) {
+/**
+ * 고객사 상세 폼 Body — outer (page) 가 detail 보장한 뒤 위임.
+ * 폼 섹션이 그대로 재사용되도록 dummy form state 시그니처 충족 — readOnly 라 update 등은 호출되지 않는다.
+ */
+export default function CustomerDetailForm({ id, detail }: { id: number; detail: CustomerDetail }) {
   const navigate = useNavigate();
   const { canWrite } = usePermission(MENU_CODE.CUSTOMERS);
 
-  // 폼 섹션이 그대로 재사용되도록 동일한 form state 시그니처 충족 — 다만 readOnly 라 update 등은 호출되지 않는다.
   const values: CustomerFormValues = useMemo(() => customerDetailToFormValues(detail), [detail]);
   const validation = useFieldValidation(values, customerValidators);
 

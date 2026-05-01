@@ -1,29 +1,17 @@
-import { useNavigate } from 'react-router-dom';
 import Typography from '@mui/material/Typography';
-import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import {
   type ColumnConfig,
   type FilterConfig,
-  type ListApiConfig,
 } from '@/shared/ui/GenericList';
-import {
-  useDeleteCustomerMutation,
-  useDeleteCustomersMutation,
-  useDownloadCustomersExcel,
-  useDownloadCustomersTemplate,
-  useGetCustomersQuery,
-  useUploadCustomersExcelMutation,
-} from '@/features/customer/api/customerApi';
 import CustomerStatusIndicator from '@/features/customer/components/CustomerStatusIndicator';
 import {
   CUSTOMER_STATUS_OPTIONS,
   CUSTOMER_TYPE_LABELS,
   CUSTOMER_TYPE_OPTIONS,
-  type CustomerListFilters,
   type CustomerSummary,
 } from '@/features/customer/types';
 
-export const customerColumn: ColumnConfig<CustomerSummary>[] = [
+export const customerListColumns: ColumnConfig<CustomerSummary>[] = [
   {
     key: 'code',
     label: '고객사 코드',
@@ -68,9 +56,9 @@ export const customerColumn: ColumnConfig<CustomerSummary>[] = [
 
 /**
  * 검색 모달용 컬럼 — 모바일에서는 고객사명 / 고객사 코드 / 전화번호만 노출.
- * 목록 페이지(`customerColumn`)와 의도적으로 분리: 모달은 선택용이라 식별 정보만 필요.
+ * 목록 페이지(`customerListColumns`)와 의도적으로 분리: 모달은 선택용이라 식별 정보만 필요.
  */
-export const customerSearchColumn: ColumnConfig<CustomerSummary>[] = [
+export const customerSelectColumns: ColumnConfig<CustomerSummary>[] = [
   {
     key: 'code',
     label: '고객사 코드',
@@ -106,7 +94,7 @@ export const customerSearchColumn: ColumnConfig<CustomerSummary>[] = [
   },
 ];
 
-export const customerSearchFilter: FilterConfig[] = [
+export const customerListFilters: FilterConfig[] = [
   { type: 'search', key: 'codeKeyword', placeholder: '고객사 코드 검색' },
   { type: 'search', key: 'nameKeyword', placeholder: '고객사명 검색' },
   { type: 'search', key: 'addressKeyword', placeholder: '주소 검색' },
@@ -114,29 +102,3 @@ export const customerSearchFilter: FilterConfig[] = [
   { type: 'select', key: 'type', label: '분류', options: CUSTOMER_TYPE_OPTIONS, minWidth: 120 },
   { type: 'select', key: 'status', label: '상태', options: CUSTOMER_STATUS_OPTIONS, minWidth: 120 },
 ];
-
-/**
- * 데스크탑: 행 클릭 → 상세 + 체크박스 일괄 삭제. 모바일: 카드 + 행별 수정/삭제 아이콘.
- */
-export function useCustomerListApi(): ListApiConfig<CustomerSummary, CustomerListFilters> {
-  const navigate = useNavigate();
-  return {
-    menuCode: MENU_CODE.CUSTOMERS,
-    useList: useGetCustomersQuery,
-    useDelete: useDeleteCustomerMutation,
-    useBulkDelete: useDeleteCustomersMutation,
-    useExcel: useDownloadCustomersExcel,
-    useExcelTemplate: useDownloadCustomersTemplate,
-    useExcelUpload: useUploadCustomersExcelMutation,
-    excelUploadTitle: '고객사 엑셀 업로드',
-    excelUploadGuide: (
-      <>
-        <div><strong>·</strong> [*] 표시는 필수 입력 항목입니다.</div>
-        <div><strong>·</strong> 입력 형식 및 예시는 양식 내 안내 시트를 참고해 주세요.</div>
-      </>
-    ),
-    rowKey: (m) => m.id,
-    onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.CUSTOMERS]}/${m.id}/edit`),
-    onRowClick: (m) => navigate(`${MENU_PATH[MENU_CODE.CUSTOMERS]}/${m.id}`),
-  };
-}

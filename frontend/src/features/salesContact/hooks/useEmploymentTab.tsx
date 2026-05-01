@@ -13,13 +13,12 @@ import {
   StatusText,
   TabPrimaryActionButton,
   tabbedTab,
+  type AnyTabbedTab,
   type TabbedTab,
   type TabbedTableColumn,
-  type TabHookResult,
 } from '@/shared/ui/GenericTabbedTable';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
-import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import Muted from '@/shared/ui/atoms/Muted';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useDeleteSalesContactEmploymentMutation } from '@/features/salesContact/api/salesContactApi';
@@ -27,18 +26,19 @@ import {
   DEPARTURE_TYPE_LABELS,
   type SalesContactEmployment,
 } from '@/features/salesContact/types';
-import EmploymentFormModal from '@/features/salesContact/components/EmploymentFormModal/EmploymentFormModal';
-import EmploymentTerminateModal from '@/features/salesContact/components/EmploymentTerminateModal/EmploymentTerminateModal';
+import type { EmploymentTabModalProps } from '@/features/salesContact/components/EmploymentTabModals/EmploymentTabModals';
 import { getErrorMessage } from '@/shared/api/error';
 
 /**
  * 재직 이력 탭 — 등록 / 수정 / 종료 / 삭제 모달 ownership.
  * 비활성 행은 opacity 로 dim, 상태 텍스트는 활성=primary / 비활성=disabled 색.
+ *
+ * Hook 은 JSX 반환하지 않음 (CLAUDE.md). modal element 는 EmploymentTabModals 컴포넌트가 명시 렌더.
  */
 export function useEmploymentTab(
   contactId: number,
   employments: SalesContactEmployment[],
-): TabHookResult {
+): { tab: AnyTabbedTab; modal: EmploymentTabModalProps } {
   const navigate = useNavigate();
   const { canWrite } = usePermission(MENU_CODE.SALES_CONTACTS);
   const snackbar = useSnackbar();
@@ -49,7 +49,7 @@ export function useEmploymentTab(
   const [terminating, setTerminating] = useState<SalesContactEmployment | null>(null);
   const [deletingTarget, setDeletingTarget] = useState<SalesContactEmployment | null>(null);
 
-  const handleDelete = async () => {
+  const handleConfirmDelete = async () => {
     if (!deletingTarget) return;
     try {
       await deleteMut({
@@ -201,38 +201,19 @@ export function useEmploymentTab(
     ) : null,
   };
 
-  const modals = (
-    <>
-      <EmploymentFormModal
-        open={creating}
-        onClose={() => setCreating(false)}
-        contactId={contactId}
-      />
-      <EmploymentFormModal
-        open={editing !== null}
-        onClose={() => setEditing(null)}
-        contactId={contactId}
-        employment={editing ?? undefined}
-      />
-      {terminating && (
-        <EmploymentTerminateModal
-          open={terminating !== null}
-          onClose={() => setTerminating(null)}
-          contactId={contactId}
-          employment={terminating}
-        />
-      )}
-      <ConfirmModal
-        isOpen={deletingTarget !== null}
-        title="재직 이력 삭제"
-        message={`${deletingTarget?.customerName ?? deletingTarget?.externalCompanyName ?? '회사'} 재직 이력을 삭제하시겠습니까?`}
-        confirmLabel={isDeleting ? '삭제 중...' : '삭제'}
-        danger
-        onConfirm={handleDelete}
-        onCancel={() => setDeletingTarget(null)}
-      />
-    </>
-  );
+  const modal: EmploymentTabModalProps = {
+    contactId,
+    creating,
+    editing,
+    terminating,
+    deletingTarget,
+    isDeleting,
+    onCloseCreate: () => setCreating(false),
+    onCloseEdit: () => setEditing(null),
+    onCloseTerminate: () => setTerminating(null),
+    onCancelDelete: () => setDeletingTarget(null),
+    onConfirmDelete: handleConfirmDelete,
+  };
 
-  return { tab: tabbedTab(tab), modals };
+  return { tab: tabbedTab(tab), modal };
 }

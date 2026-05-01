@@ -7,8 +7,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import CommonSearchModal from '@/shared/ui/CommonSearchModal';
 import { useGetEmployeesQuery } from '@/features/employee/api/employeeApi';
 import {
-  employeeColumn,
-  employeeSearchFilter,
+  employeeListColumns,
+  employeeListFilters,
 } from '@/features/employee/config/employeeListConfig';
 import type { EmployeeSummary } from '@/features/employee/types';
 
@@ -106,8 +106,8 @@ export default function EmployeeSelectField({
           rowLabel: (m: EmployeeSummary) => m.name,
           pageSize: 5,
         }}
-        searchFilter={employeeSearchFilter}
-        column={employeeColumn}
+        searchFilter={employeeListFilters}
+        column={employeeListColumns}
         onSelect={(selected) => {
           const picked = selected[0];
           onChange(picked ? String(picked.id) : '', picked ? picked.label : '');

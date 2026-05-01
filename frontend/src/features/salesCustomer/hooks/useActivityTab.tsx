@@ -3,14 +3,11 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import {
   TabPrimaryActionButton,
   tabbedTab,
+  type AnyTabbedTab,
   type TabbedTab,
   type TabbedTableColumn,
-  type TabHookResult,
 } from '@/shared/ui/GenericTabbedTable';
-import GenericDetailModal, {
-  type DetailModalField,
-} from '@/shared/ui/GenericDetailModal';
-import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
+import { type DetailModalField } from '@/shared/ui/GenericDetailModal';
 import Muted from '@/shared/ui/atoms/Muted';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { MENU_CODE } from '@/shared/config/menuConfig';
@@ -18,7 +15,7 @@ import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { getErrorMessage } from '@/shared/api/error';
 import { useDeleteSalesActivityMutation } from '@/features/salesCustomer/api/salesCustomerApi';
 import type { SalesActivity } from '@/features/salesCustomer/types';
-import ActivityFormModal from '@/features/salesCustomer/components/ActivityFormModal/ActivityFormModal';
+import type { CustomerActivityTabModalProps } from '@/features/salesCustomer/components/CustomerActivityTabModals/CustomerActivityTabModals';
 import {
   activityActionsColumn,
   activityCommonColumns,
@@ -32,7 +29,10 @@ import {
  * 행 클릭 시 GenericDetailModal 로 풀 컨텐츠 노출 (truncate 셀 펼치기).
  * 액션 버튼은 stopPropagation 으로 행 클릭과 분리.
  */
-export function useActivityTab(customerId: number, activities: SalesActivity[]): TabHookResult {
+export function useActivityTab(
+  customerId: number,
+  activities: SalesActivity[],
+): { tab: AnyTabbedTab; modal: CustomerActivityTabModalProps } {
   const { canWrite } = usePermission(MENU_CODE.SALES_CUSTOMERS);
   const snackbar = useSnackbar();
   const [deleteMut, { isLoading: isDeleting }] = useDeleteSalesActivityMutation();
@@ -42,7 +42,7 @@ export function useActivityTab(customerId: number, activities: SalesActivity[]):
   const [deletingTarget, setDeletingTarget] = useState<SalesActivity | null>(null);
   const [detailTarget, setDetailTarget] = useState<SalesActivity | null>(null);
 
-  const handleDelete = async () => {
+  const handleConfirmDelete = async () => {
     if (!deletingTarget) return;
     try {
       await deleteMut({
@@ -112,36 +112,20 @@ export function useActivityTab(customerId: number, activities: SalesActivity[]):
       ]
     : [];
 
-  const modals = (
-    <>
-      <ActivityFormModal
-        open={creating}
-        onClose={() => setCreating(false)}
-        customerId={customerId}
-      />
-      <ActivityFormModal
-        open={editing !== null}
-        onClose={() => setEditing(null)}
-        customerId={customerId}
-        activity={editing ?? undefined}
-      />
-      <ConfirmModal
-        isOpen={deletingTarget !== null}
-        title="영업 활동 삭제"
-        message={`"${deletingTarget?.subject ?? ''}" 활동을 삭제하시겠습니까?`}
-        confirmLabel={isDeleting ? '삭제 중...' : '삭제'}
-        danger
-        onConfirm={handleDelete}
-        onCancel={() => setDeletingTarget(null)}
-      />
-      <GenericDetailModal
-        open={detailTarget !== null}
-        onClose={() => setDetailTarget(null)}
-        title={detailTarget?.subject ?? '영업 활동'}
-        fields={detailFields}
-      />
-    </>
-  );
+  const modal: CustomerActivityTabModalProps = {
+    customerId,
+    creating,
+    editing,
+    deletingTarget,
+    isDeleting,
+    detailTarget,
+    detailFields,
+    onCloseCreate: () => setCreating(false),
+    onCloseEdit: () => setEditing(null),
+    onCancelDelete: () => setDeletingTarget(null),
+    onConfirmDelete: handleConfirmDelete,
+    onCloseDetail: () => setDetailTarget(null),
+  };
 
-  return { tab: tabbedTab(tab), modals };
+  return { tab: tabbedTab(tab), modal };
 }

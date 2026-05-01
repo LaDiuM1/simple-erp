@@ -7,8 +7,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import CommonSearchModal from '@/shared/ui/CommonSearchModal';
 import { useGetSalesContactsQuery } from '@/features/salesContact/api/salesContactApi';
 import {
-  salesContactColumn,
-  salesContactSearchFilter,
+  salesContactListColumns,
+  salesContactListFilters,
 } from '@/features/salesContact/config/salesContactListConfig';
 import type { SalesContactSummary } from '@/features/salesContact/types';
 
@@ -103,8 +103,8 @@ export default function SalesContactSelectField({
           rowLabel: (m: SalesContactSummary) => m.name,
           pageSize: 5,
         }}
-        searchFilter={salesContactSearchFilter}
-        column={salesContactColumn}
+        searchFilter={salesContactListFilters}
+        column={salesContactListColumns}
         onSelect={(selected) => {
           const picked = selected[0];
           onChange(picked ? String(picked.id) : '', picked ? picked.label : '');

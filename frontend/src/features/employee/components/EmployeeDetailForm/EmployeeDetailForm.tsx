@@ -6,14 +6,10 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import type { Theme } from '@mui/material/styles';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
-import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
-import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { FormSection } from '@/shared/ui/GenericForm';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
-import { getErrorMessage } from '@/shared/api/error';
-import { useGetEmployeeQuery } from '@/features/employee/api/employeeApi';
 import {
   employeeDetailToFormValues,
   type EmployeeDetail,
@@ -26,21 +22,14 @@ import AffiliationSection from '../employeeForm/AffiliationSection';
 import AddressSection from '../employeeForm/AddressSection';
 import { CreateForm, CreateRoot, FieldGrid } from '../employeeForm/employeeForm.styles';
 
-export default function EmployeeDetailForm({ id }: { id: number }) {
-  const { data, isLoading, isError, error, refetch } = useGetEmployeeQuery(id);
-
-  if (isLoading) return <LoadingScreen />;
-  if (isError) return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
-  if (!data) return null;
-
-  return <EmployeeDetailFormBody id={id} detail={data} />;
-}
-
-function EmployeeDetailFormBody({ id, detail }: { id: number; detail: EmployeeDetail }) {
+/**
+ * 직원 상세 폼 Body — outer (page) 가 detail 보장한 뒤 위임.
+ * 폼 섹션이 그대로 재사용되도록 dummy form state 시그니처 충족 — readOnly 라 update 등은 호출되지 않는다.
+ */
+export default function EmployeeDetailForm({ id, detail }: { id: number; detail: EmployeeDetail }) {
   const navigate = useNavigate();
   const { canWrite } = usePermission(MENU_CODE.EMPLOYEES);
 
-  // 폼 섹션이 그대로 재사용되도록 동일한 form state 시그니처 충족 — 다만 readOnly 라 update 등은 호출되지 않는다.
   const values: EmployeeFormValues = useMemo(() => employeeDetailToFormValues(detail), [detail]);
   const validation = useFieldValidation(values, employeeBaseValidators);
 
