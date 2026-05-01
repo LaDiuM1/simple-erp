@@ -3,13 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   InlineLinkButton,
   tabbedTab,
+  type AnyTabbedTab,
   type TabbedTab,
   type TabbedTableColumn,
-  type TabHookResult,
 } from '@/shared/ui/GenericTabbedTable';
-import GenericDetailModal, {
-  type DetailModalField,
-} from '@/shared/ui/GenericDetailModal';
+import { type DetailModalField } from '@/shared/ui/GenericDetailModal';
 import Muted from '@/shared/ui/atoms/Muted';
 import { MENU_PATH, MENU_CODE } from '@/shared/config/menuConfig';
 import type { SalesActivity } from '@/features/salesCustomer/types';
@@ -19,15 +17,17 @@ import {
   activityOurEmployeeColumns,
   activityOurEmployeeDetailFields,
 } from '@/features/salesCustomer/hooks/salesActivityColumns';
+import type { ActivityTabModalProps } from '@/features/salesContact/components/ActivityTabModals/ActivityTabModals';
 
 /**
  * 영업 명부 상세의 활동 탭 — read-only (등록/수정/삭제는 고객사 영업 관리 페이지에서).
  * 셀 텍스트는 ellipsis 로 잘리고 행 클릭 시 GenericDetailModal 로 풀 컨텐츠 노출.
- * 고객사 셀의 링크 버튼은 stopPropagation 으로 행 클릭과 분리.
  *
- * activities 데이터는 outer 가 `useGetSalesActivitiesByContactQuery` 로 fetch 후 전달 (CLAUDE.md hook 정책).
+ * activities 데이터는 outer 가 fetch 후 전달. Hook 은 JSX 반환하지 않음 (CLAUDE.md).
  */
-export function useActivityTab(activities: SalesActivity[]): TabHookResult {
+export function useActivityTab(
+  activities: SalesActivity[],
+): { tab: AnyTabbedTab; modal: ActivityTabModalProps } {
   const navigate = useNavigate();
   const [detailTarget, setDetailTarget] = useState<SalesActivity | null>(null);
 
@@ -77,14 +77,11 @@ export function useActivityTab(activities: SalesActivity[]): TabHookResult {
       ]
     : [];
 
-  const modals = (
-    <GenericDetailModal
-      open={detailTarget !== null}
-      onClose={() => setDetailTarget(null)}
-      title={detailTarget?.subject ?? '영업 활동'}
-      fields={detailFields}
-    />
-  );
+  const modal: ActivityTabModalProps = {
+    detailTarget,
+    detailFields,
+    onCloseDetail: () => setDetailTarget(null),
+  };
 
-  return { tab: tabbedTab(tab), modals };
+  return { tab: tabbedTab(tab), modal };
 }

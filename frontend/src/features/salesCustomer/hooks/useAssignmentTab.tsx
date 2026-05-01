@@ -11,11 +11,10 @@ import {
   StatusText,
   TabPrimaryActionButton,
   tabbedTab,
+  type AnyTabbedTab,
   type TabbedTab,
   type TabbedTableColumn,
-  type TabHookResult,
 } from '@/shared/ui/GenericTabbedTable';
-import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import Muted from '@/shared/ui/atoms/Muted';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { MENU_CODE } from '@/shared/config/menuConfig';
@@ -23,8 +22,7 @@ import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { getErrorMessage } from '@/shared/api/error';
 import { useDeleteSalesAssignmentMutation } from '@/features/salesCustomer/api/salesCustomerApi';
 import type { SalesAssignment } from '@/features/salesCustomer/types';
-import AssignmentFormModal from '@/features/salesCustomer/components/AssignmentFormModal/AssignmentFormModal';
-import AssignmentTerminateModal from '@/features/salesCustomer/components/AssignmentTerminateModal/AssignmentTerminateModal';
+import type { AssignmentTabModalProps } from '@/features/salesCustomer/components/AssignmentTabModals/AssignmentTabModals';
 
 /**
  * 영업 고객사 상세의 담당자 탭 — 등록/수정/종료/삭제 모달 owner.
@@ -34,7 +32,7 @@ import AssignmentTerminateModal from '@/features/salesCustomer/components/Assign
 export function useAssignmentTab(
   customerId: number,
   assignments: SalesAssignment[],
-): TabHookResult {
+): { tab: AnyTabbedTab; modal: AssignmentTabModalProps } {
   const { canWrite } = usePermission(MENU_CODE.SALES_CUSTOMERS);
   const snackbar = useSnackbar();
   const [deleteMut, { isLoading: isDeleting }] = useDeleteSalesAssignmentMutation();
@@ -50,7 +48,7 @@ export function useAssignmentTab(
     return b.startDate.localeCompare(a.startDate);
   });
 
-  const handleDelete = async () => {
+  const handleConfirmDelete = async () => {
     if (!deletingTarget) return;
     try {
       await deleteMut({ id: deletingTarget.id, customerId }).unwrap();
@@ -182,38 +180,19 @@ export function useAssignmentTab(
     ) : null,
   };
 
-  const modals = (
-    <>
-      <AssignmentFormModal
-        open={creating}
-        onClose={() => setCreating(false)}
-        customerId={customerId}
-      />
-      <AssignmentFormModal
-        open={editing !== null}
-        onClose={() => setEditing(null)}
-        customerId={customerId}
-        assignment={editing ?? undefined}
-      />
-      {terminating && (
-        <AssignmentTerminateModal
-          open={terminating !== null}
-          onClose={() => setTerminating(null)}
-          customerId={customerId}
-          assignment={terminating}
-        />
-      )}
-      <ConfirmModal
-        isOpen={deletingTarget !== null}
-        title="배정 삭제"
-        message={`${deletingTarget?.employeeName ?? '담당자'} 의 배정 이력을 삭제하시겠습니까? (이력에서 완전히 제거)`}
-        confirmLabel={isDeleting ? '삭제 중...' : '삭제'}
-        danger
-        onConfirm={handleDelete}
-        onCancel={() => setDeletingTarget(null)}
-      />
-    </>
-  );
+  const modal: AssignmentTabModalProps = {
+    customerId,
+    creating,
+    editing,
+    terminating,
+    deletingTarget,
+    isDeleting,
+    onCloseCreate: () => setCreating(false),
+    onCloseEdit: () => setEditing(null),
+    onCloseTerminate: () => setTerminating(null),
+    onCancelDelete: () => setDeletingTarget(null),
+    onConfirmDelete: handleConfirmDelete,
+  };
 
-  return { tab: tabbedTab(tab), modals };
+  return { tab: tabbedTab(tab), modal };
 }

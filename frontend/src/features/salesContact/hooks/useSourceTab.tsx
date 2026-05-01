@@ -1,7 +1,7 @@
 import {
   tabbedTab,
+  type AnyTabbedTab,
   type TabbedTab,
-  type TabHookResult,
 } from '@/shared/ui/GenericTabbedTable';
 import {
   ACQUISITION_SOURCE_TYPE_LABELS,
@@ -9,10 +9,10 @@ import {
 } from '@/features/acquisitionSource/types';
 
 /**
- * 컨택 경로 탭 — 단순 read-only 목록 (이름 / 분류 2-column).
+ * 컨택 경로 탭 — 단순 read-only 목록 (이름 / 분류 2-column). 모달 없음.
  * 정렬은 BE 가 type ASC → name ASC 로 미리 처리.
  */
-export function useSourceTab(sources: AcquisitionSourceInfo[]): TabHookResult {
+export function useSourceTab(sources: AcquisitionSourceInfo[]): { tab: AnyTabbedTab } {
   const tab: TabbedTab<AcquisitionSourceInfo> = {
     key: 'sources',
     label: '컨택 경로',
@@ -34,5 +34,5 @@ export function useSourceTab(sources: AcquisitionSourceInfo[]): TabHookResult {
       },
     ],
   };
-  return { tab: tabbedTab(tab), modals: null };
+  return { tab: tabbedTab(tab) };
 }

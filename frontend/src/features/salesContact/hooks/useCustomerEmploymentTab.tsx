@@ -3,9 +3,9 @@ import {
   NowrapText,
   StatusText,
   tabbedTab,
+  type AnyTabbedTab,
   type TabbedTab,
   type TabbedTableColumn,
-  type TabHookResult,
 } from '@/shared/ui/GenericTabbedTable';
 import Muted from '@/shared/ui/atoms/Muted';
 import { MENU_PATH, MENU_CODE } from '@/shared/config/menuConfig';
@@ -23,7 +23,7 @@ import {
  */
 export function useCustomerEmploymentTab(
   employments: SalesContactEmployment[],
-): TabHookResult {
+): { tab: AnyTabbedTab } {
   const navigate = useNavigate();
 
   const columns: TabbedTableColumn<SalesContactEmployment>[] = [
@@ -88,5 +88,5 @@ export function useCustomerEmploymentTab(
     onRowClick: (e) => navigate(`${MENU_PATH[MENU_CODE.SALES_CONTACTS]}/${e.contactId}`),
   };
 
-  return { tab: tabbedTab(tab), modals: null };
+  return { tab: tabbedTab(tab) };
 }

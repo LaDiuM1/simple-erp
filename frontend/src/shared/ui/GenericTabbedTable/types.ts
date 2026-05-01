@@ -41,10 +41,10 @@ export function tabbedTab<T>(t: TabbedTab<T>): AnyTabbedTab {
 }
 
 /**
- * 탭 hook 의 표준 반환 형태. 데이터 로딩은 outer 가 분기 처리해 hook 은 보장된 데이터를 받는 정책 (CLAUDE.md).
- * `modals` 는 hook 이 자기 모달 (CRUD / Detail) 을 owner 로 들고 있을 때 ReactNode, 그 외엔 null.
+ * 탭 hook 의 표준 반환 형태:
+ *   - 모달 없는 탭 → `{ tab }` 만
+ *   - 모달 있는 탭 → `{ tab, modal: <prop 객체> }`. `modal` 은 도메인 modal 컴포넌트
+ *     (`<XxxTabModals modal={...} />`) 가 받는 prop 객체 — modal state + handler + 식별자 묶음.
+ *
+ * Hook 은 JSX 반환 금지 (CLAUDE.md). 데이터 로딩은 outer 가 분기 처리해 hook 은 보장된 데이터를 받는 정책.
  */
-export interface TabHookResult {
-  tab: AnyTabbedTab;
-  modals: ReactNode | null;
-}

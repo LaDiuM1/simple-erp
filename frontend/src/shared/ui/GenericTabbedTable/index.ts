@@ -4,7 +4,6 @@ export type {
   AnyTabbedTab,
   TabbedTab,
   TabbedTableColumn,
-  TabHookResult,
 } from './types';
 
 /**
