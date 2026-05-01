@@ -4,11 +4,8 @@ import Typography from '@mui/material/Typography';
 import MenuItem from '@mui/material/MenuItem';
 import { MENU_CODE } from '@/shared/config/menuConfig';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
-import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
-import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import PageHeaderTitle from '@/shared/ui/layout/PageHeaderTitle';
-import { useGetCodeRuleQuery } from '@/features/codeRule/api/codeRuleApi';
 import { useCodeRuleEditForm } from '@/features/codeRule/hooks/useCodeRuleEditForm';
 import {
   CODE_RULE_TARGET_LABEL,
@@ -22,7 +19,6 @@ import PatternBuilder from '@/features/codeRule/components/PatternBuilder/Patter
 import PreviewPanel from '@/features/codeRule/components/PreviewPanel/PreviewPanel';
 import TokenBuilderModal from '@/features/codeRule/components/TokenBuilderModal/TokenBuilderModal';
 import TokenChipsCard from '@/features/codeRule/components/TokenChipsCard/TokenChipsCard';
-import { getErrorMessage } from '@/shared/api/error';
 import {
   Field,
   FieldLabel,
@@ -49,19 +45,13 @@ const INPUT_MODE_HINTS: Record<keyof typeof INPUT_MODE, string> = {
 
 interface Props {
   target: CodeRuleTarget;
+  rule: CodeRule;
 }
 
-export default function CodeRuleEditForm({ target }: Props) {
-  const { data, isLoading, isError, error, refetch } = useGetCodeRuleQuery(target);
-
-  if (isLoading) return <LoadingScreen />;
-  if (isError) return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
-  if (!data) return null;
-
-  return <Body target={target} rule={data} />;
-}
-
-function Body({ target, rule }: { target: CodeRuleTarget; rule: CodeRule }) {
+/**
+ * 코드 채번 규칙 수정 폼 Body — outer (page) 가 rule 보장한 뒤 위임. form-state hook 의 invariant 충족.
+ */
+export default function CodeRuleEditForm({ target, rule }: Props) {
   const form = useCodeRuleEditForm(target, rule);
   const { values, update, validation } = form;
 

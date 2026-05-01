@@ -1,12 +1,8 @@
 import { MENU_CODE } from '@/shared/config/menuConfig';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
-import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
-import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
-import { useGetCustomerQuery } from '@/features/customer/api/customerApi';
 import { useCustomerEditForm } from '@/features/customer/hooks/useCustomerEditForm';
 import type { CustomerDetail } from '@/features/customer/types';
-import { getErrorMessage } from '@/shared/api/error';
 import IdentitySection from '../customerForm/IdentitySection';
 import ClassificationSection from '../customerForm/ClassificationSection';
 import ContactSection from '../customerForm/ContactSection';
@@ -15,19 +11,10 @@ import { CreateForm, CreateRoot } from '../customerForm/customerForm.styles';
 
 const FORM_ID = 'customer-edit-form';
 
-export default function CustomerEditForm({ id }: { id: number }) {
-  const { data, isLoading, isError, error, refetch } = useGetCustomerQuery(id);
-
-  if (isLoading) return <LoadingScreen />;
-  if (isError) {
-    return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
-  }
-  if (!data) return null;
-
-  return <CustomerEditFormBody id={id} detail={data} />;
-}
-
-function CustomerEditFormBody({ id, detail }: { id: number; detail: CustomerDetail }) {
+/**
+ * 고객사 수정 폼 Body — outer (page) 가 detail 보장한 뒤 위임. form-state hook 의 invariant 충족.
+ */
+export default function CustomerEditForm({ id, detail }: { id: number; detail: CustomerDetail }) {
   const form = useCustomerEditForm(id, detail);
 
   return (

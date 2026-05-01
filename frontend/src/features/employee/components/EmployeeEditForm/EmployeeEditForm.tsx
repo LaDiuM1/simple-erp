@@ -1,12 +1,8 @@
 import { MENU_CODE } from '@/shared/config/menuConfig';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
-import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
-import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
-import { useGetEmployeeQuery } from '@/features/employee/api/employeeApi';
 import { useEmployeeEditForm } from '@/features/employee/hooks/useEmployeeEditForm';
 import type { EmployeeDetail } from '@/features/employee/types';
-import { getErrorMessage } from '@/shared/api/error';
 import BasicInfoSection from '../employeeForm/BasicInfoSection';
 import AffiliationSection from '../employeeForm/AffiliationSection';
 import AddressSection from '../employeeForm/AddressSection';
@@ -15,19 +11,10 @@ import AccountInfoSection from './AccountInfoSection';
 
 const FORM_ID = 'employee-edit-form';
 
-export default function EmployeeEditForm({ id }: { id: number }) {
-  const { data, isLoading, isError, error, refetch } = useGetEmployeeQuery(id);
-
-  if (isLoading) return <LoadingScreen />;
-  if (isError) {
-    return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
-  }
-  if (!data) return null;
-
-  return <EmployeeEditFormBody id={id} detail={data} />;
-}
-
-function EmployeeEditFormBody({ id, detail }: { id: number; detail: EmployeeDetail }) {
+/**
+ * 직원 수정 폼 Body — outer (page) 가 detail 보장한 뒤 위임. form-state hook 의 invariant 충족.
+ */
+export default function EmployeeEditForm({ id, detail }: { id: number; detail: EmployeeDetail }) {
   const form = useEmployeeEditForm(id, detail);
 
   return (
