@@ -1,21 +1,10 @@
-import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import {
   type CellContext,
   type ColumnConfig,
   type FilterConfig,
-  type ListApiConfig,
 } from '@/shared/ui/GenericList';
-import {
-  useDeleteSalesContactMutation,
-  useDeleteSalesContactsMutation,
-  useDownloadSalesContactsExcel,
-  useDownloadSalesContactsTemplate,
-  useGetSalesContactsQuery,
-  useUploadSalesContactsExcelMutation,
-} from '@/features/salesContact/api/salesContactApi';
 import {
   type SalesContactListFilters,
   type SalesContactSummary,
@@ -42,7 +31,7 @@ function orderSources(
   return [...sources].sort((a, b) => Number(active.has(b.id)) - Number(active.has(a.id)));
 }
 
-export const salesContactColumn: ColumnConfig<SalesContactSummary>[] = [
+export const salesContactListColumns: ColumnConfig<SalesContactSummary>[] = [
   {
     key: 'name',
     label: '이름',
@@ -108,7 +97,7 @@ export const salesContactColumn: ColumnConfig<SalesContactSummary>[] = [
   },
 ];
 
-export const salesContactSearchFilter: FilterConfig[] = [
+export const salesContactListFilters: FilterConfig[] = [
   { type: 'search', key: 'nameKeyword', placeholder: '이름 검색' },
   { type: 'search', key: 'emailKeyword', placeholder: '이메일 검색' },
   { type: 'search', key: 'phoneKeyword', placeholder: '전화번호 검색' },
@@ -127,27 +116,3 @@ export const salesContactSearchFilter: FilterConfig[] = [
   },
 ];
 
-export function useSalesContactListApi(): ListApiConfig<SalesContactSummary, SalesContactListFilters> {
-  const navigate = useNavigate();
-  return {
-    menuCode: MENU_CODE.SALES_CONTACTS,
-    useList: useGetSalesContactsQuery,
-    useDelete: useDeleteSalesContactMutation,
-    useBulkDelete: useDeleteSalesContactsMutation,
-    useExcel: useDownloadSalesContactsExcel,
-    useExcelTemplate: useDownloadSalesContactsTemplate,
-    useExcelUpload: useUploadSalesContactsExcelMutation,
-    excelUploadTitle: '영업 명부 엑셀 업로드',
-    excelUploadGuide: (
-      <>
-        <div><strong>·</strong> [*] 표시는 필수 입력 항목입니다.</div>
-        <div><strong>·</strong> 입력 형식 및 예시는 양식 내 안내 시트를 참고해 주세요.</div>
-        <div><strong>·</strong> 만난 경로: 사전 등록된 경로명만 입력 가능 (여러 항목 입력 시 콤마로 구분)</div>
-        <div><strong>·</strong> 현재 회사: 입력 시 해당 회사의 '현재 재직 중' 이력 자동 생성</div>
-      </>
-    ),
-    rowKey: (m) => m.id,
-    onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.SALES_CONTACTS]}/${m.id}/edit`),
-    onRowClick: (m) => navigate(`${MENU_PATH[MENU_CODE.SALES_CONTACTS]}/${m.id}`),
-  };
-}

@@ -7,8 +7,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import CommonSearchModal from '@/shared/ui/CommonSearchModal';
 import { useGetDepartmentsSummaryQuery } from '@/features/department/api/departmentApi';
 import {
-  departmentColumn,
-  departmentSearchFilter,
+  departmentListColumns,
+  departmentListFilters,
 } from '@/features/department/config/departmentListConfig';
 import type { DepartmentSummary } from '@/features/department/types';
 import { useGetDepartmentsQuery } from '@/features/reference/api/referenceApi';
@@ -117,8 +117,8 @@ export default function DepartmentSelectField({
           rowLabel: (m: DepartmentSummary) => m.name,
           pageSize: 5,
         }}
-        searchFilter={departmentSearchFilter}
-        column={departmentColumn}
+        searchFilter={departmentListFilters}
+        column={departmentListColumns}
         onSelect={(selected) => {
           const picked = selected[0];
           onChange(picked ? String(picked.id) : '');

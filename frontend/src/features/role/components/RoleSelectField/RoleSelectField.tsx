@@ -7,8 +7,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import CommonSearchModal from '@/shared/ui/CommonSearchModal';
 import { useGetRolesSummaryQuery } from '@/features/role/api/roleApi';
 import {
-  roleColumn,
-  roleSearchFilter,
+  roleListColumns,
+  roleListFilters,
 } from '@/features/role/config/roleListConfig';
 import type { RoleSummary } from '@/features/role/types';
 import { useGetRolesQuery } from '@/features/reference/api/referenceApi';
@@ -112,8 +112,8 @@ export default function RoleSelectField({
           rowLabel: (m: RoleSummary) => m.name,
           pageSize: 5,
         }}
-        searchFilter={roleSearchFilter}
-        column={roleColumn}
+        searchFilter={roleListFilters}
+        column={roleListColumns}
         onSelect={(selected) => {
           const picked = selected[0];
           onChange(picked ? String(picked.id) : '');

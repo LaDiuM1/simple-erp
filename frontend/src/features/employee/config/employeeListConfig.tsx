@@ -1,18 +1,9 @@
-import { useNavigate } from 'react-router-dom';
 import Typography from '@mui/material/Typography';
-import { MENU_CODE } from '@/shared/config/menuConfig';
 import {
   mapIdName,
   type ColumnConfig,
   type FilterConfig,
-  type ListApiConfig,
 } from '@/shared/ui/GenericList';
-import {
-  useDeleteEmployeeMutation,
-  useDeleteEmployeesMutation,
-  useDownloadEmployeesExcel,
-  useGetEmployeesQuery,
-} from '@/features/employee/api/employeeApi';
 import {
   useGetDepartmentsQuery,
   useGetPositionsQuery,
@@ -21,11 +12,10 @@ import {
 import EmployeeStatusIndicator from '@/features/employee/components/EmployeeStatusIndicator';
 import {
   EMPLOYEE_STATUS_OPTIONS,
-  type EmployeeListFilters,
   type EmployeeSummary,
 } from '@/features/employee/types';
 
-export const employeeColumn: ColumnConfig<EmployeeSummary>[] = [
+export const employeeListColumns: ColumnConfig<EmployeeSummary>[] = [
   {
     key: 'name',
     label: '이름',
@@ -49,7 +39,7 @@ export const employeeColumn: ColumnConfig<EmployeeSummary>[] = [
   { key: 'status', label: '상태', sortable: true, sortDirection: 'asc', width: 100, render: (m) => <EmployeeStatusIndicator status={m.status} /> },
 ];
 
-export const employeeSearchFilter: FilterConfig[] = [
+export const employeeListFilters: FilterConfig[] = [
   { type: 'search', key: 'loginIdKeyword', placeholder: '로그인 ID 검색' },
   { type: 'search', key: 'nameKeyword', placeholder: '이름 검색' },
   { type: 'select', key: 'departmentId', label: '부서', useOptions: useGetDepartmentsQuery, mapOptions: mapIdName },
@@ -57,21 +47,3 @@ export const employeeSearchFilter: FilterConfig[] = [
   { type: 'select', key: 'roleId', label: '권한', useOptions: useGetRolesQuery, mapOptions: mapIdName },
   { type: 'select', key: 'status', label: '상태', options: EMPLOYEE_STATUS_OPTIONS, minWidth: 120 },
 ];
-
-/**
- * 직원 목록용 ListApiConfig 를 생성하는 훅.
- * 데스크탑: 행 클릭 → 상세 + 체크박스 일괄 삭제. 모바일: 카드 + 행별 수정/삭제 아이콘.
- */
-export function useEmployeeListApi(): ListApiConfig<EmployeeSummary, EmployeeListFilters> {
-  const navigate = useNavigate();
-  return {
-    menuCode: MENU_CODE.EMPLOYEES,
-    useList: useGetEmployeesQuery,
-    useDelete: useDeleteEmployeeMutation,
-    useBulkDelete: useDeleteEmployeesMutation,
-    useExcel: useDownloadEmployeesExcel,
-    rowKey: (m) => m.id,
-    onEdit: (m) => navigate(`/employees/${m.id}/edit`),
-    onRowClick: (m) => navigate(`/employees/${m.id}`),
-  };
-}

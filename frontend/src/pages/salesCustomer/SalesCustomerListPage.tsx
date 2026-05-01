@@ -1,17 +1,17 @@
 import GenericList from '@/shared/ui/GenericList';
+import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import {
-  salesCustomerListColumn,
-  salesCustomerListSearchFilter,
-  useSalesCustomerListApi,
+  salesCustomerListColumns,
+  salesCustomerListFilters,
 } from '@/features/salesCustomer/config/salesCustomerListConfig';
+import { useSalesCustomerListPage } from '@/features/salesCustomer/hooks/useSalesCustomerListPage';
 
 export default function SalesCustomerListPage() {
-  const api = useSalesCustomerListApi();
+  const { api, headerActions } = useSalesCustomerListPage();
   return (
-    <GenericList
-      api={api}
-      searchFilter={salesCustomerListSearchFilter}
-      column={salesCustomerListColumn}
-    />
+    <>
+      <PageHeaderActions actions={headerActions} />
+      <GenericList api={api} searchFilter={salesCustomerListFilters} column={salesCustomerListColumns} />
+    </>
   );
 }

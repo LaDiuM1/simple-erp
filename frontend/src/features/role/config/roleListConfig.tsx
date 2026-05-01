@@ -1,23 +1,12 @@
-import { useNavigate } from 'react-router-dom';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import Typography from '@mui/material/Typography';
-import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import {
   type ColumnConfig,
   type FilterConfig,
-  type ListApiConfig,
 } from '@/shared/ui/GenericList';
-import {
-  useDeleteRoleMutation,
-  useDeleteRolesMutation,
-  useGetRolesSummaryQuery,
-} from '@/features/role/api/roleApi';
-import {
-  type RoleListFilters,
-  type RoleSummary,
-} from '@/features/role/types';
+import { type RoleSummary } from '@/features/role/types';
 
-export const roleColumn: ColumnConfig<RoleSummary>[] = [
+export const roleListColumns: ColumnConfig<RoleSummary>[] = [
   {
     key: 'code',
     label: '권한 코드',
@@ -39,24 +28,7 @@ export const roleColumn: ColumnConfig<RoleSummary>[] = [
   { key: 'description', label: '설명', flex: 2.5 },
 ];
 
-export const roleSearchFilter: FilterConfig[] = [
+export const roleListFilters: FilterConfig[] = [
   { type: 'search', key: 'codeKeyword', placeholder: '권한 코드 검색' },
   { type: 'search', key: 'nameKeyword', placeholder: '권한명 검색' },
 ];
-
-/**
- * 권한 목록용 ListApiConfig 를 생성하는 훅.
- * 데스크탑: 행 클릭 → 상세 + 체크박스 일괄 삭제. 모바일: 카드 + 행별 수정/삭제 아이콘.
- */
-export function useRoleListApi(): ListApiConfig<RoleSummary, RoleListFilters> {
-  const navigate = useNavigate();
-  return {
-    menuCode: MENU_CODE.ROLES,
-    useList: useGetRolesSummaryQuery,
-    useDelete: useDeleteRoleMutation,
-    useBulkDelete: useDeleteRolesMutation,
-    rowKey: (m) => m.id,
-    onEdit: (m) => navigate(`${MENU_PATH[MENU_CODE.ROLES]}/${m.id}/edit`),
-    onRowClick: (m) => navigate(`${MENU_PATH[MENU_CODE.ROLES]}/${m.id}`),
-  };
-}

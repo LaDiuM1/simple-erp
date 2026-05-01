@@ -1,35 +1,18 @@
-import { useNavigate } from 'react-router-dom';
-import { MENU_CODE } from '@/shared/config/menuConfig';
 import GenericList from '@/shared/ui/GenericList';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import {
-  customerColumn,
-  customerSearchFilter,
-  useCustomerListApi,
+  customerListColumns,
+  customerListFilters,
 } from '@/features/customer/config/customerListConfig';
+import { useCustomerListPage } from '@/features/customer/hooks/useCustomerListPage';
 
 export default function CustomerListPage() {
-  const navigate = useNavigate();
-  const api = useCustomerListApi();
+  const { api, headerActions } = useCustomerListPage();
 
   return (
     <>
-      <PageHeaderActions
-        actions={[
-          {
-            design: 'create',
-            label: '고객사 등록',
-            onClick: () => navigate('/customers/new'),
-            menuCode: MENU_CODE.CUSTOMERS,
-          },
-        ]}
-      />
-
-      <GenericList
-        api={api}
-        searchFilter={customerSearchFilter}
-        column={customerColumn}
-      />
+      <PageHeaderActions actions={headerActions} />
+      <GenericList api={api} searchFilter={customerListFilters} column={customerListColumns} />
     </>
   );
 }

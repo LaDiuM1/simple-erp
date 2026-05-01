@@ -7,8 +7,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import CommonSearchModal from '@/shared/ui/CommonSearchModal';
 import { useGetCustomersQuery } from '@/features/customer/api/customerApi';
 import {
-  customerSearchColumn,
-  customerSearchFilter,
+  customerSelectColumns,
+  customerListFilters,
 } from '@/features/customer/config/customerListConfig';
 import type { CustomerSummary } from '@/features/customer/types';
 
@@ -103,8 +103,8 @@ export default function CustomerSelectField({
           rowLabel: (m: CustomerSummary) => m.name,
           pageSize: 5,
         }}
-        searchFilter={customerSearchFilter}
-        column={customerSearchColumn}
+        searchFilter={customerListFilters}
+        column={customerSelectColumns}
         onSelect={(selected) => {
           const picked = selected[0];
           onChange(picked ? String(picked.id) : '', picked ? picked.label : '');
