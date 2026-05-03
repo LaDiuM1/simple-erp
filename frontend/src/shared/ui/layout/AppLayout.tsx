@@ -7,7 +7,7 @@ import Collapse from '@mui/material/Collapse';
 import Typography from '@mui/material/Typography';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { useAppDispatch } from '@/app/hooks';
-import { logout } from '@/features/auth/store/authSlice';
+import { performLogout } from '@/features/auth/store/authActions';
 import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 import { MENU_CONFIG } from '@/shared/config/menuConfig';
 import { getPageTitle } from '@/app/pageTitles';
@@ -70,7 +70,7 @@ export default function AppLayout() {
 
   const handleLogout = () => {
     snackbar.success('로그아웃되었습니다.');
-    dispatch(logout());
+    dispatch(performLogout());
     navigate('/login');
   };
 
