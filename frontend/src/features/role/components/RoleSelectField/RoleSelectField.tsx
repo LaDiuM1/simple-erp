@@ -98,7 +98,7 @@ export default function RoleSelectField({
           htmlInput: {
             readOnly: true,
             onMouseDown: (e: MouseEvent<HTMLInputElement>) => e.preventDefault(),
-            style: { cursor: 'pointer' },
+            style: { cursor: disabled ? 'default' : 'pointer' },
           },
         }}
       />
