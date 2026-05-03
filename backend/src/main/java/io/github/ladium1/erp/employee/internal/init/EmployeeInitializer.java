@@ -32,21 +32,21 @@ public class EmployeeInitializer implements ApplicationRunner {
     @Value("${app.admin-password}")
     private String adminPassword;
 
-    // 서버 실행 시 최초 관리자 계정 부트스트랩 — 이미 존재하면 skip (idempotent).
     @Override
     @Transactional
     public void run(@NonNull ApplicationArguments args) {
+        // MASTER 시스템 권한은 매 부팅 reconcile — 신규 부팅 시 생성, 기존 부팅 시 누락 메뉴 행을 채워
+        // Menu enum 추가/제거에도 권한 매트릭스가 자동 동기화되도록 함.
+        RoleInfo masterRole = roleApi.bootstrapSystemRole(
+                "MASTER", "관리자", "시스템 전체 관리 권한"
+        );
+
+        // 관리자 계정 부트스트랩은 최초 1회만 — 이미 존재하면 skip (idempotent).
         if (employeeRepository.existsByLoginId(adminLoginId)) {
             return;
         }
 
         log.info("최초 관리자 계정 초기화 시작");
-
-        // MASTER 시스템 권한 부트스트랩 — 없으면 system=true + 모든 메뉴 read/write 자동 부여
-        RoleInfo masterRole = roleApi.bootstrapSystemRole(
-                "MASTER", "관리자", "시스템 전체 관리 권한"
-        );
-
         employeeRepository.save(Employee.builder()
                 .loginId(adminLoginId)
                 .password(passwordEncoder.encode(adminPassword))
@@ -55,7 +55,6 @@ public class EmployeeInitializer implements ApplicationRunner {
                 .status(EmployeeStatus.ACTIVE)
                 .roleId(masterRole.id())
                 .build());
-
         log.info("관리자 계정 생성 완료");
     }
 }
