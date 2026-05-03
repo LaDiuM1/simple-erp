@@ -22,6 +22,7 @@ import {
   type LoginIdStatus,
 } from '@/features/employee/validation/employeeFormValidation';
 import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 import type { EmployeeFormStateBase } from './employeeFormState';
 
 export interface EmployeeCreateFormState extends EmployeeFormStateBase {
@@ -96,7 +97,8 @@ export function useEmployeeCreateForm(): EmployeeCreateFormState {
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
     try {
-      await createEmployee(employeeFormToCreateRequest(values)).unwrap();
+      const trimmed = trimStringValues(values, { skipKeys: ['password', 'passwordConfirm'] });
+      await createEmployee(employeeFormToCreateRequest(trimmed)).unwrap();
       snackbar.success('등록되었습니다.');
       navigate(MENU_PATH.EMPLOYEES);
     } catch (err) {

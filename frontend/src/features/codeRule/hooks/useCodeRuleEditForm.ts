@@ -29,6 +29,7 @@ import {
   validatePattern,
 } from '@/features/codeRule/validation/codeRuleValidation';
 import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 
 export interface CodeRuleEditFormState {
   values: CodeRuleFormValues;
@@ -247,7 +248,7 @@ export function useCodeRuleEditForm(
     try {
       await updateCodeRule({
         target,
-        body: codeRuleFormToUpdateRequest(values),
+        body: codeRuleFormToUpdateRequest(trimStringValues(values)),
       }).unwrap();
       snackbar.success('저장되었습니다.');
       navigate(MENU_PATH[MENU_CODE.CODE_RULES]);

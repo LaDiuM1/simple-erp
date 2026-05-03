@@ -17,6 +17,7 @@ import {
   type RoleErrors,
 } from '@/features/role/validation/roleValidation';
 import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 
 export interface RoleEditFormState {
   values: RoleFormValues;
@@ -67,7 +68,7 @@ export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormSta
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
     try {
-      await updateRole({ id, body: roleFormToUpdateRequest(values, MATRIX_MENUS) }).unwrap();
+      await updateRole({ id, body: roleFormToUpdateRequest(trimStringValues(values), MATRIX_MENUS) }).unwrap();
       snackbar.success('권한이 수정되었습니다.');
       navigate(MENU_PATH[MENU_CODE.ROLES]);
     } catch (err) {

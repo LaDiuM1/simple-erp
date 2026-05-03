@@ -21,6 +21,7 @@ import {
   type AvailabilityStatus,
 } from '@/features/customer/validation/customerFormValidation';
 import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 import type { CustomerFormStateBase } from './customerFormState';
 
 export interface CustomerEditFormState extends CustomerFormStateBase {
@@ -104,7 +105,7 @@ export function useCustomerEditForm(
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
     try {
-      await updateCustomer({ id, body: customerFormToUpdateRequest(values) }).unwrap();
+      await updateCustomer({ id, body: customerFormToUpdateRequest(trimStringValues(values)) }).unwrap();
       snackbar.success('저장되었습니다.');
       navigate(MENU_PATH.CUSTOMERS);
     } catch (err) {

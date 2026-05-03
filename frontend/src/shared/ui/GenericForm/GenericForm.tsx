@@ -11,11 +11,19 @@ import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 import FormField from './FormField';
 import FormSection from './FormSection';
 import { FormGrid, FormRoot, FormSurface } from './GenericForm.styles';
 import { useFormState } from './useFormState';
 import type { FieldConfig, FormApiConfig, FormSectionInfo, FormState } from './types';
+
+/** 비밀번호 필드 값은 사용자가 의도적으로 공백을 넣었을 수 있으므로 trim 에서 제외. */
+function passwordKeysOf<TValues extends object>(
+  fields: FieldConfig<TValues>[],
+): ReadonlyArray<keyof TValues & string> {
+  return fields.filter((f) => f.type === 'password').map((f) => f.key);
+}
 
 /** PageHeader 의 저장 버튼이 portal 을 넘어 form 을 연결할 때 쓰는 id. */
 const FORM_ID = 'generic-form';
@@ -84,7 +92,8 @@ function CreateForm<
 
   const doCreate = async () => {
     try {
-      await createFn(api.toCreateRequest(formState.values)).unwrap();
+      const trimmed = trimStringValues(formState.values, { skipKeys: passwordKeysOf(fields) });
+      await createFn(api.toCreateRequest(trimmed)).unwrap();
       snackbar.success(api.successMessages?.create ?? DEFAULT_CREATE_SUCCESS);
       navigate(api.listPath);
     } catch (err) {
@@ -186,7 +195,8 @@ function EditFormBody<
 
   const doUpdate = async () => {
     try {
-      await updateFn({ id, body: api.toUpdateRequest(formState.values) }).unwrap();
+      const trimmed = trimStringValues(formState.values, { skipKeys: passwordKeysOf(fields) });
+      await updateFn({ id, body: api.toUpdateRequest(trimmed) }).unwrap();
       snackbar.success(api.successMessages?.edit ?? DEFAULT_EDIT_SUCCESS);
       navigate(api.listPath);
     } catch (err) {

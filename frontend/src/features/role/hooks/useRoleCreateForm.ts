@@ -16,6 +16,7 @@ import {
   type RoleErrors,
 } from '@/features/role/validation/roleValidation';
 import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 
 export interface RoleCreateFormState {
   values: RoleFormValues;
@@ -72,7 +73,7 @@ export function useRoleCreateForm(): RoleCreateFormState {
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
     try {
-      await createRole(roleFormToCreateRequest(values, MATRIX_MENUS)).unwrap();
+      await createRole(roleFormToCreateRequest(trimStringValues(values), MATRIX_MENUS)).unwrap();
       snackbar.success('권한이 등록되었습니다.');
       navigate(MENU_PATH[MENU_CODE.ROLES]);
     } catch (err) {

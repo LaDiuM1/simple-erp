@@ -20,6 +20,7 @@ import {
   type AvailabilityStatus,
 } from '@/features/customer/validation/customerFormValidation';
 import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 import type { CustomerFormStateBase } from './customerFormState';
 
 export interface CustomerCreateFormState extends CustomerFormStateBase {
@@ -90,7 +91,7 @@ export function useCustomerCreateForm(): CustomerCreateFormState {
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
     try {
-      await createCustomer(customerFormToCreateRequest(values)).unwrap();
+      await createCustomer(customerFormToCreateRequest(trimStringValues(values))).unwrap();
       snackbar.success('등록되었습니다.');
       navigate(MENU_PATH.CUSTOMERS);
     } catch (err) {

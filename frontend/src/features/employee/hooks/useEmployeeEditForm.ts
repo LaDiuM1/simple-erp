@@ -14,6 +14,7 @@ import {
 } from '@/features/employee/types';
 import { employeeEditValidators } from '@/features/employee/validation/employeeFormValidation';
 import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 import type { EmployeeFormStateBase } from './employeeFormState';
 
 export interface EmployeeEditFormState extends EmployeeFormStateBase {
@@ -71,7 +72,8 @@ export function useEmployeeEditForm(
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
     try {
-      await updateEmployee({ id, body: employeeFormToUpdateRequest(values) }).unwrap();
+      const trimmed = trimStringValues(values, { skipKeys: ['password', 'passwordConfirm'] });
+      await updateEmployee({ id, body: employeeFormToUpdateRequest(trimmed) }).unwrap();
       snackbar.success('저장되었습니다.');
       navigate(MENU_PATH.EMPLOYEES);
     } catch (err) {
