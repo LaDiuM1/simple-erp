@@ -2,6 +2,7 @@ package io.github.ladium1.erp.employee.api;
 
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,4 +32,10 @@ public interface EmployeeApi {
      * 재직 중 직원 수 (퇴사자 제외) — 대시보드 KPI 용.
      */
     long countActive();
+
+    /**
+     * 주어진 부서들에 속한 직원 식별자 목록 — 데이터 스코프 (DEPARTMENT / DEPARTMENT_TREE) 적용 시 사용.
+     * 빈 입력은 빈 리스트 반환.
+     */
+    List<Long> findIdsByDepartmentIds(Collection<Long> departmentIds);
 }

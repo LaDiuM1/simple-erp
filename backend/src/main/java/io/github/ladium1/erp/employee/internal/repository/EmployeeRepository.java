@@ -5,6 +5,8 @@ import io.github.ladium1.erp.employee.internal.entity.EmployeeStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface EmployeeRepository extends JpaRepository<Employee, Long>, EmployeeRepositoryCustom {
@@ -28,5 +30,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, Emplo
     boolean existsByRoleId(Long roleId);
 
     long countByStatusNot(EmployeeStatus status);
+
+    @Query("select m.id from Employee m where m.departmentId in :departmentIds")
+    List<Long> findIdsByDepartmentIdIn(Collection<Long> departmentIds);
 
 }

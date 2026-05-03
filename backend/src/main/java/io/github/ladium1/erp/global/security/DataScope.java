@@ -22,4 +22,23 @@ public enum DataScope {
     SELF("본인");
 
     private final String label;
+
+    /**
+     * 다른 스코프보다 더 넓은 가시성이면 true.
+     * <p>
+     * 한 사용자가 같은 행을 여러 메뉴를 통해 볼 수 있을 때 (예: CUSTOMERS / SALES_CUSTOMERS) 더 permissive 한
+     * 스코프를 채택한다 — 권한이 더 많은 사용자가 더 적게 보이는 일이 없도록.
+     */
+    public boolean isMorePermissiveThan(DataScope other) {
+        return permissiveness() > other.permissiveness();
+    }
+
+    private int permissiveness() {
+        return switch (this) {
+            case ALL -> 3;
+            case DEPARTMENT_TREE -> 2;
+            case DEPARTMENT -> 1;
+            case SELF -> 0;
+        };
+    }
 }
