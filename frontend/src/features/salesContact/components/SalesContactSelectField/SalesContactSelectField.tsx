@@ -1,10 +1,4 @@
-import { useState, type MouseEvent } from 'react';
-import IconButton from '@mui/material/IconButton';
-import InputAdornment from '@mui/material/InputAdornment';
-import TextField from '@mui/material/TextField';
-import ClearIcon from '@mui/icons-material/Clear';
-import SearchIcon from '@mui/icons-material/Search';
-import CommonSearchModal from '@/shared/ui/CommonSearchModal';
+import EntitySelectField, { type EntitySelectConfig } from '@/shared/ui/EntitySelectField';
 import { useGetSalesContactsQuery } from '@/features/salesContact/api/salesContactApi';
 import {
   salesContactListColumns,
@@ -25,93 +19,17 @@ interface Props {
   placeholder?: string;
 }
 
-/**
- * 영업 명부 검색 모달 트리거 + 선택된 명부명 표시 입력창. EmployeeSelectField / CustomerSelectField 와 동일 패턴.
- */
-export default function SalesContactSelectField({
-  label = '영업 명부',
-  value,
-  valueLabel,
-  onChange,
-  required,
-  helperText,
-  disabled,
-  placeholder,
-}: Props) {
-  const [open, setOpen] = useState(false);
+const salesContactSelectConfig: EntitySelectConfig<SalesContactSummary> = {
+  modalTitle: '영업 명부 검색',
+  searchAriaLabel: '명부 검색',
+  useSearchList: useGetSalesContactsQuery,
+  rowKey: (m) => m.id,
+  rowLabel: (m) => m.name,
+  searchFilter: salesContactListFilters,
+  column: salesContactListColumns,
+};
 
-  const openModal = () => {
-    if (!disabled) setOpen(true);
-  };
-
-  return (
-    <>
-      <TextField
-        fullWidth
-        size="small"
-        label={label}
-        required={required}
-        helperText={helperText}
-        disabled={disabled}
-        placeholder={placeholder}
-        value={valueLabel}
-        onClick={openModal}
-        slotProps={{
-          input: {
-            endAdornment: (
-              <InputAdornment position="end">
-                {!!value && !disabled && (
-                  <IconButton
-                    size="small"
-                    aria-label="선택 해제"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onChange('', '');
-                    }}
-                  >
-                    <ClearIcon fontSize="small" />
-                  </IconButton>
-                )}
-                <IconButton
-                  size="small"
-                  aria-label="명부 검색"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openModal();
-                  }}
-                  disabled={disabled}
-                >
-                  <SearchIcon fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            ),
-          },
-          htmlInput: {
-            readOnly: true,
-            onMouseDown: (e: MouseEvent<HTMLInputElement>) => e.preventDefault(),
-            style: { cursor: disabled ? 'default' : 'pointer' },
-          },
-        }}
-      />
-      <CommonSearchModal
-        open={open}
-        onClose={() => setOpen(false)}
-        title="영업 명부 검색"
-        api={{
-          useList: useGetSalesContactsQuery,
-          rowKey: (m: SalesContactSummary) => m.id,
-          rowLabel: (m: SalesContactSummary) => m.name,
-        }}
-        searchFilter={salesContactListFilters}
-        column={salesContactListColumns}
-        onSelect={(selected) => {
-          const picked = selected[0];
-          onChange(picked ? String(picked.id) : '', picked ? picked.label : '');
-        }}
-        initialSelected={
-          value && valueLabel ? [{ id: Number(value), label: valueLabel }] : []
-        }
-      />
-    </>
-  );
+/** 영업 명부 검색 SelectField — EmployeeSelectField 와 동일 패턴 (외부 valueLabel). */
+export default function SalesContactSelectField({ label = '영업 명부', ...rest }: Props) {
+  return <EntitySelectField {...rest} label={label} config={salesContactSelectConfig} />;
 }
