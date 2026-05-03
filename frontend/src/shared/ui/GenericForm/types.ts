@@ -164,6 +164,6 @@ export interface FormApiConfig<
 export interface FormState<TValues> {
   values: TValues;
   updateField: <K extends keyof TValues>(key: K, value: TValues[K]) => void;
-  setAll: (values: TValues) => void;
+  setAll: (next: TValues | ((prev: TValues) => TValues)) => void;
   reset: () => void;
 }

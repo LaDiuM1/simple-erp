@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_PATH } from '@/shared/config/menuConfig';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
@@ -7,6 +6,7 @@ import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
 import { useToggle } from '@/shared/hooks/useToggle';
+import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCheckCustomerBizRegNoAvailabilityQuery,
@@ -39,12 +39,11 @@ export function useCustomerCreateForm(): CustomerCreateFormState {
   const submit = useApiSubmit();
   const openPostcode = useDaumPostcode();
 
-  const [values, setValues] = useState<CustomerFormValues>(() => ({ ...EMPTY_CUSTOMER_FORM }));
+  const { values, updateField: update } = useFormState<CustomerFormValues>(() => ({
+    ...EMPTY_CUSTOMER_FORM,
+  }));
   const [confirmOpen, confirm] = useToggle();
   const [createCustomer, { isLoading: isSaving }] = useCreateCustomerMutation();
-
-  const update = <K extends keyof CustomerFormValues>(key: K, v: CustomerFormValues[K]) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
 
   const validation = useFieldValidation(values, customerValidators);
 

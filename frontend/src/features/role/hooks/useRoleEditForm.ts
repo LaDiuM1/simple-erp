@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useToggle } from '@/shared/hooks/useToggle';
+import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useUpdateRoleMutation } from '@/features/role/api/roleApi';
 import { MATRIX_MENUS } from '@/features/role/components/MenuPermissionMatrix';
@@ -43,17 +44,13 @@ export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormSta
   const submit = useApiSubmit();
   const [updateRole, { isLoading: isSaving }] = useUpdateRoleMutation();
 
-  const [values, setValues] = useState<RoleFormValues>(() =>
+  const { values, updateField: setField } = useFormState<RoleFormValues>(() =>
     roleDetailToFormValues(detail, MATRIX_MENUS),
   );
   const [errors, setErrors] = useState<RoleErrors>({});
   const [confirmOpen, confirm] = useToggle();
 
-  const setField = <K extends keyof RoleFormValues>(key: K, v: RoleFormValues[K]) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
-
-  const setPermissions = (next: RoleFormValues['permissions']) =>
-    setValues((prev) => ({ ...prev, permissions: next }));
+  const setPermissions = (next: RoleFormValues['permissions']) => setField('permissions', next);
 
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();

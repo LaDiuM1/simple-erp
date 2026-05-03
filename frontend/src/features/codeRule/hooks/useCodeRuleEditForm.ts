@@ -6,6 +6,7 @@ import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation, type FieldValidation } from '@/shared/hooks/useFieldValidation';
 import { useToggle } from '@/shared/hooks/useToggle';
+import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useGetCodeRuleAttributeMappingsQuery,
@@ -86,7 +87,9 @@ export function useCodeRuleEditForm(
   const { data: attributes = [] } = useGetCodeRuleAttributesQuery(target);
   const { data: fetchedMappings } = useGetCodeRuleAttributeMappingsQuery(target);
 
-  const [values, setValues] = useState<CodeRuleFormValues>(() => codeRuleToFormValues(rule));
+  const { values, updateField: update, setAll: setValues } = useFormState<CodeRuleFormValues>(() =>
+    codeRuleToFormValues(rule),
+  );
   const [mappingsInitialized, setMappingsInitialized] = useState(false);
   const [confirmOpen, confirm] = useToggle();
   const [preview, setPreview] = useState<CodeRulePreviewResponse | null>(null);
@@ -105,9 +108,6 @@ export function useCodeRuleEditForm(
     setMappingsInitialized(true);
     setValues((prev) => ({ ...prev, attributeMappings: fetchedMappings }));
   }
-
-  const update = <K extends keyof CodeRuleFormValues>(key: K, v: CodeRuleFormValues[K]) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
 
   const validation = useFieldValidation(values, codeRuleValidators);
 
