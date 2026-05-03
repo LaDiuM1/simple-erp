@@ -47,10 +47,10 @@ export function useRoleDetailPage(id: number) {
 export function buildPermissions(detail: RoleDetail): RoleFormValues['permissions'] {
   const permissions: RoleFormValues['permissions'] = {};
   for (const m of MATRIX_MENUS) {
-    permissions[m] = { canRead: false, canWrite: false };
+    permissions[m] = { canRead: false, canWrite: false, dataScope: 'ALL' };
   }
   for (const p of detail.menuPermissions) {
-    permissions[p.menuCode] = { canRead: p.canRead, canWrite: p.canWrite };
+    permissions[p.menuCode] = { canRead: p.canRead, canWrite: p.canWrite, dataScope: p.dataScope };
   }
   return permissions;
 }

@@ -6,6 +6,7 @@ import io.github.ladium1.erp.coderule.api.InputMode;
 import io.github.ladium1.erp.coderule.api.dto.CodeGenerationContext;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
 import io.github.ladium1.erp.customer.api.CustomerApi;
+import io.github.ladium1.erp.customer.api.CustomerVisibilityContributor;
 import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.customer.api.dto.RecentCustomerInfo;
 import io.github.ladium1.erp.customer.internal.dto.CustomerCreateRequest;
@@ -27,6 +28,11 @@ import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRow;
 import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRows;
 import io.github.ladium1.erp.global.excel.ExcelRowError;
 import io.github.ladium1.erp.global.excel.ExcelUploadResult;
+import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.security.DataScope;
+import io.github.ladium1.erp.global.security.DataScopeContext;
+import io.github.ladium1.erp.global.security.DataScopeContextProvider;
+import io.github.ladium1.erp.global.security.DataScopeResolver;
 import io.github.ladium1.erp.global.web.PageResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -44,12 +50,20 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CustomerService implements CustomerApi {
+
+    /**
+     * 가시성 결정에 함께 고려하는 메뉴들 — Customer 컨트롤러가 두 메뉴 모두에서 진입 가능 (CAN_READ_REFERENCE).
+     * 두 메뉴 중 더 permissive 한 스코프 적용.
+     */
+    private static final Menu[] VISIBILITY_MENUS = { Menu.CUSTOMERS, Menu.SALES_CUSTOMERS };
 
     private final CustomerRepository customerRepository;
     private final CustomerMapper customerMapper;
@@ -57,6 +71,9 @@ public class CustomerService implements CustomerApi {
     private final CustomerExcelExporter customerExcelExporter;
     private final CustomerExcelImporter customerExcelImporter;
     private final Validator validator;
+    private final DataScopeResolver dataScopeResolver;
+    private final DataScopeContextProvider dataScopeContextProvider;
+    private final List<CustomerVisibilityContributor> visibilityContributors;
 
     @Override
     public CustomerInfo getById(Long id) {
@@ -101,12 +118,22 @@ public class CustomerService implements CustomerApi {
     }
 
     public PageResponse<CustomerSummaryResponse> search(CustomerSearchCondition condition, Pageable pageable) {
-        Page<Customer> page = customerRepository.search(condition, pageable);
+        Optional<Set<Long>> visible = resolveVisibleIds();
+        if (visible.isPresent() && visible.get().isEmpty()) {
+            return PageResponse.of(Page.empty(pageable));
+        }
+        CustomerSearchCondition scoped = visible.map(condition::withIdScope).orElse(condition);
+        Page<Customer> page = customerRepository.search(scoped, pageable);
         return PageResponse.of(page.map(customerMapper::toSummaryResponse));
     }
 
     public byte[] exportExcel(CustomerSearchCondition condition, Sort sort) {
-        List<Customer> customers = customerRepository.searchAll(condition, sort);
+        Optional<Set<Long>> visible = resolveVisibleIds();
+        if (visible.isPresent() && visible.get().isEmpty()) {
+            return customerExcelExporter.export(List.of());
+        }
+        CustomerSearchCondition scoped = visible.map(condition::withIdScope).orElse(condition);
+        List<Customer> customers = customerRepository.searchAll(scoped, sort);
         List<CustomerSummaryResponse> rows = customers.stream()
                 .map(customerMapper::toSummaryResponse)
                 .toList();
@@ -192,6 +219,7 @@ public class CustomerService implements CustomerApi {
     }
 
     public CustomerDetailResponse getDetail(Long id) {
+        assertVisible(id);
         return customerRepository.findById(id)
                 .map(customerMapper::toDetailResponse)
                 .orElseThrow(() -> new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND));
@@ -255,6 +283,7 @@ public class CustomerService implements CustomerApi {
 
     @Transactional
     public void update(Long id, CustomerUpdateRequest request) {
+        assertVisible(id);
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND));
 
@@ -287,6 +316,7 @@ public class CustomerService implements CustomerApi {
 
     @Transactional
     public void delete(Long id) {
+        assertVisible(id);
         if (!customerRepository.existsById(id)) {
             throw new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND);
         }
@@ -345,5 +375,33 @@ public class CustomerService implements CustomerApi {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * 데이터 스코프 적용 후 가시 customer 식별자 집합을 산출.
+     * - {@code Optional.empty()} = ALL (제한 없음)
+     * - {@code Optional.of(empty)} = 보이는 행 0 건 (서비스가 빈 결과로 분기)
+     * - {@code Optional.of(set)} = 그 ID 집합만 보임
+     */
+    private Optional<Set<Long>> resolveVisibleIds() {
+        DataScope scope = dataScopeResolver.resolveMostPermissive(VISIBILITY_MENUS);
+        if (scope == DataScope.ALL) {
+            return Optional.empty();
+        }
+        DataScopeContext ctx = dataScopeContextProvider.current();
+        Set<Long> union = visibilityContributors.stream()
+                .flatMap(c -> c.visibleCustomerIds(scope, ctx).stream())
+                .collect(Collectors.toSet());
+        return Optional.of(union);
+    }
+
+    /**
+     * 단건 가시성 강제 — 가시 집합에 없는 ID 는 존재 자체를 노출하지 않기 위해 NOT_FOUND 로 처리.
+     */
+    private void assertVisible(Long customerId) {
+        Optional<Set<Long>> visible = resolveVisibleIds();
+        if (visible.isPresent() && !visible.get().contains(customerId)) {
+            throw new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        }
     }
 }

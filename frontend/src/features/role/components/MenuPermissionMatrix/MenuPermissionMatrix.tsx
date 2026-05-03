@@ -1,3 +1,4 @@
+import MenuItem from '@mui/material/MenuItem';
 import { MENU_CODE, MENU_LABEL, type MenuCode } from '@/shared/config/menuConfig';
 import {
   Banner,
@@ -9,11 +10,20 @@ import {
   MatrixRoot,
   MatrixRow,
   MenuLabel,
+  ScopeColumn,
+  ScopeSelect,
 } from './MenuPermissionMatrix.styles';
-import type { RoleFormValues } from '@/features/role/types';
+import {
+  DATA_SCOPE_OPTIONS,
+  type DataScope,
+  type MenuPermissionFormValue,
+  type RoleFormValues,
+} from '@/features/role/types';
 
 /** 매트릭스 행 순서 — MENU_CODE 선언 순서를 따른다. */
 export const MATRIX_MENUS: MenuCode[] = Object.values(MENU_CODE);
+
+const EMPTY_PERMISSION: MenuPermissionFormValue = { canRead: false, canWrite: false, dataScope: 'ALL' };
 
 interface Props {
   permissions: RoleFormValues['permissions'];
@@ -28,9 +38,10 @@ interface Props {
 }
 
 /**
- * 메뉴별 (읽기/쓰기) 매트릭스 편집 위젯.
+ * 메뉴별 (읽기 / 쓰기 / 데이터 범위) 매트릭스 편집 위젯.
  * - 쓰기 체크 시 읽기 자동 체크 / 읽기 해제 시 쓰기 자동 해제 (의미적 정합)
- * - 컬럼 헤더의 "전체" 버튼으로 일괄 토글
+ * - 컬럼 헤더의 "전체" 버튼으로 일괄 토글 (read / write)
+ * - 데이터 범위는 read 권한이 있을 때만 활성 — 읽기 자체가 없으면 행 가시성도 무의미
  * - readOnly 일 때 모든 입력 비활성 + 안내 배너
  */
 export default function MenuPermissionMatrix({
@@ -39,43 +50,43 @@ export default function MenuPermissionMatrix({
   readOnly = false,
   readOnlyMessage,
 }: Props) {
-  const updateOne = (
-    menu: MenuCode,
-    next: { canRead: boolean; canWrite: boolean },
-  ) => {
+  const updateOne = (menu: MenuCode, next: MenuPermissionFormValue) => {
     onChange({ ...permissions, [menu]: next });
   };
 
   const setRead = (menu: MenuCode, checked: boolean) => {
-    const current = permissions[menu] ?? { canRead: false, canWrite: false };
+    const current = permissions[menu] ?? EMPTY_PERMISSION;
     if (checked) {
-      updateOne(menu, { canRead: true, canWrite: current.canWrite });
+      updateOne(menu, { ...current, canRead: true });
     } else {
-      // 읽기 해제 시 쓰기도 자동 해제
-      updateOne(menu, { canRead: false, canWrite: false });
+      // 읽기 해제 시 쓰기도 자동 해제 — dataScope 는 보존 (다시 켤 때 의도 유지)
+      updateOne(menu, { ...current, canRead: false, canWrite: false });
     }
   };
 
   const setWrite = (menu: MenuCode, checked: boolean) => {
+    const current = permissions[menu] ?? EMPTY_PERMISSION;
     if (checked) {
       // 쓰기 체크 시 읽기 자동 체크
-      updateOne(menu, { canRead: true, canWrite: true });
+      updateOne(menu, { ...current, canRead: true, canWrite: true });
     } else {
-      const current = permissions[menu] ?? { canRead: false, canWrite: false };
-      updateOne(menu, { canRead: current.canRead, canWrite: false });
+      updateOne(menu, { ...current, canWrite: false });
     }
+  };
+
+  const setScope = (menu: MenuCode, scope: DataScope) => {
+    const current = permissions[menu] ?? EMPTY_PERMISSION;
+    updateOne(menu, { ...current, dataScope: scope });
   };
 
   const toggleAllRead = () => {
     const allOn = MATRIX_MENUS.every((m) => permissions[m]?.canRead);
     const next = { ...permissions };
     for (const m of MATRIX_MENUS) {
-      const cur = next[m] ?? { canRead: false, canWrite: false };
-      if (allOn) {
-        next[m] = { canRead: false, canWrite: false }; // 읽기 해제 → 쓰기도 해제
-      } else {
-        next[m] = { canRead: true, canWrite: cur.canWrite };
-      }
+      const cur = next[m] ?? EMPTY_PERMISSION;
+      next[m] = allOn
+        ? { ...cur, canRead: false, canWrite: false } // 읽기 해제 → 쓰기도 해제
+        : { ...cur, canRead: true };
     }
     onChange(next);
   };
@@ -84,12 +95,10 @@ export default function MenuPermissionMatrix({
     const allOn = MATRIX_MENUS.every((m) => permissions[m]?.canWrite);
     const next = { ...permissions };
     for (const m of MATRIX_MENUS) {
-      if (allOn) {
-        const cur = next[m] ?? { canRead: false, canWrite: false };
-        next[m] = { canRead: cur.canRead, canWrite: false };
-      } else {
-        next[m] = { canRead: true, canWrite: true }; // 쓰기 체크 → 읽기도 체크
-      }
+      const cur = next[m] ?? EMPTY_PERMISSION;
+      next[m] = allOn
+        ? { ...cur, canWrite: false }
+        : { ...cur, canRead: true, canWrite: true }; // 쓰기 체크 → 읽기도 체크
     }
     onChange(next);
   };
@@ -123,10 +132,14 @@ export default function MenuPermissionMatrix({
               {allWriteOn ? '전체 해제' : '전체 선택'}
             </HeaderToggleAll>
           </HeaderColumnCenter>
+          <HeaderColumnCenter>
+            <span>데이터 범위</span>
+          </HeaderColumnCenter>
         </MatrixHeader>
 
         {MATRIX_MENUS.map((menu) => {
-          const p = permissions[menu] ?? { canRead: false, canWrite: false };
+          const p = permissions[menu] ?? EMPTY_PERMISSION;
+          const scopeDisabled = readOnly || !p.canRead;
           return (
             <MatrixRow key={menu} readOnly={readOnly}>
               <MenuLabel>{MENU_LABEL[menu]}</MenuLabel>
@@ -146,6 +159,19 @@ export default function MenuPermissionMatrix({
                   onChange={(e) => setWrite(menu, e.target.checked)}
                 />
               </ColumnCenter>
+              <ScopeColumn>
+                <ScopeSelect
+                  size="small"
+                  fullWidth
+                  value={p.dataScope}
+                  disabled={scopeDisabled}
+                  onChange={(e) => setScope(menu, e.target.value as DataScope)}
+                >
+                  {DATA_SCOPE_OPTIONS.map((opt) => (
+                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                  ))}
+                </ScopeSelect>
+              </ScopeColumn>
             </MatrixRow>
           );
         })}

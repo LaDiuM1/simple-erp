@@ -5,6 +5,7 @@ import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
 import io.github.ladium1.erp.coderule.api.InputMode;
 import io.github.ladium1.erp.coderule.api.ResetPolicy;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
+import io.github.ladium1.erp.customer.api.CustomerVisibilityContributor;
 import io.github.ladium1.erp.customer.internal.dto.CustomerCreateRequest;
 import io.github.ladium1.erp.customer.internal.dto.CustomerDetailResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerUpdateRequest;
@@ -16,14 +17,22 @@ import io.github.ladium1.erp.customer.internal.exception.CustomerErrorCode;
 import io.github.ladium1.erp.customer.internal.mapper.CustomerMapper;
 import io.github.ladium1.erp.customer.internal.repository.CustomerRepository;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.security.DataScope;
+import io.github.ladium1.erp.global.security.DataScopeContextProvider;
+import io.github.ladium1.erp.global.security.DataScopeResolver;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -44,6 +54,17 @@ class CustomerServiceTest {
     @Mock private CustomerMapper customerMapper;
     @Mock private CodeRuleApi codeRuleApi;
     @Mock private CustomerExcelExporter customerExcelExporter;
+    @Mock private DataScopeResolver dataScopeResolver;
+    @Mock private DataScopeContextProvider dataScopeContextProvider;
+    @Spy private List<CustomerVisibilityContributor> visibilityContributors = new ArrayList<>();
+
+    @BeforeEach
+    void setupVisibility() {
+        // 모든 테스트 default — ALL 스코프로 통과 (행 가시성 제한 없음).
+        // 가시성 자체를 검증하는 테스트가 추가되면 그 테스트가 stub 을 덮어쓴다.
+        lenient().when(dataScopeResolver.resolveMostPermissive(any(Menu[].class)))
+                .thenReturn(DataScope.ALL);
+    }
 
     @Test
     @DisplayName("getDetail 성공 — Mapper 가 변환한 Detail 반환")

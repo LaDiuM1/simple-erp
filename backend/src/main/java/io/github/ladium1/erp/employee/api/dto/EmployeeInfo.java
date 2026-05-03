@@ -7,6 +7,7 @@ public record EmployeeInfo(
         Long id,
         String loginId,
         String name,
+        Long departmentId,
         String departmentName,
         String positionName
 ) {

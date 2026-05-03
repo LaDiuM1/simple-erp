@@ -1,6 +1,9 @@
 import { styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
+import Select from '@mui/material/Select';
+
+const MATRIX_GRID = '1fr 88px 88px 168px';
 
 export const MatrixRoot = styled(Box)(({ theme }) => ({
   border: `1px solid ${theme.palette.divider}`,
@@ -10,7 +13,7 @@ export const MatrixRoot = styled(Box)(({ theme }) => ({
 
 export const MatrixHeader = styled(Box)(({ theme }) => ({
   display: 'grid',
-  gridTemplateColumns: '1fr 96px 96px',
+  gridTemplateColumns: MATRIX_GRID,
   alignItems: 'center',
   padding: '0.625rem 0.875rem',
   backgroundColor: theme.palette.background.default,
@@ -25,7 +28,7 @@ export const MatrixRow = styled(Box, {
   shouldForwardProp: (prop) => prop !== 'readOnly',
 })<{ readOnly: boolean }>(({ theme, readOnly }) => ({
   display: 'grid',
-  gridTemplateColumns: '1fr 96px 96px',
+  gridTemplateColumns: MATRIX_GRID,
   alignItems: 'center',
   padding: '0.5rem 0.875rem',
   borderBottom: `1px solid ${theme.palette.divider}`,
@@ -72,6 +75,26 @@ export const MatrixCheckbox = styled(Checkbox)(({ theme }) => ({
   '&.Mui-disabled': { color: theme.palette.text.disabled },
   '&.Mui-checked.Mui-disabled': { color: theme.palette.text.disabled },
 }));
+
+export const ScopeSelect = styled(Select)(({ theme }) => ({
+  fontSize: '0.8125rem',
+  '.MuiSelect-select': {
+    padding: '0.25rem 0.5rem',
+    paddingRight: '1.75rem',
+  },
+  '&.Mui-disabled': {
+    color: theme.palette.text.disabled,
+    backgroundColor: 'transparent',
+  },
+}));
+
+export const ScopeColumn = styled(Box)({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingLeft: '0.5rem',
+  paddingRight: '0.5rem',
+});
 
 export const Banner = styled(Box)(({ theme }) => ({
   fontSize: '0.75rem',

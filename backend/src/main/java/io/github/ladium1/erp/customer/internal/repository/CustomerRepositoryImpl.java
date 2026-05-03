@@ -98,6 +98,10 @@ public class CustomerRepositoryImpl implements CustomerRepositoryCustom {
         if (condition.status() != null) {
             where.and(c.status.eq(condition.status()));
         }
+        // 데이터 스코프 — 빈 집합은 service 가 미리 분기하므로 여기는 null (제한 없음) 만 통과.
+        if (condition.idScope() != null) {
+            where.and(c.id.in(condition.idScope()));
+        }
         return where;
     }
 }

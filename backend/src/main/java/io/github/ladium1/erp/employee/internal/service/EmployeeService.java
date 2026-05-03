@@ -32,6 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -88,11 +89,20 @@ public class EmployeeService implements EmployeeApi {
         return employeeRepository.countByStatusNot(EmployeeStatus.RESIGNED);
     }
 
+    @Override
+    public List<Long> findIdsByDepartmentIds(Collection<Long> departmentIds) {
+        if (departmentIds == null || departmentIds.isEmpty()) {
+            return List.of();
+        }
+        return employeeRepository.findIdsByDepartmentIdIn(departmentIds);
+    }
+
     private EmployeeInfo toInfo(Employee employee, ReferenceCache refs) {
         return EmployeeInfo.builder()
                 .id(employee.getId())
                 .loginId(employee.getLoginId())
                 .name(employee.getName())
+                .departmentId(employee.getDepartmentId())
                 .departmentName(refs.departmentName(employee.getDepartmentId()))
                 .positionName(refs.positionName(employee.getPositionId()))
                 .build();
