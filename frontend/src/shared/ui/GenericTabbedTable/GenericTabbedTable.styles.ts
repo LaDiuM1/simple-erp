@@ -16,6 +16,12 @@ export const TabbedRoot = styled(Box)(({ theme }) => ({
   overflow: 'hidden',
 }));
 
+/**
+ * 데스크탑: 좌(탭) + 우(액션) 동일 row.
+ * 모바일 (md 미만): 두 영역이 같은 row 에서 공간을 다투면 겹쳐 보이므로 column 으로 stack.
+ *   1단 = 탭 (가로 스크롤로 다중 탭 대응)
+ *   2단 = 활성 탭의 rightSlot (없으면 미렌더라 1단만)
+ */
 export const TabBar = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'stretch',
@@ -24,21 +30,38 @@ export const TabBar = styled('div')(({ theme }) => ({
   borderBottom: `1px solid ${theme.palette.divider}`,
   paddingRight: '0.5rem',
   minHeight: 44,
+  [theme.breakpoints.down('md')]: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 0,
+    paddingRight: 0,
+  },
 }));
 
-export const TabBarLeft = styled('div')({
+export const TabBarLeft = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'stretch',
   flex: 1,
   minWidth: 0,
-});
+  [theme.breakpoints.down('md')]: {
+    flex: '0 0 auto',
+    overflowX: 'auto',
+    // 활성 탭 indicator (TabButton 의 marginBottom: -1) 가 얹힐 자체 borderBottom.
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    minHeight: 44,
+  },
+}));
 
-export const TabBarRight = styled('div')({
+export const TabBarRight = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: '0.5rem',
   flexShrink: 0,
-});
+  [theme.breakpoints.down('md')]: {
+    justifyContent: 'flex-end',
+    padding: '0.375rem 0.5rem',
+  },
+}));
 
 interface TabBtnProps {
   isActive: boolean;
