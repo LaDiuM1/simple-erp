@@ -106,7 +106,6 @@ export default function AcquisitionSourceSearchModal({
       },
       rowKey: (row) => row.id,
       rowLabel: (row) => row.name,
-      pageSize: 8,
     }),
     [allSources, isFetching, isError, error, refetch],
   );

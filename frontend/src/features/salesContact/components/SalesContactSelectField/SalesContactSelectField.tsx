@@ -101,7 +101,6 @@ export default function SalesContactSelectField({
           useList: useGetSalesContactsQuery,
           rowKey: (m: SalesContactSummary) => m.id,
           rowLabel: (m: SalesContactSummary) => m.name,
-          pageSize: 5,
         }}
         searchFilter={salesContactListFilters}
         column={salesContactListColumns}

@@ -110,7 +110,6 @@ export default function RoleSelectField({
           useList: useGetRolesSummaryQuery,
           rowKey: (m: RoleSummary) => m.id,
           rowLabel: (m: RoleSummary) => m.name,
-          pageSize: 5,
         }}
         searchFilter={roleListFilters}
         column={roleListColumns}

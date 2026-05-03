@@ -101,7 +101,6 @@ export default function CustomerSelectField({
           useList: useGetCustomersQuery,
           rowKey: (m: CustomerSummary) => m.id,
           rowLabel: (m: CustomerSummary) => m.name,
-          pageSize: 5,
         }}
         searchFilter={customerListFilters}
         column={customerSelectColumns}

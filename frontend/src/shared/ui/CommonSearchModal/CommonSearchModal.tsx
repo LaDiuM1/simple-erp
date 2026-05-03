@@ -11,7 +11,12 @@ import {
 import { getErrorMessage } from '@/shared/api/error';
 import SearchTable from './SearchTable';
 import SelectionTray from './SelectionTray';
-import { ModalContent, ModalFilterArea, ModalTitleRow } from './CommonSearchModal.styles';
+import {
+  ModalContent,
+  ModalFilterArea,
+  ModalFixedRow,
+  ModalTitleRow,
+} from './CommonSearchModal.styles';
 import type { CommonSearchModalProps, CommonSearchSelectedItem } from './types';
 
 /**
@@ -60,7 +65,7 @@ export default function CommonSearchModal<TRow, TFilters extends object>(
   const state = useListState<TFilters>({
     searchFilter: searchFilter ?? [],
     column,
-    pageSize: api.pageSize ?? 5,
+    pageSize: api.pageSize ?? 10,
   });
   const query = api.useList(state.queryParams);
   const { data, isFetching, isError, error, refetch } = query;
@@ -119,7 +124,7 @@ export default function CommonSearchModal<TRow, TFilters extends object>(
       onClose={onClose}
       maxWidth="xl"
       fullWidth
-      slotProps={{ paper: { sx: { height: '85vh' } } }}
+      slotProps={{ paper: { sx: { maxHeight: '85vh' } } }}
     >
       <ModalTitleRow>
         <span>{title}</span>
@@ -160,16 +165,20 @@ export default function CommonSearchModal<TRow, TFilters extends object>(
         )}
 
         {isTray && (
-          <SelectionTray items={selectedItems} onRemove={removeFromTray} renderItem={renderTrayItem} />
+          <ModalFixedRow>
+            <SelectionTray items={selectedItems} onRemove={removeFromTray} renderItem={renderTrayItem} />
+          </ModalFixedRow>
         )}
 
         {!hidePagination && (
-          <ListPagination
-            page={state.page}
-            totalPages={data?.totalPages ?? 0}
-            totalElements={data?.totalElements}
-            onPageChange={state.setPage}
-          />
+          <ModalFixedRow>
+            <ListPagination
+              page={state.page}
+              totalPages={data?.totalPages ?? 0}
+              totalElements={data?.totalElements}
+              onPageChange={state.setPage}
+            />
+          </ModalFixedRow>
         )}
       </ModalContent>
       <DialogActions>

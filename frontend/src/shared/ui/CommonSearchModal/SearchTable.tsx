@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
 import Radio from '@mui/material/Radio';
@@ -21,14 +21,12 @@ import {
   MobileDetailValue,
   MobilePrimaryRow,
   StyledTableContainer,
-  TableScrollArea,
-  TableWrapper,
   renderCellContent,
   renderTruncatableCell,
   type ColumnConfig,
 } from '@/shared/ui/GenericList';
-import { useFillRowHeight } from '@/shared/ui/GenericList/useFillRowHeight';
 import { computeColumnWidths } from '@/shared/ui/GenericList/utils';
+import { SearchTableArea } from './CommonSearchModal.styles';
 
 interface Props<TRow> {
   rows: TRow[];
@@ -60,6 +58,14 @@ const SELECT_COL_WIDTH = 48;
 const ACTION_COL_WIDTH = 96;
 
 /**
+ * 데스크탑 행 / 헤더 높이 (px) — 본문 영역을 정확히 `ROW_HEIGHT × pageSize + HEADER_HEIGHT` 로 고정.
+ * BodyCell 의 컴팩트 padding (≈29 자연 높이) 을 GenericList 메인 페이지의 `useFillRowHeight` 패턴이
+ * 단독 결정하도록 의도된 값이라, 모달에서는 BodyRow 에 명시 height 를 부여해 medium 톤 (53) 강제.
+ */
+const ROW_HEIGHT = 53;
+const HEADER_HEIGHT = 40;
+
+/**
  * 검색 / 관리 모달 내부 리스트 — GenericList 와 동일한 데스크탑 Table / 모바일 카드 split.
  * select 모드는 행 클릭 → 선택 토글, manage 모드는 rowActions slot 만 노출.
  */
@@ -86,52 +92,53 @@ export default function SearchTable<TRow>({
     [columns, isMobile],
   );
 
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const rowHeight = useFillRowHeight(scrollAreaRef, pageSize, { minHeight: 28, maxHeight: 56 });
+  // 데스크탑은 본문 영역을 정확히 pageSize 행 분으로 고정 — 페이지 전환 / 데이터 양 변화에도 흔들림 없음.
+  // 모바일은 자연 stack (카드 합). 좁은 뷰포트에서 컨텐츠가 paper 를 넘으면 ModalContent 가
+  // 본문 자체로 스크롤하고 filter / pagination 은 sticky 로 항상 노출 (CommonSearchModal.styles 참조).
+  const areaStyle = isMobile
+    ? undefined
+    : { height: ROW_HEIGHT * pageSize + HEADER_HEIGHT };
 
   return (
-    <TableWrapper>
-      <TableScrollArea ref={scrollAreaRef}>
-        {isMobile ? (
-          <MobileList
-            columns={visibleColumns}
-            rows={rows}
-            rowKey={rowKey}
-            mode={mode}
-            selectionStyle={selectionStyle}
-            isSelected={isSelected}
-            onToggleSelect={onToggleSelect}
-            multiple={multiple}
-            rowActions={rowActions}
-            emptyMessage={emptyMessage}
-            isLoading={isLoading}
-          />
-        ) : (
-          <DesktopTable
-            columns={visibleColumns}
-            rows={rows}
-            rowKey={rowKey}
-            page={page}
-            pageSize={pageSize}
-            mode={mode}
-            selectionStyle={selectionStyle}
-            isSelected={isSelected}
-            onToggleSelect={onToggleSelect}
-            multiple={multiple}
-            rowActions={rowActions}
-            rowHeight={rowHeight}
-            emptyMessage={emptyMessage}
-            isLoading={isLoading}
-          />
-        )}
-      </TableScrollArea>
+    <SearchTableArea style={areaStyle}>
+      {isMobile ? (
+        <MobileList
+          columns={visibleColumns}
+          rows={rows}
+          rowKey={rowKey}
+          mode={mode}
+          selectionStyle={selectionStyle}
+          isSelected={isSelected}
+          onToggleSelect={onToggleSelect}
+          multiple={multiple}
+          rowActions={rowActions}
+          emptyMessage={emptyMessage}
+          isLoading={isLoading}
+        />
+      ) : (
+        <DesktopTable
+          columns={visibleColumns}
+          rows={rows}
+          rowKey={rowKey}
+          page={page}
+          pageSize={pageSize}
+          mode={mode}
+          selectionStyle={selectionStyle}
+          isSelected={isSelected}
+          onToggleSelect={onToggleSelect}
+          multiple={multiple}
+          rowActions={rowActions}
+          emptyMessage={emptyMessage}
+          isLoading={isLoading}
+        />
+      )}
 
       {isLoading && (
         <LoadingOverlayBox>
           <CircularProgress size={32} thickness={4} />
         </LoadingOverlayBox>
       )}
-    </TableWrapper>
+    </SearchTableArea>
   );
 }
 
@@ -147,7 +154,6 @@ interface DesktopProps<TRow> {
   onToggleSelect?: (row: TRow) => void;
   multiple: boolean;
   rowActions?: (row: TRow) => ReactNode;
-  rowHeight: number;
   emptyMessage: string;
   isLoading: boolean;
 }
@@ -164,7 +170,6 @@ function DesktopTable<TRow>({
   onToggleSelect,
   multiple,
   rowActions,
-  rowHeight,
   emptyMessage,
   isLoading,
 }: DesktopProps<TRow>) {
@@ -177,7 +182,7 @@ function DesktopTable<TRow>({
 
   return (
     <StyledTableContainer>
-      <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', minWidth: 560 }}>
+      <Table sx={{ tableLayout: 'fixed', width: '100%', minWidth: 560 }}>
         <colgroup>
           {showSelectCol && <col style={{ width: SELECT_COL_WIDTH }} />}
           <col style={{ width: NO_COL_WIDTH }} />
@@ -204,7 +209,7 @@ function DesktopTable<TRow>({
         </TableHead>
         <TableBody>
           {rows.length === 0 ? (
-            <TableRow>
+            <TableRow style={{ height: ROW_HEIGHT * pageSize }}>
               <BodyCell colSpan={columns.length + extraColCount} sx={{ p: 0 }}>
                 {isLoading ? null : <EmptyState message={emptyMessage} iconSize={40} />}
               </BodyCell>
@@ -220,7 +225,7 @@ function DesktopTable<TRow>({
                   clickable={isSelectMode}
                   selected={checked}
                   onClick={onClick}
-                  style={{ height: rowHeight }}
+                  style={{ height: ROW_HEIGHT }}
                 >
                   {showSelectCol && (
                     <BodyCell align="center" padding="checkbox">
