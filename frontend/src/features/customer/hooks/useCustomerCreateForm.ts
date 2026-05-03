@@ -1,10 +1,12 @@
 import * as React from 'react';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_PATH } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
+import { useToggle } from '@/shared/hooks/useToggle';
+import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCheckCustomerBizRegNoAvailabilityQuery,
@@ -19,7 +21,7 @@ import {
   customerValidators,
   type AvailabilityStatus,
 } from '@/features/customer/validation/customerFormValidation';
-import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 import type { CustomerFormStateBase } from './customerFormState';
 
 export interface CustomerCreateFormState extends CustomerFormStateBase {
@@ -34,14 +36,14 @@ export interface CustomerCreateFormState extends CustomerFormStateBase {
 export function useCustomerCreateForm(): CustomerCreateFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const openPostcode = useDaumPostcode();
 
-  const [values, setValues] = useState<CustomerFormValues>(() => ({ ...EMPTY_CUSTOMER_FORM }));
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const { values, updateField: update } = useFormState<CustomerFormValues>(() => ({
+    ...EMPTY_CUSTOMER_FORM,
+  }));
+  const [confirmOpen, confirm] = useToggle();
   const [createCustomer, { isLoading: isSaving }] = useCreateCustomerMutation();
-
-  const update = <K extends keyof CustomerFormValues>(key: K, v: CustomerFormValues[K]) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
 
   const validation = useFieldValidation(values, customerValidators);
 
@@ -84,18 +86,15 @@ export function useCustomerCreateForm(): CustomerCreateFormState {
       snackbar.error('이미 등록된 사업자등록번호입니다.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
-    try {
-      await createCustomer(customerFormToCreateRequest(values)).unwrap();
-      snackbar.success('등록되었습니다.');
-      navigate(MENU_PATH.CUSTOMERS);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    confirm.off();
+    await submit(createCustomer(customerFormToCreateRequest(trimStringValues(values))), {
+      success: '등록되었습니다.',
+      navigateTo: MENU_PATH.CUSTOMERS,
+    });
   };
 
   return {
@@ -108,7 +107,7 @@ export function useCustomerCreateForm(): CustomerCreateFormState {
     handleAddressSearch,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH.CUSTOMERS),
   };
 }

@@ -8,6 +8,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useTerminateSalesContactEmploymentMutation } from '@/features/salesContact/api/salesContactApi';
 import {
@@ -15,7 +16,6 @@ import {
   type DepartureType,
   type SalesContactEmployment,
 } from '@/features/salesContact/types';
-import type { ApiError } from '@/shared/types/api';
 
 interface Props {
   open: boolean;
@@ -26,6 +26,7 @@ interface Props {
 
 export default function EmploymentTerminateModal({ open, onClose, contactId, employment }: Props) {
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [terminateMut, { isLoading: isSaving }] = useTerminateSalesContactEmploymentMutation();
 
   const [endDate, setEndDate] = useState(todayIsoDate());
@@ -52,8 +53,8 @@ export default function EmploymentTerminateModal({ open, onClose, contactId, emp
       return;
     }
 
-    try {
-      await terminateMut({
+    await submit(
+      terminateMut({
         id: employment.id,
         contactId,
         customerId: employment.customerId,
@@ -62,12 +63,9 @@ export default function EmploymentTerminateModal({ open, onClose, contactId, emp
           departureType,
           departureNote: departureNote.trim() === '' ? null : departureNote.trim(),
         },
-      }).unwrap();
-      snackbar.success('재직이 종료되었습니다.');
-      onClose();
-    } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '종료 처리 중 오류가 발생했습니다.');
-    }
+      }),
+      { success: '재직이 종료되었습니다.', error: '종료 처리 중 오류가 발생했습니다.', onSuccess: onClose },
+    );
   };
 
   const companyLabel = employment.customerName ?? employment.externalCompanyName ?? '-';

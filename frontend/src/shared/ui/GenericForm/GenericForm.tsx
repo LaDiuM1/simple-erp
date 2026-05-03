@@ -7,15 +7,23 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
-import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 import FormField from './FormField';
 import FormSection from './FormSection';
 import { FormGrid, FormRoot, FormSurface } from './GenericForm.styles';
 import { useFormState } from './useFormState';
 import type { FieldConfig, FormApiConfig, FormSectionInfo, FormState } from './types';
+
+/** 비밀번호 필드 값은 사용자가 의도적으로 공백을 넣었을 수 있으므로 trim 에서 제외. */
+function passwordKeysOf<TValues extends object>(
+  fields: FieldConfig<TValues>[],
+): ReadonlyArray<keyof TValues & string> {
+  return fields.filter((f) => f.type === 'password').map((f) => f.key);
+}
 
 /** PageHeader 의 저장 버튼이 portal 을 넘어 form 을 연결할 때 쓰는 id. */
 const FORM_ID = 'generic-form';
@@ -75,7 +83,7 @@ function CreateForm<
   fields: FieldConfig<TValues>[];
 }) {
   const navigate = useNavigate();
-  const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const formState = useFormState<TValues>(api.emptyValues);
   const [createFn, { isLoading: isSaving }] = api.useCreate();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -83,13 +91,12 @@ function CreateForm<
   const visibleFields = fields.filter((f) => !f.hideOnCreate);
 
   const doCreate = async () => {
-    try {
-      await createFn(api.toCreateRequest(formState.values)).unwrap();
-      snackbar.success(api.successMessages?.create ?? DEFAULT_CREATE_SUCCESS);
-      navigate(api.listPath);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, DEFAULT_SAVE_ERROR));
-    }
+    const trimmed = trimStringValues(formState.values, { skipKeys: passwordKeysOf(fields) });
+    await submit(createFn(api.toCreateRequest(trimmed)), {
+      success: api.successMessages?.create ?? DEFAULT_CREATE_SUCCESS,
+      error: DEFAULT_SAVE_ERROR,
+      navigateTo: api.listPath,
+    });
   };
 
   const handleSubmit = async () => {
@@ -177,7 +184,7 @@ function EditFormBody<
   detail: TDetail;
 }) {
   const navigate = useNavigate();
-  const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const formState = useFormState<TValues>(api.toValues(detail));
   const [updateFn, { isLoading: isSaving }] = api.useUpdate();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -185,13 +192,12 @@ function EditFormBody<
   const visibleFields = fields.filter((f) => !f.hideOnEdit);
 
   const doUpdate = async () => {
-    try {
-      await updateFn({ id, body: api.toUpdateRequest(formState.values) }).unwrap();
-      snackbar.success(api.successMessages?.edit ?? DEFAULT_EDIT_SUCCESS);
-      navigate(api.listPath);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, DEFAULT_SAVE_ERROR));
-    }
+    const trimmed = trimStringValues(formState.values, { skipKeys: passwordKeysOf(fields) });
+    await submit(updateFn({ id, body: api.toUpdateRequest(trimmed) }), {
+      success: api.successMessages?.edit ?? DEFAULT_EDIT_SUCCESS,
+      error: DEFAULT_SAVE_ERROR,
+      navigateTo: api.listPath,
+    });
   };
 
   const handleSubmit = async () => {

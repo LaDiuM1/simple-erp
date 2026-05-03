@@ -17,17 +17,17 @@ import {
   type TabbedTab,
   type TabbedTableColumn,
 } from '@/shared/ui/GenericTabbedTable';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { usePermission } from '@/shared/hooks/usePermission';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import Muted from '@/shared/ui/atoms/Muted';
-import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useDeleteSalesContactEmploymentMutation } from '@/features/salesContact/api/salesContactApi';
 import {
   DEPARTURE_TYPE_LABELS,
   type SalesContactEmployment,
 } from '@/features/salesContact/types';
 import type { EmploymentTabModalProps } from '@/features/salesContact/components/EmploymentTabModals/EmploymentTabModals';
-import { getErrorMessage } from '@/shared/api/error';
 
 /**
  * 재직 이력 탭 — 등록 / 수정 / 종료 / 삭제 모달 ownership.
@@ -41,27 +41,24 @@ export function useEmploymentTab(
 ): { tab: AnyTabbedTab; modal: EmploymentTabModalProps } {
   const navigate = useNavigate();
   const { canWrite } = usePermission(MENU_CODE.SALES_CONTACTS);
-  const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [deleteMut, { isLoading: isDeleting }] = useDeleteSalesContactEmploymentMutation();
 
   const [editing, setEditing] = useState<SalesContactEmployment | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, createModal] = useToggle();
   const [terminating, setTerminating] = useState<SalesContactEmployment | null>(null);
   const [deletingTarget, setDeletingTarget] = useState<SalesContactEmployment | null>(null);
 
   const handleConfirmDelete = async () => {
     if (!deletingTarget) return;
-    try {
-      await deleteMut({
-        id: deletingTarget.id,
-        contactId,
-        customerId: deletingTarget.customerId,
-      }).unwrap();
-      snackbar.success('재직 이력이 삭제되었습니다.');
-      setDeletingTarget(null);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '삭제 중 오류가 발생했습니다.'));
-    }
+    await submit(
+      deleteMut({ id: deletingTarget.id, contactId, customerId: deletingTarget.customerId }),
+      {
+        success: '재직 이력이 삭제되었습니다.',
+        error: '삭제 중 오류가 발생했습니다.',
+        onSuccess: () => setDeletingTarget(null),
+      },
+    );
   };
 
   const columns: TabbedTableColumn<SalesContactEmployment>[] = [
@@ -192,10 +189,7 @@ export function useEmploymentTab(
     columns,
     emptyMessage: '등록된 재직 이력이 없습니다.',
     rightSlot: canWrite ? (
-      <TabPrimaryActionButton
-        startIcon={<AddRoundedIcon />}
-        onClick={() => setCreating(true)}
-      >
+      <TabPrimaryActionButton startIcon={<AddRoundedIcon />} onClick={createModal.on}>
         재직 등록
       </TabPrimaryActionButton>
     ) : null,
@@ -208,7 +202,7 @@ export function useEmploymentTab(
     terminating,
     deletingTarget,
     isDeleting,
-    onCloseCreate: () => setCreating(false),
+    onCloseCreate: createModal.off,
     onCloseEdit: () => setEditing(null),
     onCloseTerminate: () => setTerminating(null),
     onCancelDelete: () => setDeletingTarget(null),

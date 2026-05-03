@@ -1,10 +1,12 @@
 import * as React from 'react';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_PATH } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
+import { useToggle } from '@/shared/hooks/useToggle';
+import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCheckLoginIdAvailabilityQuery,
@@ -21,7 +23,7 @@ import {
   todayIsoDate,
   type LoginIdStatus,
 } from '@/features/employee/validation/employeeFormValidation';
-import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 import type { EmployeeFormStateBase } from './employeeFormState';
 
 export interface EmployeeCreateFormState extends EmployeeFormStateBase {
@@ -37,17 +39,15 @@ export interface EmployeeCreateFormState extends EmployeeFormStateBase {
 export function useEmployeeCreateForm(): EmployeeCreateFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const openPostcode = useDaumPostcode();
 
-  const [values, setValues] = useState<EmployeeFormValues>(() => ({
+  const { values, updateField: update } = useFormState<EmployeeFormValues>(() => ({
     ...EMPTY_EMPLOYEE_FORM,
     joinDate: todayIsoDate(),
   }));
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [createEmployee, { isLoading: isSaving }] = useCreateEmployeeMutation();
-
-  const update = <K extends keyof EmployeeFormValues>(key: K, v: EmployeeFormValues[K]) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
 
   const validation = useFieldValidation(values, employeeCreateValidators);
 
@@ -90,18 +90,16 @@ export function useEmployeeCreateForm(): EmployeeCreateFormState {
       snackbar.error('이미 사용 중인 로그인 ID 입니다.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
-    try {
-      await createEmployee(employeeFormToCreateRequest(values)).unwrap();
-      snackbar.success('등록되었습니다.');
-      navigate(MENU_PATH.EMPLOYEES);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    confirm.off();
+    const trimmed = trimStringValues(values, { skipKeys: ['password', 'passwordConfirm'] });
+    await submit(createEmployee(employeeFormToCreateRequest(trimmed)), {
+      success: '등록되었습니다.',
+      navigateTo: MENU_PATH.EMPLOYEES,
+    });
   };
 
   return {
@@ -114,7 +112,7 @@ export function useEmployeeCreateForm(): EmployeeCreateFormState {
     handleAddressSearch,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH.EMPLOYEES),
   };
 }

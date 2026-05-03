@@ -15,8 +15,7 @@ import CommonSearchModal from '@/shared/ui/CommonSearchModal';
 import type { ColumnConfig } from '@/shared/ui/GenericList';
 import { PrimaryPageHeaderButton, CancelPageHeaderButton } from '@/shared/ui/layout/PageHeaderButton';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
-import { useSnackbar } from '@/shared/ui/feedback/snackbar';
-import { getErrorMessage } from '@/shared/api/error';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import {
   useCreateAcquisitionSourceMutation,
   useDeleteAcquisitionSourceMutation,
@@ -40,7 +39,7 @@ interface Props {
  * 수정은 의도적으로 미제공 (텍스트 마스터의 단순성 유지).
  */
 export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
-  const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const { data: sources = [], isFetching, isError, error, refetch } = useGetAcquisitionSourcesQuery();
   const [createFn, { isLoading: isCreating }] = useCreateAcquisitionSourceMutation();
   const [deleteFn, { isLoading: isDeleting }] = useDeleteAcquisitionSourceMutation();
@@ -70,29 +69,27 @@ export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
   );
 
   const handleCreate = async (name: string, type: AcquisitionSourceType, description: string) => {
-    try {
-      await createFn({
+    await submit(
+      createFn({
         name: name.trim(),
         type,
         description: description.trim() === '' ? null : description.trim(),
-      }).unwrap();
-      snackbar.success('컨택 경로가 등록되었습니다.');
-      setShowAddForm(false);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '등록 중 오류가 발생했습니다.'));
-    }
+      }),
+      {
+        success: '컨택 경로가 등록되었습니다.',
+        error: '등록 중 오류가 발생했습니다.',
+        onSuccess: () => setShowAddForm(false),
+      },
+    );
   };
 
   const handleConfirmDelete = async () => {
     if (!pendingDelete) return;
-    try {
-      await deleteFn(pendingDelete.id).unwrap();
-      snackbar.success('컨택 경로가 삭제되었습니다.');
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '삭제 중 오류가 발생했습니다.'));
-    } finally {
-      setPendingDelete(null);
-    }
+    await submit(deleteFn(pendingDelete.id), {
+      success: '컨택 경로가 삭제되었습니다.',
+      error: '삭제 중 오류가 발생했습니다.',
+    });
+    setPendingDelete(null);
   };
 
   const columns: ColumnConfig<AcquisitionSourceInfo>[] = [

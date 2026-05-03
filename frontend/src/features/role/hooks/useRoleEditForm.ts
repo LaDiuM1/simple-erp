@@ -2,6 +2,9 @@ import * as React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import { useToggle } from '@/shared/hooks/useToggle';
+import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useUpdateRoleMutation } from '@/features/role/api/roleApi';
 import { MATRIX_MENUS } from '@/features/role/components/MenuPermissionMatrix';
@@ -16,7 +19,7 @@ import {
   validateRoleForm,
   type RoleErrors,
 } from '@/features/role/validation/roleValidation';
-import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 
 export interface RoleEditFormState {
   values: RoleFormValues;
@@ -38,19 +41,16 @@ export interface RoleEditFormState {
 export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [updateRole, { isLoading: isSaving }] = useUpdateRoleMutation();
 
-  const [values, setValues] = useState<RoleFormValues>(() =>
+  const { values, updateField: setField } = useFormState<RoleFormValues>(() =>
     roleDetailToFormValues(detail, MATRIX_MENUS),
   );
   const [errors, setErrors] = useState<RoleErrors>({});
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
 
-  const setField = <K extends keyof RoleFormValues>(key: K, v: RoleFormValues[K]) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
-
-  const setPermissions = (next: RoleFormValues['permissions']) =>
-    setValues((prev) => ({ ...prev, permissions: next }));
+  const setPermissions = (next: RoleFormValues['permissions']) => setField('permissions', next);
 
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -61,18 +61,15 @@ export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormSta
       snackbar.error('입력값을 확인해주세요.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
-    try {
-      await updateRole({ id, body: roleFormToUpdateRequest(values, MATRIX_MENUS) }).unwrap();
-      snackbar.success('권한이 수정되었습니다.');
-      navigate(MENU_PATH[MENU_CODE.ROLES]);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    confirm.off();
+    await submit(updateRole({ id, body: roleFormToUpdateRequest(trimStringValues(values), MATRIX_MENUS) }), {
+      success: '권한이 수정되었습니다.',
+      navigateTo: MENU_PATH[MENU_CODE.ROLES],
+    });
   };
 
   return {
@@ -85,7 +82,7 @@ export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormSta
     confirmOpen,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH[MENU_CODE.ROLES]),
   };
 }

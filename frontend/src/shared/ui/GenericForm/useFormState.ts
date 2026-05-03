@@ -2,10 +2,12 @@ import { useCallback, useState } from 'react';
 import type { FormState } from './types';
 
 /**
- * GenericForm 내부 전용 폼 값 상태 훅.
- * 단순 useState 래퍼 — 키 단위 업데이트 / 전체 교체 / 초기값 복원 지원.
+ * 폼 값 상태 훅. 키 단위 업데이트 / 전체 교체 / 초기값 복원.
+ * GenericForm 외에도 custom 폼 hook 들이 재사용. lazy initializer 도 지원.
  */
-export function useFormState<TValues extends object>(initial: TValues): FormState<TValues> {
+export function useFormState<TValues extends object>(
+  initial: TValues | (() => TValues),
+): FormState<TValues> {
   const [values, setValues] = useState<TValues>(initial);
 
   const updateField = useCallback(
@@ -15,12 +17,12 @@ export function useFormState<TValues extends object>(initial: TValues): FormStat
     [],
   );
 
-  const setAll = useCallback((next: TValues) => {
+  const setAll = useCallback((next: TValues | ((prev: TValues) => TValues)) => {
     setValues(next);
   }, []);
 
   const reset = useCallback(() => {
-    setValues(initial);
+    setValues(typeof initial === 'function' ? (initial as () => TValues)() : initial);
   }, [initial]);
 
   return { values, updateField, setAll, reset };

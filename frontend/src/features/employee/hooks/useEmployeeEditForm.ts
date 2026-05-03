@@ -1,9 +1,11 @@
 import * as React from 'react';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_PATH } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
+import { useToggle } from '@/shared/hooks/useToggle';
+import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useUpdateEmployeeMutation } from '@/features/employee/api/employeeApi';
 import {
@@ -13,7 +15,7 @@ import {
   type EmployeeFormValues,
 } from '@/features/employee/types';
 import { employeeEditValidators } from '@/features/employee/validation/employeeFormValidation';
-import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 import type { EmployeeFormStateBase } from './employeeFormState';
 
 export interface EmployeeEditFormState extends EmployeeFormStateBase {
@@ -36,16 +38,14 @@ export function useEmployeeEditForm(
 ): EmployeeEditFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const openPostcode = useDaumPostcode();
 
-  const [values, setValues] = useState<EmployeeFormValues>(() =>
+  const { values, updateField: update } = useFormState<EmployeeFormValues>(() =>
     employeeDetailToFormValues(detail),
   );
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [updateEmployee, { isLoading: isSaving }] = useUpdateEmployeeMutation();
-
-  const update = <K extends keyof EmployeeFormValues>(key: K, v: EmployeeFormValues[K]) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
 
   const validation = useFieldValidation(values, employeeEditValidators);
 
@@ -65,18 +65,16 @@ export function useEmployeeEditForm(
       snackbar.error('입력값을 확인해주세요.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
-    try {
-      await updateEmployee({ id, body: employeeFormToUpdateRequest(values) }).unwrap();
-      snackbar.success('저장되었습니다.');
-      navigate(MENU_PATH.EMPLOYEES);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    confirm.off();
+    const trimmed = trimStringValues(values, { skipKeys: ['password', 'passwordConfirm'] });
+    await submit(updateEmployee({ id, body: employeeFormToUpdateRequest(trimmed) }), {
+      success: '저장되었습니다.',
+      navigateTo: MENU_PATH.EMPLOYEES,
+    });
   };
 
   return {
@@ -89,7 +87,7 @@ export function useEmployeeEditForm(
     confirmOpen,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH.EMPLOYEES),
   };
 }

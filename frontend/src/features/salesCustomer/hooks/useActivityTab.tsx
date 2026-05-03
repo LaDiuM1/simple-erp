@@ -9,10 +9,10 @@ import {
 } from '@/shared/ui/GenericTabbedTable';
 import { type DetailModalField } from '@/shared/ui/GenericDetailModal';
 import Muted from '@/shared/ui/atoms/Muted';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { usePermission } from '@/shared/hooks/usePermission';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { MENU_CODE } from '@/shared/config/menuConfig';
-import { useSnackbar } from '@/shared/ui/feedback/snackbar';
-import { getErrorMessage } from '@/shared/api/error';
 import { useDeleteSalesActivityMutation } from '@/features/salesCustomer/api/salesCustomerApi';
 import type { SalesActivity } from '@/features/salesCustomer/types';
 import type { CustomerActivityTabModalProps } from '@/features/salesCustomer/components/CustomerActivityTabModals/CustomerActivityTabModals';
@@ -34,27 +34,28 @@ export function useActivityTab(
   activities: SalesActivity[],
 ): { tab: AnyTabbedTab; modal: CustomerActivityTabModalProps } {
   const { canWrite } = usePermission(MENU_CODE.SALES_CUSTOMERS);
-  const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [deleteMut, { isLoading: isDeleting }] = useDeleteSalesActivityMutation();
 
-  const [creating, setCreating] = useState(false);
+  const [creating, createModal] = useToggle();
   const [editing, setEditing] = useState<SalesActivity | null>(null);
   const [deletingTarget, setDeletingTarget] = useState<SalesActivity | null>(null);
   const [detailTarget, setDetailTarget] = useState<SalesActivity | null>(null);
 
   const handleConfirmDelete = async () => {
     if (!deletingTarget) return;
-    try {
-      await deleteMut({
+    await submit(
+      deleteMut({
         id: deletingTarget.id,
         customerId,
         customerContactId: deletingTarget.customerContactId,
-      }).unwrap();
-      snackbar.success('활동이 삭제되었습니다.');
-      setDeletingTarget(null);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '삭제 중 오류가 발생했습니다.'));
-    }
+      }),
+      {
+        success: '활동이 삭제되었습니다.',
+        error: '삭제 중 오류가 발생했습니다.',
+        onSuccess: () => setDeletingTarget(null),
+      },
+    );
   };
 
   const customerContactColumns: TabbedTableColumn<SalesActivity>[] = [
@@ -91,10 +92,7 @@ export function useActivityTab(
     emptyMessage: '등록된 영업 활동이 없습니다.',
     onRowClick: (a) => setDetailTarget(a),
     rightSlot: canWrite ? (
-      <TabPrimaryActionButton
-        startIcon={<AddRoundedIcon />}
-        onClick={() => setCreating(true)}
-      >
+      <TabPrimaryActionButton startIcon={<AddRoundedIcon />} onClick={createModal.on}>
         활동 등록
       </TabPrimaryActionButton>
     ) : null,
@@ -120,7 +118,7 @@ export function useActivityTab(
     isDeleting,
     detailTarget,
     detailFields,
-    onCloseCreate: () => setCreating(false),
+    onCloseCreate: createModal.off,
     onCloseEdit: () => setEditing(null),
     onCancelDelete: () => setDeletingTarget(null),
     onConfirmDelete: handleConfirmDelete,

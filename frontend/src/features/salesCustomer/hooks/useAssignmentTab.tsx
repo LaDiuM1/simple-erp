@@ -16,10 +16,10 @@ import {
   type TabbedTableColumn,
 } from '@/shared/ui/GenericTabbedTable';
 import Muted from '@/shared/ui/atoms/Muted';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { usePermission } from '@/shared/hooks/usePermission';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { MENU_CODE } from '@/shared/config/menuConfig';
-import { useSnackbar } from '@/shared/ui/feedback/snackbar';
-import { getErrorMessage } from '@/shared/api/error';
 import { useDeleteSalesAssignmentMutation } from '@/features/salesCustomer/api/salesCustomerApi';
 import type { SalesAssignment } from '@/features/salesCustomer/types';
 import type { AssignmentTabModalProps } from '@/features/salesCustomer/components/AssignmentTabModals/AssignmentTabModals';
@@ -34,10 +34,10 @@ export function useAssignmentTab(
   assignments: SalesAssignment[],
 ): { tab: AnyTabbedTab; modal: AssignmentTabModalProps } {
   const { canWrite } = usePermission(MENU_CODE.SALES_CUSTOMERS);
-  const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [deleteMut, { isLoading: isDeleting }] = useDeleteSalesAssignmentMutation();
 
-  const [creating, setCreating] = useState(false);
+  const [creating, createModal] = useToggle();
   const [editing, setEditing] = useState<SalesAssignment | null>(null);
   const [terminating, setTerminating] = useState<SalesAssignment | null>(null);
   const [deletingTarget, setDeletingTarget] = useState<SalesAssignment | null>(null);
@@ -50,13 +50,11 @@ export function useAssignmentTab(
 
   const handleConfirmDelete = async () => {
     if (!deletingTarget) return;
-    try {
-      await deleteMut({ id: deletingTarget.id, customerId }).unwrap();
-      snackbar.success('배정이 삭제되었습니다.');
-      setDeletingTarget(null);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '삭제 중 오류가 발생했습니다.'));
-    }
+    await submit(deleteMut({ id: deletingTarget.id, customerId }), {
+      success: '배정이 삭제되었습니다.',
+      error: '삭제 중 오류가 발생했습니다.',
+      onSuccess: () => setDeletingTarget(null),
+    });
   };
 
   const columns: TabbedTableColumn<SalesAssignment>[] = [
@@ -171,10 +169,7 @@ export function useAssignmentTab(
     columns,
     emptyMessage: '배정된 영업 담당자가 없습니다.',
     rightSlot: canWrite ? (
-      <TabPrimaryActionButton
-        startIcon={<AddRoundedIcon />}
-        onClick={() => setCreating(true)}
-      >
+      <TabPrimaryActionButton startIcon={<AddRoundedIcon />} onClick={createModal.on}>
         담당자 배정
       </TabPrimaryActionButton>
     ) : null,
@@ -187,7 +182,7 @@ export function useAssignmentTab(
     terminating,
     deletingTarget,
     isDeleting,
-    onCloseCreate: () => setCreating(false),
+    onCloseCreate: createModal.off,
     onCloseEdit: () => setEditing(null),
     onCloseTerminate: () => setTerminating(null),
     onCancelDelete: () => setDeletingTarget(null),

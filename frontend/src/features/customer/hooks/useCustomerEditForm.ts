@@ -1,10 +1,12 @@
 import * as React from 'react';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_PATH } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
+import { useToggle } from '@/shared/hooks/useToggle';
+import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCheckCustomerBizRegNoAvailabilityQuery,
@@ -20,7 +22,7 @@ import {
   customerValidators,
   type AvailabilityStatus,
 } from '@/features/customer/validation/customerFormValidation';
-import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 import type { CustomerFormStateBase } from './customerFormState';
 
 export interface CustomerEditFormState extends CustomerFormStateBase {
@@ -42,16 +44,14 @@ export function useCustomerEditForm(
 ): CustomerEditFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const openPostcode = useDaumPostcode();
 
-  const [values, setValues] = useState<CustomerFormValues>(() =>
+  const { values, updateField: update } = useFormState<CustomerFormValues>(() =>
     customerDetailToFormValues(detail),
   );
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [updateCustomer, { isLoading: isSaving }] = useUpdateCustomerMutation();
-
-  const update = <K extends keyof CustomerFormValues>(key: K, v: CustomerFormValues[K]) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
 
   const validation = useFieldValidation(values, customerValidators);
 
@@ -98,18 +98,15 @@ export function useCustomerEditForm(
       snackbar.error('이미 등록된 사업자등록번호입니다.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
-    try {
-      await updateCustomer({ id, body: customerFormToUpdateRequest(values) }).unwrap();
-      snackbar.success('저장되었습니다.');
-      navigate(MENU_PATH.CUSTOMERS);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    confirm.off();
+    await submit(updateCustomer({ id, body: customerFormToUpdateRequest(trimStringValues(values)) }), {
+      success: '저장되었습니다.',
+      navigateTo: MENU_PATH.CUSTOMERS,
+    });
   };
 
   return {
@@ -123,7 +120,7 @@ export function useCustomerEditForm(
     confirmOpen,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH.CUSTOMERS),
   };
 }

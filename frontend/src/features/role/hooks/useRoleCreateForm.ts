@@ -2,6 +2,9 @@ import * as React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import { useToggle } from '@/shared/hooks/useToggle';
+import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useCreateRoleMutation } from '@/features/role/api/roleApi';
 import { MATRIX_MENUS } from '@/features/role/components/MenuPermissionMatrix';
@@ -15,7 +18,7 @@ import {
   validateRoleForm,
   type RoleErrors,
 } from '@/features/role/validation/roleValidation';
-import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 
 export interface RoleCreateFormState {
   values: RoleFormValues;
@@ -40,18 +43,17 @@ export interface RoleCreateFormState {
 export function useRoleCreateForm(): RoleCreateFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [createRole, { isLoading: isSaving }] = useCreateRoleMutation();
 
-  const [values, setValues] = useState<RoleFormValues>(() => emptyRoleForm(MATRIX_MENUS));
+  const { values, updateField: setField } = useFormState<RoleFormValues>(() =>
+    emptyRoleForm(MATRIX_MENUS),
+  );
   const [errors, setErrors] = useState<RoleErrors>({});
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [codeAvailable, setCodeAvailable] = useState<boolean | null>(null);
 
-  const setField = <K extends keyof RoleFormValues>(key: K, v: RoleFormValues[K]) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
-
-  const setPermissions = (next: RoleFormValues['permissions']) =>
-    setValues((prev) => ({ ...prev, permissions: next }));
+  const setPermissions = (next: RoleFormValues['permissions']) => setField('permissions', next);
 
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -66,18 +68,15 @@ export function useRoleCreateForm(): RoleCreateFormState {
       snackbar.error('이미 사용 중인 권한 코드입니다.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
-    try {
-      await createRole(roleFormToCreateRequest(values, MATRIX_MENUS)).unwrap();
-      snackbar.success('권한이 등록되었습니다.');
-      navigate(MENU_PATH[MENU_CODE.ROLES]);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    confirm.off();
+    await submit(createRole(roleFormToCreateRequest(trimStringValues(values), MATRIX_MENUS)), {
+      success: '권한이 등록되었습니다.',
+      navigateTo: MENU_PATH[MENU_CODE.ROLES],
+    });
   };
 
   return {
@@ -91,7 +90,7 @@ export function useRoleCreateForm(): RoleCreateFormState {
     confirmOpen,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH[MENU_CODE.ROLES]),
   };
 }

@@ -2,8 +2,11 @@ import * as React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_PATH, MENU_CODE } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation, type FieldValidation } from '@/shared/hooks/useFieldValidation';
+import { useToggle } from '@/shared/hooks/useToggle';
+import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useGetCodeRuleAttributeMappingsQuery,
@@ -29,6 +32,7 @@ import {
   validatePattern,
 } from '@/features/codeRule/validation/codeRuleValidation';
 import { getErrorMessage } from '@/shared/api/error';
+import { trimStringValues } from '@/shared/utils/trimStringValues';
 
 export interface CodeRuleEditFormState {
   values: CodeRuleFormValues;
@@ -78,17 +82,20 @@ export function useCodeRuleEditForm(
 ): CodeRuleEditFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
 
   const { data: attributes = [] } = useGetCodeRuleAttributesQuery(target);
   const { data: fetchedMappings } = useGetCodeRuleAttributeMappingsQuery(target);
 
-  const [values, setValues] = useState<CodeRuleFormValues>(() => codeRuleToFormValues(rule));
+  const { values, updateField: update, setAll: setValues } = useFormState<CodeRuleFormValues>(() =>
+    codeRuleToFormValues(rule),
+  );
   const [mappingsInitialized, setMappingsInitialized] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [preview, setPreview] = useState<CodeRulePreviewResponse | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [tokenModalOpen, setTokenModalOpen] = useState(false);
-  const [attributeDialogOpen, setAttributeDialogOpen] = useState(false);
+  const [tokenModalOpen, tokenModal] = useToggle();
+  const [attributeDialogOpen, attributeDialog] = useToggle();
   const [customLiterals, setCustomLiterals] = useState<string[]>([]);
 
   const patternInputRef = useRef<HTMLInputElement | null>(null);
@@ -96,15 +103,11 @@ export function useCodeRuleEditForm(
   const [updateCodeRule, { isLoading: isSaving }] = useUpdateCodeRuleMutation();
   const [previewCodeRule, { isLoading: isPreviewing }] = usePreviewCodeRuleMutation();
 
-  // 매핑 fetch 완료 시 form values 에 1회 주입 (raw — 빈 row 자동 생성 X)
-  useEffect(() => {
-    if (mappingsInitialized || fetchedMappings === undefined) return;
-    setValues((prev) => ({ ...prev, attributeMappings: fetchedMappings }));
+  // 매핑 fetch 후 1회 seed — effect 안 setState (cascading render) 회피용 렌더 중 setState.
+  if (!mappingsInitialized && fetchedMappings !== undefined) {
     setMappingsInitialized(true);
-  }, [fetchedMappings, mappingsInitialized]);
-
-  const update = <K extends keyof CodeRuleFormValues>(key: K, v: CodeRuleFormValues[K]) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
+    setValues((prev) => ({ ...prev, attributeMappings: fetchedMappings }));
+  }
 
   const validation = useFieldValidation(values, codeRuleValidators);
 
@@ -127,9 +130,6 @@ export function useCodeRuleEditForm(
   );
   const needsAttributeInput = usedAttributeKeys.length > 0;
 
-  const openTokenModal = () => setTokenModalOpen(true);
-  const closeTokenModal = () => setTokenModalOpen(false);
-
   const insertTokenAtCursor = (token: string) => {
     setValues((prev) => {
       const input = patternInputRef.current;
@@ -151,15 +151,12 @@ export function useCodeRuleEditForm(
     const trimmed = literal.trim();
     if (!trimmed) return;
     setCustomLiterals((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
-    setTokenModalOpen(false);
+    tokenModal.off();
   };
 
   const removeCustomLiteral = (literal: string) => {
     setCustomLiterals((prev) => prev.filter((l) => l !== literal));
   };
-
-  const openAttributeDialog = () => setAttributeDialogOpen(true);
-  const closeAttributeDialog = () => setAttributeDialogOpen(false);
 
   /** 두번째 모달의 추가 — 매핑 1건 추가/갱신 + 패턴에 {KEY} 가 없으면 끝에 추가 */
   const onAttributeMappingConfirm = (mapping: CodeRuleAttributeMapping) => {
@@ -179,7 +176,7 @@ export function useCodeRuleEditForm(
       }
       return { ...prev, pattern: nextPattern, attributeMappings: nextMappings };
     });
-    setAttributeDialogOpen(false);
+    attributeDialog.off();
   };
 
   const removeMapping = (attributeKey: string, sourceValue: string) => {
@@ -200,18 +197,20 @@ export function useCodeRuleEditForm(
 
   const debounced = useDebouncedValue(values, 350);
 
+  const isPreviewable =
+    debounced.inputMode !== INPUT_MODE.MANUAL
+    && validatePattern(debounced.pattern, attributeKeySet) === null;
+
+  // isPreviewable 전환 시 stale preview 제거 — 같은 이유로 렌더 중 setState.
+  const [prevPreviewable, setPrevPreviewable] = useState(isPreviewable);
+  if (prevPreviewable !== isPreviewable) {
+    setPrevPreviewable(isPreviewable);
+    setPreview(null);
+    setPreviewError(null);
+  }
+
   useEffect(() => {
-    if (debounced.inputMode === INPUT_MODE.MANUAL) {
-      setPreview(null);
-      setPreviewError(null);
-      return;
-    }
-    const patternError = validatePattern(debounced.pattern, attributeKeySet);
-    if (patternError) {
-      setPreview(null);
-      setPreviewError(null);
-      return;
-    }
+    if (!isPreviewable) return;
     let cancelled = false;
     previewCodeRule({ target, body: codeRuleFormToPreviewRequest(debounced) })
       .unwrap()
@@ -230,7 +229,7 @@ export function useCodeRuleEditForm(
     return () => {
       cancelled = true;
     };
-  }, [debounced, previewCodeRule, target, attributeKeySet]);
+  }, [debounced, previewCodeRule, target, isPreviewable]);
 
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -239,21 +238,15 @@ export function useCodeRuleEditForm(
       snackbar.error('입력값을 확인해주세요.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
-    try {
-      await updateCodeRule({
-        target,
-        body: codeRuleFormToUpdateRequest(values),
-      }).unwrap();
-      snackbar.success('저장되었습니다.');
-      navigate(MENU_PATH[MENU_CODE.CODE_RULES]);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    confirm.off();
+    await submit(
+      updateCodeRule({ target, body: codeRuleFormToUpdateRequest(trimStringValues(values)) }),
+      { success: '저장되었습니다.', navigateTo: MENU_PATH[MENU_CODE.CODE_RULES] },
+    );
   };
 
   return {
@@ -271,15 +264,15 @@ export function useCodeRuleEditForm(
     patternInputRef,
     attributeKeySet,
     tokenModalOpen,
-    openTokenModal,
-    closeTokenModal,
+    openTokenModal: tokenModal.on,
+    closeTokenModal: tokenModal.off,
     addCustomLiteral,
     removeCustomLiteral,
     customLiterals,
     insertTokenAtCursor,
     attributeDialogOpen,
-    openAttributeDialog,
-    closeAttributeDialog,
+    openAttributeDialog: attributeDialog.on,
+    closeAttributeDialog: attributeDialog.off,
     onAttributeMappingConfirm,
     removeMapping,
     attributes,
@@ -288,7 +281,7 @@ export function useCodeRuleEditForm(
     usedAttributeKeys,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH[MENU_CODE.CODE_RULES]),
   };
 }
