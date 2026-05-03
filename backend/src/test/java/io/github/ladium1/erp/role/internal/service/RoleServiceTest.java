@@ -2,6 +2,7 @@ package io.github.ladium1.erp.role.internal.service;
 
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.security.DataScope;
 import io.github.ladium1.erp.role.api.RoleDeletingEvent;
 import io.github.ladium1.erp.role.api.dto.MenuPermission;
 import io.github.ladium1.erp.role.api.dto.RoleInfo;
@@ -26,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,17 +73,43 @@ class RoleServiceTest {
 
 
     @Test
-    @DisplayName("bootstrapSystemRole — 이미 존재하면 그대로 반환 (저장 안함)")
-    void bootstrap_existing() {
+    @DisplayName("bootstrapSystemRole — 이미 존재하고 모든 메뉴 행이 있으면 reconcile 무동작")
+    void bootstrap_existing_fully_reconciled() {
         Role existing = mockRole("MASTER", "관리자", true);
         RoleInfo info = RoleInfo.builder().id(1L).code("MASTER").system(true).build();
         given(roleRepository.findByCode("MASTER")).willReturn(Optional.of(existing));
+        given(roleMenuRepository.findAllByRole(existing)).willReturn(allMenuRows(existing));
         given(roleMapper.toRoleInfo(existing)).willReturn(info);
 
         RoleInfo actual = roleService.bootstrapSystemRole("MASTER", "관리자", "전체 권한");
 
         assertThat(actual).isEqualTo(info);
         verify(roleRepository, never()).save(any());
+        verify(roleMenuRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("bootstrapSystemRole — 이미 존재하지만 누락 메뉴가 있으면 누락된 행만 reconcile")
+    void bootstrap_existing_reconciles_missing_menus() {
+        Role existing = mockRole("MASTER", "관리자", true);
+        Menu droppedMenu = Menu.values()[Menu.values().length - 1];
+        List<RoleMenu> partial = allMenuRows(existing).stream()
+                .filter(rm -> rm.getMenuCode() != droppedMenu)
+                .toList();
+        given(roleRepository.findByCode("MASTER")).willReturn(Optional.of(existing));
+        given(roleMenuRepository.findAllByRole(existing)).willReturn(partial);
+
+        roleService.bootstrapSystemRole("MASTER", "관리자", "전체 권한");
+
+        verify(roleRepository, never()).save(any());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<RoleMenu>> rowsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(roleMenuRepository).saveAll(rowsCaptor.capture());
+        assertThat(rowsCaptor.getValue()).hasSize(1);
+        RoleMenu added = rowsCaptor.getValue().getFirst();
+        assertThat(added.getMenuCode()).isEqualTo(droppedMenu);
+        assertThat(added.isCanRead()).isTrue();
+        assertThat(added.isCanWrite()).isTrue();
     }
 
     @Test
@@ -91,6 +119,7 @@ class RoleServiceTest {
         Role saved = mockRole("MASTER", "관리자", true);
         ReflectionTestUtils.setField(saved, "id", 1L);
         given(roleRepository.save(any(Role.class))).willReturn(saved);
+        given(roleMenuRepository.findAllByRole(saved)).willReturn(List.of());
 
         roleService.bootstrapSystemRole("MASTER", "관리자", "전체 권한");
 
@@ -103,6 +132,18 @@ class RoleServiceTest {
         verify(roleMenuRepository).saveAll(rowsCaptor.capture());
         assertThat(rowsCaptor.getValue()).hasSize(Menu.values().length);
         assertThat(rowsCaptor.getValue()).allMatch(rm -> rm.isCanRead() && rm.isCanWrite());
+    }
+
+    private List<RoleMenu> allMenuRows(Role role) {
+        return Arrays.stream(Menu.values())
+                .map(m -> RoleMenu.builder()
+                        .role(role)
+                        .menuCode(m)
+                        .canRead(true)
+                        .canWrite(true)
+                        .dataScope(DataScope.ALL)
+                        .build())
+                .toList();
     }
 
 

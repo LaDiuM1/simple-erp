@@ -36,6 +36,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 @Service
 @RequiredArgsConstructor
@@ -63,28 +64,32 @@ public class RoleService implements RoleApi {
     @Override
     @Transactional
     public RoleInfo bootstrapSystemRole(String code, String name, String description) {
-        Optional<Role> existing = roleRepository.findByCode(code);
-        if (existing.isPresent()) {
-            return roleMapper.toRoleInfo(existing.get());
-        }
-        Role saved = roleRepository.save(Role.builder()
-                .code(code)
-                .name(name)
-                .description(description)
-                .system(true)
-                .build());
-        // 시스템 권한 — 모든 메뉴에 read/write + ALL 스코프 부여
-        List<RoleMenu> rows = Arrays.stream(Menu.values())
-                .map(menu -> RoleMenu.builder()
-                        .role(saved)
-                        .menuCode(menu)
+        Role role = roleRepository.findByCode(code)
+                .orElseGet(() -> roleRepository.save(Role.builder()
+                        .code(code)
+                        .name(name)
+                        .description(description)
+                        .system(true)
+                        .build()));
+
+        Set<Menu> existingMenus = roleMenuRepository.findAllByRole(role).stream()
+                .map(RoleMenu::getMenuCode)
+                .collect(toSet());
+
+        List<RoleMenu> missing = Arrays.stream(Menu.values())
+                .filter(m -> !existingMenus.contains(m))
+                .map(m -> RoleMenu.builder()
+                        .role(role)
+                        .menuCode(m)
                         .canRead(true)
                         .canWrite(true)
                         .dataScope(DataScope.ALL)
                         .build())
                 .toList();
-        roleMenuRepository.saveAll(rows);
-        return roleMapper.toRoleInfo(saved);
+        if (!missing.isEmpty()) {
+            roleMenuRepository.saveAll(missing);
+        }
+        return roleMapper.toRoleInfo(role);
     }
 
     @Override
