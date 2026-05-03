@@ -29,6 +29,8 @@ public record EmployeeUpdateRequest(
 
         LocalDate joinDate,
 
+        LocalDate birthDate,
+
         @NotNull
         EmployeeStatus status,
 

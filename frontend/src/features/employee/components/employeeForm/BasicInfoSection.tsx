@@ -61,6 +61,15 @@ export default function BasicInfoSection({ form, readOnly = false }: Props) {
           slotProps={{ inputLabel: { shrink: true } }}
           disabled={readOnly}
         />
+        <TextField
+          size="small"
+          type="date"
+          label="생년월일"
+          value={values.birthDate}
+          onChange={(e) => update('birthDate', e.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+          disabled={readOnly}
+        />
       </FieldGrid>
     </FormSection>
   );

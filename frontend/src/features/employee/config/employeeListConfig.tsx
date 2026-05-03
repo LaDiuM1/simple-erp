@@ -36,6 +36,7 @@ export const employeeListColumns: ColumnConfig<EmployeeSummary>[] = [
   { key: 'email', label: '이메일', hideOnMobile: true, flex: 2.2 },
   { key: 'phone', label: '연락처', hideOnMobile: true, flex: 1.5 },
   { key: 'joinDate', label: '입사일', sortable: true, sortDirection: 'desc', defaultSort: true, hideOnMobile: true, width: 130 },
+  { key: 'birthDate', label: '생년월일', hideOnMobile: true, width: 130 },
   { key: 'status', label: '상태', sortable: true, sortDirection: 'asc', width: 100, render: (m) => <EmployeeStatusIndicator status={m.status} /> },
 ];
 

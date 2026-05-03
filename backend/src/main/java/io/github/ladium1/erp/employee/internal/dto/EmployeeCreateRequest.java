@@ -35,6 +35,8 @@ public record EmployeeCreateRequest(
 
         LocalDate joinDate,
 
+        LocalDate birthDate,
+
         @NotNull
         EmployeeStatus status,
 
