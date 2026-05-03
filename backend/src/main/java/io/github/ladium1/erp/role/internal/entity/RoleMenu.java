@@ -2,6 +2,7 @@ package io.github.ladium1.erp.role.internal.entity;
 
 import io.github.ladium1.erp.global.jpa.BaseEntity;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.security.DataScope;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -38,12 +39,20 @@ public class RoleMenu extends BaseEntity {
     @Column(comment = "쓰기 권한")
     private boolean canWrite;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "data_scope", nullable = false, length = 20,
+            columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'ALL'",
+            comment = "데이터 스코프 (행 단위 가시 범위)")
+    private DataScope dataScope;
+
     @Builder
-    public RoleMenu(Role role, Menu menuCode, boolean canRead, boolean canWrite) {
+    public RoleMenu(Role role, Menu menuCode, boolean canRead, boolean canWrite, DataScope dataScope) {
         this.role = role;
         this.menuCode = menuCode;
         this.canRead = canRead;
         this.canWrite = canWrite;
+        // 미지정은 ALL 로 고정 — 기존 행 / 부트스트랩 / 테스트 호환
+        this.dataScope = dataScope == null ? DataScope.ALL : dataScope;
     }
 
 }

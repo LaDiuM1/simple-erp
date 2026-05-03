@@ -2,6 +2,7 @@ package io.github.ladium1.erp.role.internal.service;
 
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.security.DataScope;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.role.api.RoleApi;
 import io.github.ladium1.erp.role.api.RoleDeletingEvent;
@@ -72,13 +73,14 @@ public class RoleService implements RoleApi {
                 .description(description)
                 .system(true)
                 .build());
-        // 모든 메뉴에 read/write 부여
+        // 시스템 권한 — 모든 메뉴에 read/write + ALL 스코프 부여
         List<RoleMenu> rows = Arrays.stream(Menu.values())
                 .map(menu -> RoleMenu.builder()
                         .role(saved)
                         .menuCode(menu)
                         .canRead(true)
                         .canWrite(true)
+                        .dataScope(DataScope.ALL)
                         .build())
                 .toList();
         roleMenuRepository.saveAll(rows);
@@ -90,7 +92,7 @@ public class RoleService implements RoleApi {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_NOT_FOUND));
         return roleMenuRepository.findAllByRole(role).stream()
-                .map(rm -> new MenuPermission(rm.getMenuCode(), rm.isCanRead(), rm.isCanWrite()))
+                .map(rm -> new MenuPermission(rm.getMenuCode(), rm.isCanRead(), rm.isCanWrite(), rm.getDataScope()))
                 .toList();
     }
 
@@ -213,6 +215,7 @@ public class RoleService implements RoleApi {
                         .menuCode(p.menuCode())
                         .canRead(p.canRead() || p.canWrite())
                         .canWrite(p.canWrite())
+                        .dataScope(p.dataScope() == null ? DataScope.ALL : p.dataScope())
                         .build())
                 .toList();
         roleMenuRepository.saveAll(rows);
@@ -228,9 +231,10 @@ public class RoleService implements RoleApi {
                 .map(m -> {
                     RoleMenu rm = stored.get(m);
                     if (rm == null) {
-                        return new MenuPermission(m, false, false);
+                        // 미저장 메뉴는 권한 없음 + 스코프 ALL (의미 없는 placeholder, FE 매트릭스 렌더 편의)
+                        return new MenuPermission(m, false, false, DataScope.ALL);
                     }
-                    return new MenuPermission(m, rm.isCanRead(), rm.isCanWrite());
+                    return new MenuPermission(m, rm.isCanRead(), rm.isCanWrite(), rm.getDataScope());
                 })
                 .toList();
     }
