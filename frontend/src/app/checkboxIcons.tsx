@@ -28,6 +28,12 @@ const filledBox = (theme: Theme) => ({
   border: `1px solid ${theme.palette.primary.main}`,
   backgroundColor: theme.palette.primary.main,
   color: '#fff',
+  // 부모 Checkbox 의 Mui-disabled 상태를 받아 회색으로 — primary 톤이 그대로 남으면
+  // readOnly 화면에서도 토글 가능한 인상이라 명확한 비활성 회색으로 강제.
+  '.Mui-disabled &': {
+    border: `1px solid ${theme.palette.text.disabled}`,
+    backgroundColor: theme.palette.text.disabled,
+  },
 });
 
 export function ThinUncheckedIcon() {

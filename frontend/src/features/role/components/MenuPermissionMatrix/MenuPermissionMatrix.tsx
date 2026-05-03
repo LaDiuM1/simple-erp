@@ -1,11 +1,10 @@
+import Checkbox from '@mui/material/Checkbox';
 import MenuItem from '@mui/material/MenuItem';
 import { MENU_CODE, MENU_LABEL, type MenuCode } from '@/shared/config/menuConfig';
 import {
-  Banner,
   ColumnCenter,
   HeaderColumnCenter,
   HeaderToggleAll,
-  MatrixCheckbox,
   MatrixHeader,
   MatrixRoot,
   MatrixRow,
@@ -29,12 +28,6 @@ interface Props {
   permissions: RoleFormValues['permissions'];
   onChange: (next: RoleFormValues['permissions']) => void;
   readOnly?: boolean;
-  /**
-   * readOnly 시 노출되는 안내 배너 문구. **미지정 시 배너 미노출** —
-   * 비활성 회색 체크박스만으로도 "변경 불가" 의미가 충분히 전달되므로
-   * 시스템 권한처럼 추가 설명이 필요한 경우에만 명시 전달.
-   */
-  readOnlyMessage?: string;
 }
 
 /**
@@ -42,13 +35,12 @@ interface Props {
  * - 쓰기 체크 시 읽기 자동 체크 / 읽기 해제 시 쓰기 자동 해제 (의미적 정합)
  * - 컬럼 헤더의 "전체" 버튼으로 일괄 토글 (read / write)
  * - 데이터 범위는 read 권한이 있을 때만 활성 — 읽기 자체가 없으면 행 가시성도 무의미
- * - readOnly 일 때 모든 입력 비활성 + 안내 배너
+ * - readOnly 일 때 모든 입력 비활성 (회색 체크박스로 변경 불가 의미 전달)
  */
 export default function MenuPermissionMatrix({
   permissions,
   onChange,
   readOnly = false,
-  readOnlyMessage,
 }: Props) {
   const updateOne = (menu: MenuCode, next: MenuPermissionFormValue) => {
     onChange({ ...permissions, [menu]: next });
@@ -107,75 +99,72 @@ export default function MenuPermissionMatrix({
   const allWriteOn = MATRIX_MENUS.every((m) => permissions[m]?.canWrite);
 
   return (
-    <>
-      {readOnly && readOnlyMessage && <Banner>{readOnlyMessage}</Banner>}
-      <MatrixRoot>
-        <MatrixHeader>
-          <span>메뉴</span>
-          <HeaderColumnCenter>
-            <span>읽기</span>
-            <HeaderToggleAll
-              type="button"
-              onClick={toggleAllRead}
-              disabled={readOnly}
-            >
-              {allReadOn ? '전체 해제' : '전체 선택'}
-            </HeaderToggleAll>
-          </HeaderColumnCenter>
-          <HeaderColumnCenter>
-            <span>쓰기</span>
-            <HeaderToggleAll
-              type="button"
-              onClick={toggleAllWrite}
-              disabled={readOnly}
-            >
-              {allWriteOn ? '전체 해제' : '전체 선택'}
-            </HeaderToggleAll>
-          </HeaderColumnCenter>
-          <HeaderColumnCenter>
-            <span>데이터 범위</span>
-          </HeaderColumnCenter>
-        </MatrixHeader>
+    <MatrixRoot>
+      <MatrixHeader>
+        <span>메뉴</span>
+        <HeaderColumnCenter>
+          <span>읽기</span>
+          <HeaderToggleAll
+            type="button"
+            onClick={toggleAllRead}
+            disabled={readOnly}
+          >
+            {allReadOn ? '전체 해제' : '전체 선택'}
+          </HeaderToggleAll>
+        </HeaderColumnCenter>
+        <HeaderColumnCenter>
+          <span>쓰기</span>
+          <HeaderToggleAll
+            type="button"
+            onClick={toggleAllWrite}
+            disabled={readOnly}
+          >
+            {allWriteOn ? '전체 해제' : '전체 선택'}
+          </HeaderToggleAll>
+        </HeaderColumnCenter>
+        <HeaderColumnCenter>
+          <span>데이터 범위</span>
+        </HeaderColumnCenter>
+      </MatrixHeader>
 
-        {MATRIX_MENUS.map((menu) => {
-          const p = permissions[menu] ?? EMPTY_PERMISSION;
-          const scopeDisabled = readOnly || !p.canRead;
-          return (
-            <MatrixRow key={menu} readOnly={readOnly}>
-              <MenuLabel>{MENU_LABEL[menu]}</MenuLabel>
-              <ColumnCenter>
-                <MatrixCheckbox
-                  size="small"
-                  checked={p.canRead}
-                  disabled={readOnly}
-                  onChange={(e) => setRead(menu, e.target.checked)}
-                />
-              </ColumnCenter>
-              <ColumnCenter>
-                <MatrixCheckbox
-                  size="small"
-                  checked={p.canWrite}
-                  disabled={readOnly}
-                  onChange={(e) => setWrite(menu, e.target.checked)}
-                />
-              </ColumnCenter>
-              <ScopeColumn>
-                <ScopeSelect
-                  size="small"
-                  fullWidth
-                  value={p.dataScope}
-                  disabled={scopeDisabled}
-                  onChange={(e) => setScope(menu, e.target.value as DataScope)}
-                >
-                  {DATA_SCOPE_OPTIONS.map((opt) => (
-                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                  ))}
-                </ScopeSelect>
-              </ScopeColumn>
-            </MatrixRow>
-          );
-        })}
-      </MatrixRoot>
-    </>
+      {MATRIX_MENUS.map((menu) => {
+        const p = permissions[menu] ?? EMPTY_PERMISSION;
+        const scopeDisabled = readOnly || !p.canRead;
+        return (
+          <MatrixRow key={menu} readOnly={readOnly}>
+            <MenuLabel>{MENU_LABEL[menu]}</MenuLabel>
+            <ColumnCenter>
+              <Checkbox
+                size="small"
+                checked={p.canRead}
+                disabled={readOnly}
+                onChange={(e) => setRead(menu, e.target.checked)}
+              />
+            </ColumnCenter>
+            <ColumnCenter>
+              <Checkbox
+                size="small"
+                checked={p.canWrite}
+                disabled={readOnly}
+                onChange={(e) => setWrite(menu, e.target.checked)}
+              />
+            </ColumnCenter>
+            <ScopeColumn>
+              <ScopeSelect
+                size="small"
+                fullWidth
+                value={p.dataScope}
+                disabled={scopeDisabled}
+                onChange={(e) => setScope(menu, e.target.value as DataScope)}
+              >
+                {DATA_SCOPE_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                ))}
+              </ScopeSelect>
+            </ScopeColumn>
+          </MatrixRow>
+        );
+      })}
+    </MatrixRoot>
   );
 }
