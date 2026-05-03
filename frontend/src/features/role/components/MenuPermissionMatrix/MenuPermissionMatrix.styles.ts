@@ -1,6 +1,5 @@
 import { styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
-import Checkbox from '@mui/material/Checkbox';
 import Select from '@mui/material/Select';
 
 const MATRIX_GRID = '1fr 88px 88px 168px';
@@ -69,13 +68,6 @@ export const HeaderToggleAll = styled('button')(({ theme }) => ({
   '&:disabled': { color: theme.palette.text.disabled, cursor: 'default', textDecoration: 'none' },
 }));
 
-// readOnly 상태에서 checked + disabled 도 명확한 회색으로 — MUI 기본은 rgba(0,0,0,0.26) 라
-// 흐릿한 primary 처럼 보여 사용자가 클릭으로 토글되리라 오해. text.disabled (0.38) 톤으로 통일.
-export const MatrixCheckbox = styled(Checkbox)(({ theme }) => ({
-  '&.Mui-disabled': { color: theme.palette.text.disabled },
-  '&.Mui-checked.Mui-disabled': { color: theme.palette.text.disabled },
-}));
-
 export const ScopeSelect = styled(Select)(({ theme }) => ({
   fontSize: '0.8125rem',
   '.MuiSelect-select': {
@@ -96,12 +88,3 @@ export const ScopeColumn = styled(Box)({
   paddingRight: '0.5rem',
 });
 
-export const Banner = styled(Box)(({ theme }) => ({
-  fontSize: '0.75rem',
-  color: theme.palette.text.secondary,
-  padding: '0.5rem 0.75rem',
-  backgroundColor: theme.palette.primarySubtle,
-  borderLeft: `3px solid ${theme.palette.primary.main}`,
-  borderRadius: 4,
-  marginBottom: '0.625rem',
-}));

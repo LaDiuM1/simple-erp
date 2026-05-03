@@ -37,11 +37,6 @@ export default function RoleDetailPage() {
                   permissions={buildPermissions(detail)}
                   onChange={() => {/* readonly */}}
                   readOnly
-                  readOnlyMessage={
-                    detail.system
-                      ? '시스템 권한입니다. 메뉴 권한이 자동으로 모두 부여됩니다.'
-                      : undefined
-                  }
                 />
               </FormSection>
             </MatrixSection>
