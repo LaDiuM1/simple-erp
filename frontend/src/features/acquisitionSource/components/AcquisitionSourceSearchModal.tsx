@@ -119,7 +119,6 @@ export default function AcquisitionSourceSearchModal({
       open={open}
       onClose={onClose}
       title="컨택 경로 검색"
-      mode="select"
       multiple
       selectionStyle="tray"
       api={adapterApi}

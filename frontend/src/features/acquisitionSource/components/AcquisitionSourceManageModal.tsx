@@ -11,7 +11,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
-import CommonSearchModal from '@/shared/ui/CommonSearchModal';
+import { CommonManageModal } from '@/shared/ui/CommonSearchModal';
 import type { ColumnConfig } from '@/shared/ui/GenericList';
 import { PrimaryPageHeaderButton, CancelPageHeaderButton } from '@/shared/ui/layout/PageHeaderButton';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
@@ -35,8 +35,7 @@ interface Props {
 
 /**
  * 영업 명부의 sub-master 인 컨택 경로 관리 모달.
- * CommonSearchModal 의 manage 모드 활용 — 행 우측 삭제 버튼 + 우측 상단 추가 버튼.
- * 수정은 의도적으로 미제공 (텍스트 마스터의 단순성 유지).
+ * 행 우측 삭제 버튼 + 우측 상단 추가 버튼. 수정은 의도적으로 미제공 (텍스트 마스터의 단순성 유지).
  */
 export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
   const submit = useApiSubmit();
@@ -123,11 +122,10 @@ export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
 
   return (
     <>
-      <CommonSearchModal<AcquisitionSourceInfo, object>
+      <CommonManageModal<AcquisitionSourceInfo, object>
         open={open}
         onClose={onClose}
         title="컨택 경로 관리"
-        mode="manage"
         api={adapterApi}
         column={columns}
         emptyMessage="등록된 컨택 경로가 없습니다."

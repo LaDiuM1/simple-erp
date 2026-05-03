@@ -4,14 +4,13 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 
 /**
- * 모달 본문 — 필터 / 테이블 / 페이지네이션을 세로 stack.
+ * 모달 본문 — 필터 / 테이블 / 페이지네이션을 block flow 로 세로 stack.
  * 좁은 뷰포트에서 컨텐츠가 paper 보다 커지면 본문 자체가 스크롤. filter / pagination 은
  * `position: sticky` 로 양 끝에 고정되어 스크롤 중에도 항상 노출 (요구사항).
+ * `min-height: 0` 은 paper (flex column) 안에서 ModalContent 가 컨텐츠 미만으로 줄어들 수 있게 함.
  */
 export const ModalContent = styled(DialogContent)(({ theme }) => ({
   padding: 0,
-  display: 'flex',
-  flexDirection: 'column',
   minHeight: 0,
   overflow: 'auto',
   borderTop: `1px solid ${theme.palette.divider}`,
