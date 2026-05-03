@@ -39,6 +39,7 @@ export interface EmployeeSummary {
   email: string | null;
   phone: string | null;
   joinDate: string | null;
+  birthDate: string | null;
   status: EmployeeStatus;
 }
 
@@ -52,6 +53,7 @@ export interface EmployeeDetail {
   roadAddress: string | null;
   detailAddress: string | null;
   joinDate: string | null;
+  birthDate: string | null;
   status: EmployeeStatus;
   departmentId: number | null;
   departmentName: string | null;
@@ -71,6 +73,7 @@ export interface EmployeeCreateRequest {
   roadAddress?: string | null;
   detailAddress?: string | null;
   joinDate?: string | null;
+  birthDate?: string | null;
   status: EmployeeStatus;
   roleId: number;
   departmentId?: number | null;
@@ -85,6 +88,7 @@ export interface EmployeeUpdateRequest {
   roadAddress?: string | null;
   detailAddress?: string | null;
   joinDate?: string | null;
+  birthDate?: string | null;
   status: EmployeeStatus;
   roleId: number;
   departmentId?: number | null;
@@ -120,6 +124,7 @@ export interface EmployeeFormValues {
   roadAddress: string;
   detailAddress: string;
   joinDate: string;
+  birthDate: string;
   status: EmployeeStatus;
   roleId: string;
   departmentId: string;
@@ -137,6 +142,7 @@ export const EMPTY_EMPLOYEE_FORM: EmployeeFormValues = {
   roadAddress: '',
   detailAddress: '',
   joinDate: '',
+  birthDate: '',
   status: 'ACTIVE',
   roleId: '',
   departmentId: '',
@@ -155,6 +161,7 @@ export function employeeDetailToFormValues(d: EmployeeDetail): EmployeeFormValue
     roadAddress: d.roadAddress ?? '',
     detailAddress: d.detailAddress ?? '',
     joinDate: d.joinDate ?? '',
+    birthDate: d.birthDate ?? '',
     status: d.status,
     roleId: String(d.roleId),
     departmentId: d.departmentId == null ? '' : String(d.departmentId),
@@ -173,6 +180,7 @@ export function employeeFormToCreateRequest(v: EmployeeFormValues): EmployeeCrea
     roadAddress: emptyToNull(v.roadAddress),
     detailAddress: emptyToNull(v.detailAddress),
     joinDate: emptyToNull(v.joinDate),
+    birthDate: emptyToNull(v.birthDate),
     status: v.status,
     roleId: Number(v.roleId),
     departmentId: v.departmentId === '' ? null : Number(v.departmentId),
@@ -189,6 +197,7 @@ export function employeeFormToUpdateRequest(v: EmployeeFormValues): EmployeeUpda
     roadAddress: emptyToNull(v.roadAddress),
     detailAddress: emptyToNull(v.detailAddress),
     joinDate: emptyToNull(v.joinDate),
+    birthDate: emptyToNull(v.birthDate),
     status: v.status,
     roleId: Number(v.roleId),
     departmentId: v.departmentId === '' ? null : Number(v.departmentId),
