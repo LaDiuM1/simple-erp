@@ -19,15 +19,15 @@ export interface CommonSearchModalApi<TRow, TFilters extends object> {
   /** 행 → 폼으로 넘어갈 id 값. */
   rowKey: (row: TRow) => number;
   /**
-   * select 모드 전용 — 행 → 트리거에 표시될 라벨 (선택 결과로 부모에 함께 반환됨).
-   * manage 모드에서는 사용되지 않으므로 optional.
+   * 행 → 트리거에 표시될 라벨 (선택 결과로 부모에 함께 반환됨).
+   * select 모드에서만 사용 — 미지정 시 `String(id)` fallback.
    */
   rowLabel?: (row: TRow) => string;
-  /** 모달 내 페이지 사이즈. default 5 — 좁은 모달에 맞춤. */
+  /** 모달 내 페이지 사이즈. default 10. */
   pageSize?: number;
 }
 
-interface BaseModalProps<TRow, TFilters extends object> {
+interface BaseProps<TRow, TFilters extends object> {
   open: boolean;
   onClose: () => void;
   title: string;
@@ -40,16 +40,13 @@ interface BaseModalProps<TRow, TFilters extends object> {
   emptyMessage?: string;
   /** 페이지네이션 영역 숨김 — 적은 항목 (~20) 의 sub-master 관리에 적합. */
   hidePagination?: boolean;
-  /**
-   * DialogTitle 우측에 노출할 액션 (예: "추가" 버튼). manage 모드에서 추가 모달 / 인라인 폼 트리거 용.
-   * select 모드에서도 함께 사용 가능.
-   */
+  /** DialogTitle 우측에 노출할 액션 (예: "추가" 버튼). */
   headerActions?: ReactNode;
 }
 
-export interface SelectModalProps<TRow, TFilters extends object>
-  extends BaseModalProps<TRow, TFilters> {
-  mode?: 'select';
+/** 행을 선택해 부모로 반환하는 모달 (단일 / 다중 선택). */
+export interface CommonSearchModalProps<TRow, TFilters extends object>
+  extends BaseProps<TRow, TFilters> {
   /** true 면 다중 선택, false 면 단일 선택 (한 행만 유지). */
   multiple?: boolean;
   /**
@@ -68,25 +65,21 @@ export interface SelectModalProps<TRow, TFilters extends object>
   initialSelected?: CommonSearchSelectedItem[];
   /** 결과에서 제외할 id 목록 (예: 부서 자기 자신을 상위 부서로 못 고르도록). */
   excludeIds?: number[];
-  /** 확인 버튼 라벨 — 기본 '확인'. 검색 필터 컨텍스트에서는 '검색' 등으로 변경. */
+  /** 확인 버튼 라벨 — 기본 '확인'. */
   confirmLabel?: string;
   /**
    * 'tray' selectionStyle 전용 — 트레이 칩의 커스텀 렌더링.
-   * 미지정 시 기본 Chip + delete 사용. 호출자가 외부 상태 (예: 날짜 맵) 와 결합한 칩을 제공할 때 사용.
+   * 미지정 시 기본 Chip + delete 사용.
    */
   renderTrayItem?: (
     item: CommonSearchSelectedItem,
     onRemove: () => void,
-  ) => import('react').ReactNode;
+  ) => ReactNode;
 }
 
-export interface ManageModalProps<TRow, TFilters extends object>
-  extends BaseModalProps<TRow, TFilters> {
-  mode: 'manage';
-  /** 행마다 우측에 노출되는 액션 — 보통 삭제 IconButton. propagation 은 SearchTable 이 차단. */
+/** 행 단위 액션 (예: 삭제) 만 노출하는 관리 모달 — 선택 / 확인 단계 없음. */
+export interface CommonManageModalProps<TRow, TFilters extends object>
+  extends BaseProps<TRow, TFilters> {
+  /** 행마다 우측에 노출되는 액션 — 보통 삭제 IconButton. */
   rowActions: (row: TRow) => ReactNode;
 }
-
-export type CommonSearchModalProps<TRow, TFilters extends object> =
-  | SelectModalProps<TRow, TFilters>
-  | ManageModalProps<TRow, TFilters>;
