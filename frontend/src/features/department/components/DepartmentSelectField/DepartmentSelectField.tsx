@@ -103,7 +103,7 @@ export default function DepartmentSelectField({
              * "편집 모드 진입" 처럼 오해를 부르기 때문. 키보드 tab focus 는 정상 동작 (a11y 보존).
              */
             onMouseDown: (e: MouseEvent<HTMLInputElement>) => e.preventDefault(),
-            style: { cursor: 'pointer' },
+            style: { cursor: disabled ? 'default' : 'pointer' },
           },
         }}
       />

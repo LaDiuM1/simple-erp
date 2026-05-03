@@ -31,10 +31,10 @@ interface Props {
  * 우측 ✕ 로 전체 비우기 (모달 미열림).
  *
  * 디자인 분기:
- *  - filter: SearchTextField (필터바와 동일한 키워드 검색 톤, 검색 아이콘, 라벨 없음).
- *  - form: 일반 TextField (다른 폼 컨트롤과 동일 — floating label + helperText).
- *
- * 두 모드 모두 hover 시 outline + 배경 강조 (호버 효과 동일).
+ *  - filter: SearchTextField (필터바와 동일한 outlined 키워드 검색 톤, 검색 아이콘, 라벨 없음).
+ *    호버 시 outline / 배경 강조는 styled override 로 추가.
+ *  - form: theme 기본 filled variant TextField (다른 폼 컨트롤과 동일 — floating label + helperText).
+ *    호버 효과는 theme 의 MuiFilledInput 기본을 그대로 따름.
  */
 export default function AcquisitionSourceSearchField({
   mode,
@@ -146,7 +146,6 @@ export default function AcquisitionSourceSearchField({
       <FormTrigger
         fullWidth
         size="small"
-        variant="outlined"
         label={label}
         value={summaryText}
         placeholder={placeholder}
@@ -204,16 +203,14 @@ const FilterTrigger = styled(SearchTextField)(({ theme }) => ({
 }));
 
 /**
- * 폼의 일반 TextField (floating label) 의 readOnly clickable 변형.
- * 다른 폼 컨트롤 (text / email / phone 등) 과 동일한 시각 톤을 유지하되, hover 효과만 추가.
+ * 폼의 일반 TextField (theme 기본 filled variant) 의 readOnly clickable 변형.
+ * 다른 폼 컨트롤 (text / email / phone 등) 과 동일한 시각 톤. 인터랙션 단서로 cursor pointer 만 추가
+ * (hover 의 보더 / 배경 강조는 theme 의 MuiFilledInput 기본 hover 가 그대로 적용).
  */
 const FormTrigger = styled(TextField)(({ theme }) => ({
   cursor: 'pointer',
-  '& .MuiOutlinedInput-root': {
-    cursor: 'pointer',
-    transition: 'border-color 0.15s, background-color 0.15s',
-  },
-  '& .MuiOutlinedInput-input': {
+  '& .MuiInputBase-root': { cursor: 'pointer' },
+  '& .MuiInputBase-input': {
     cursor: 'pointer',
     color: theme.palette.text.primary,
   },
@@ -221,11 +218,8 @@ const FormTrigger = styled(TextField)(({ theme }) => ({
     color: theme.palette.text.disabled,
     opacity: 1,
   },
-  '&:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: theme.palette.text.primary,
+  // disabled 시 inner 요소까지 cursor pointer 무효화 — 비대화 상태에서 클릭 가능 인상 제거.
+  '&.Mui-disabled, &.Mui-disabled .MuiInputBase-root, &.Mui-disabled .MuiInputBase-input': {
+    cursor: 'default',
   },
-  '&:hover .MuiOutlinedInput-root': {
-    backgroundColor: theme.palette.action.hover,
-  },
-  '&.Mui-disabled': { cursor: 'default' },
 }));

@@ -89,7 +89,7 @@ export default function CustomerSelectField({
           htmlInput: {
             readOnly: true,
             onMouseDown: (e: MouseEvent<HTMLInputElement>) => e.preventDefault(),
-            style: { cursor: 'pointer' },
+            style: { cursor: disabled ? 'default' : 'pointer' },
           },
         }}
       />
