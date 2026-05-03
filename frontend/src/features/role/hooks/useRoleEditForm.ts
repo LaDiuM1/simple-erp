@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useUpdateRoleMutation } from '@/features/role/api/roleApi';
 import { MATRIX_MENUS } from '@/features/role/components/MenuPermissionMatrix';
@@ -16,7 +17,6 @@ import {
   validateRoleForm,
   type RoleErrors,
 } from '@/features/role/validation/roleValidation';
-import { getErrorMessage } from '@/shared/api/error';
 import { trimStringValues } from '@/shared/utils/trimStringValues';
 
 export interface RoleEditFormState {
@@ -39,6 +39,7 @@ export interface RoleEditFormState {
 export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [updateRole, { isLoading: isSaving }] = useUpdateRoleMutation();
 
   const [values, setValues] = useState<RoleFormValues>(() =>
@@ -67,13 +68,10 @@ export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormSta
 
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
-    try {
-      await updateRole({ id, body: roleFormToUpdateRequest(trimStringValues(values), MATRIX_MENUS) }).unwrap();
-      snackbar.success('권한이 수정되었습니다.');
-      navigate(MENU_PATH[MENU_CODE.ROLES]);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    await submit(updateRole({ id, body: roleFormToUpdateRequest(trimStringValues(values), MATRIX_MENUS) }), {
+      success: '권한이 수정되었습니다.',
+      navigateTo: MENU_PATH[MENU_CODE.ROLES],
+    });
   };
 
   return {

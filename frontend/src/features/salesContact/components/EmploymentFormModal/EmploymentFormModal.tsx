@@ -9,13 +9,13 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import CustomerSelectField from '@/features/customer/components/CustomerSelectField';
 import ModeChoiceSection from '@/shared/ui/ModeChoiceSection';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCreateSalesContactEmploymentMutation,
   useUpdateSalesContactEmploymentMutation,
 } from '@/features/salesContact/api/salesContactApi';
 import type { SalesContactEmployment } from '@/features/salesContact/types';
-import type { ApiError } from '@/shared/types/api';
 
 type CompanyMode = 'lookup' | 'manual';
 
@@ -50,6 +50,7 @@ interface Props {
 export default function EmploymentFormModal({ open, onClose, contactId, employment }: Props) {
   const isEdit = employment !== undefined;
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [createMut, { isLoading: isCreating }] = useCreateSalesContactEmploymentMutation();
   const [updateMut, { isLoading: isUpdating }] = useUpdateSalesContactEmploymentMutation();
 
@@ -101,23 +102,13 @@ export default function EmploymentFormModal({ open, onClose, contactId, employme
       startDate: values.startDate,
     };
 
-    try {
-      if (isEdit && employment) {
-        await updateMut({
-          id: employment.id,
-          contactId,
-          customerId: employment.customerId,
-          body: payload,
-        }).unwrap();
-        snackbar.success('재직 이력이 수정되었습니다.');
-      } else {
-        await createMut({ contactId, body: payload }).unwrap();
-        snackbar.success('재직이 등록되었습니다.');
-      }
-      onClose();
-    } catch (err) {
-      snackbar.error((err as ApiError)?.message ?? '저장 중 오류가 발생했습니다.');
-    }
+    const promise = isEdit && employment
+      ? updateMut({ id: employment.id, contactId, customerId: employment.customerId, body: payload })
+      : createMut({ contactId, body: payload });
+    await submit(promise, {
+      success: isEdit ? '재직 이력이 수정되었습니다.' : '재직이 등록되었습니다.',
+      onSuccess: onClose,
+    });
   };
 
   return (

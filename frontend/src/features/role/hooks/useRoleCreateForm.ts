@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useCreateRoleMutation } from '@/features/role/api/roleApi';
 import { MATRIX_MENUS } from '@/features/role/components/MenuPermissionMatrix';
@@ -15,7 +16,6 @@ import {
   validateRoleForm,
   type RoleErrors,
 } from '@/features/role/validation/roleValidation';
-import { getErrorMessage } from '@/shared/api/error';
 import { trimStringValues } from '@/shared/utils/trimStringValues';
 
 export interface RoleCreateFormState {
@@ -41,6 +41,7 @@ export interface RoleCreateFormState {
 export function useRoleCreateForm(): RoleCreateFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [createRole, { isLoading: isSaving }] = useCreateRoleMutation();
 
   const [values, setValues] = useState<RoleFormValues>(() => emptyRoleForm(MATRIX_MENUS));
@@ -72,13 +73,10 @@ export function useRoleCreateForm(): RoleCreateFormState {
 
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
-    try {
-      await createRole(roleFormToCreateRequest(trimStringValues(values), MATRIX_MENUS)).unwrap();
-      snackbar.success('권한이 등록되었습니다.');
-      navigate(MENU_PATH[MENU_CODE.ROLES]);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    await submit(createRole(roleFormToCreateRequest(trimStringValues(values), MATRIX_MENUS)), {
+      success: '권한이 등록되었습니다.',
+      navigateTo: MENU_PATH[MENU_CODE.ROLES],
+    });
   };
 
   return {

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_PATH, MENU_CODE } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation, type FieldValidation } from '@/shared/hooks/useFieldValidation';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
@@ -79,6 +80,7 @@ export function useCodeRuleEditForm(
 ): CodeRuleEditFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
 
   const { data: attributes = [] } = useGetCodeRuleAttributesQuery(target);
   const { data: fetchedMappings } = useGetCodeRuleAttributeMappingsQuery(target);
@@ -246,16 +248,10 @@ export function useCodeRuleEditForm(
 
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
-    try {
-      await updateCodeRule({
-        target,
-        body: codeRuleFormToUpdateRequest(trimStringValues(values)),
-      }).unwrap();
-      snackbar.success('저장되었습니다.');
-      navigate(MENU_PATH[MENU_CODE.CODE_RULES]);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    await submit(
+      updateCodeRule({ target, body: codeRuleFormToUpdateRequest(trimStringValues(values)) }),
+      { success: '저장되었습니다.', navigateTo: MENU_PATH[MENU_CODE.CODE_RULES] },
+    );
   };
 
   return {

@@ -10,6 +10,7 @@ import Checkbox from '@mui/material/Checkbox';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import EmployeeSelectField from '@/features/employee/components/EmployeeSelectField';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCreateSalesAssignmentMutation,
@@ -19,7 +20,6 @@ import {
   todayIsoDate,
   type SalesAssignment,
 } from '@/features/salesCustomer/types';
-import { getErrorMessage } from '@/shared/api/error';
 
 interface FormValues {
   employeeId: string;
@@ -48,6 +48,7 @@ interface Props {
 export default function AssignmentFormModal({ open, onClose, customerId, assignment }: Props) {
   const isEdit = assignment !== undefined;
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [createMut, { isLoading: isCreating }] = useCreateSalesAssignmentMutation();
   const [updateMut, { isLoading: isUpdating }] = useUpdateSalesAssignmentMutation();
 
@@ -78,9 +79,8 @@ export default function AssignmentFormModal({ open, onClose, customerId, assignm
       return;
     }
 
-    try {
-      if (isEdit && assignment) {
-        await updateMut({
+    const promise = isEdit && assignment
+      ? updateMut({
           id: assignment.id,
           customerId,
           body: {
@@ -88,22 +88,18 @@ export default function AssignmentFormModal({ open, onClose, customerId, assignm
             primary: values.primary,
             reason: emptyToNull(values.reason),
           },
-        }).unwrap();
-        snackbar.success('배정이 수정되었습니다.');
-      } else {
-        await createMut({
+        })
+      : createMut({
           customerId,
           employeeId: Number(values.employeeId),
           startDate: values.startDate,
           primary: values.primary,
           reason: emptyToNull(values.reason),
-        }).unwrap();
-        snackbar.success('배정이 등록되었습니다.');
-      }
-      onClose();
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+        });
+    await submit(promise, {
+      success: isEdit ? '배정이 수정되었습니다.' : '배정이 등록되었습니다.',
+      onSuccess: onClose,
+    });
   };
 
   return (

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_PATH } from '@/shared/config/menuConfig';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
@@ -13,7 +14,6 @@ import {
   type EmployeeFormValues,
 } from '@/features/employee/types';
 import { employeeEditValidators } from '@/features/employee/validation/employeeFormValidation';
-import { getErrorMessage } from '@/shared/api/error';
 import { trimStringValues } from '@/shared/utils/trimStringValues';
 import type { EmployeeFormStateBase } from './employeeFormState';
 
@@ -37,6 +37,7 @@ export function useEmployeeEditForm(
 ): EmployeeEditFormState {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const openPostcode = useDaumPostcode();
 
   const [values, setValues] = useState<EmployeeFormValues>(() =>
@@ -71,14 +72,11 @@ export function useEmployeeEditForm(
 
   const handleConfirmedSubmit = async () => {
     setConfirmOpen(false);
-    try {
-      const trimmed = trimStringValues(values, { skipKeys: ['password', 'passwordConfirm'] });
-      await updateEmployee({ id, body: employeeFormToUpdateRequest(trimmed) }).unwrap();
-      snackbar.success('저장되었습니다.');
-      navigate(MENU_PATH.EMPLOYEES);
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    const trimmed = trimStringValues(values, { skipKeys: ['password', 'passwordConfirm'] });
+    await submit(updateEmployee({ id, body: employeeFormToUpdateRequest(trimmed) }), {
+      success: '저장되었습니다.',
+      navigateTo: MENU_PATH.EMPLOYEES,
+    });
   };
 
   return {

@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import EmployeeSelectField from '@/features/employee/components/EmployeeSelectField';
 import SalesContactSelectField from '@/features/salesContact/components/SalesContactSelectField';
+import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 import {
@@ -23,7 +24,6 @@ import {
   type SalesActivity,
   type SalesActivityType,
 } from '@/features/salesCustomer/types';
-import { getErrorMessage } from '@/shared/api/error';
 
 interface FormValues {
   type: SalesActivityType;
@@ -58,6 +58,7 @@ interface Props {
 export default function ActivityFormModal({ open, onClose, customerId, activity }: Props) {
   const isEdit = activity !== undefined;
   const snackbar = useSnackbar();
+  const submit = useApiSubmit();
   const [createMut, { isLoading: isCreating }] = useCreateSalesActivityMutation();
   const [updateMut, { isLoading: isUpdating }] = useUpdateSalesActivityMutation();
   const { data: myProfile } = useGetMyProfileQuery();
@@ -111,18 +112,13 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
       customerContactId: values.customerContactId !== '' ? Number(values.customerContactId) : null,
     };
 
-    try {
-      if (isEdit && activity) {
-        await updateMut({ id: activity.id, customerId, body: payload }).unwrap();
-        snackbar.success('활동이 수정되었습니다.');
-      } else {
-        await createMut({ customerId, ...payload }).unwrap();
-        snackbar.success('활동이 등록되었습니다.');
-      }
-      onClose();
-    } catch (err) {
-      snackbar.error(getErrorMessage(err, '저장 중 오류가 발생했습니다.'));
-    }
+    const promise = isEdit && activity
+      ? updateMut({ id: activity.id, customerId, body: payload })
+      : createMut({ customerId, ...payload });
+    await submit(promise, {
+      success: isEdit ? '활동이 수정되었습니다.' : '활동이 등록되었습니다.',
+      onSuccess: onClose,
+    });
   };
 
   return (
