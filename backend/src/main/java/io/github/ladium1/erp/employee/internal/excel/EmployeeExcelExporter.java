@@ -25,6 +25,7 @@ public class EmployeeExcelExporter {
             new ExcelColumn<>("직책", EmployeeSummaryResponse::positionName),
             new ExcelColumn<>("권한", EmployeeSummaryResponse::roleName),
             new ExcelColumn<>("입사일", m -> m.joinDate() == null ? null : m.joinDate().format(DATE_FORMAT)),
+            new ExcelColumn<>("생년월일", m -> m.birthDate() == null ? null : m.birthDate().format(DATE_FORMAT)),
             new ExcelColumn<>("상태", m -> m.status() == null ? null : m.status().getDescription())
     );
 

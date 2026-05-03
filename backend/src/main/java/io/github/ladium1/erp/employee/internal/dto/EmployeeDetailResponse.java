@@ -16,6 +16,7 @@ public record EmployeeDetailResponse(
         String roadAddress,
         String detailAddress,
         LocalDate joinDate,
+        LocalDate birthDate,
         EmployeeStatus status,
         Long departmentId,
         String departmentName,

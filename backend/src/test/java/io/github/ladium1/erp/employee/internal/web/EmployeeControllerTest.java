@@ -180,6 +180,7 @@ class EmployeeControllerTest {
                 "newone@example.com", "010-1111-2222",
                 null, null, null,
                 LocalDate.of(2026, 4, 1),
+                LocalDate.of(1990, 1, 1),
                 EmployeeStatus.ACTIVE,
                 1L, null, null
         );
@@ -201,6 +202,7 @@ class EmployeeControllerTest {
                 "exist", "secret123", "중복",
                 null, null, null, null, null,
                 LocalDate.of(2026, 4, 1),
+                null,
                 EmployeeStatus.ACTIVE,
                 1L, null, null
         );
@@ -222,6 +224,7 @@ class EmployeeControllerTest {
                 "이름변경",
                 null, null, null, null, null,
                 LocalDate.of(2026, 4, 1),
+                null,
                 EmployeeStatus.ACTIVE,
                 1L, null, null,
                 null
@@ -242,7 +245,7 @@ class EmployeeControllerTest {
         EmployeeUpdateRequest request = new EmployeeUpdateRequest(
                 "이름",
                 null, null, null, null, null,
-                null, EmployeeStatus.ACTIVE,
+                null, null, EmployeeStatus.ACTIVE,
                 1L, null, null,
                 null
         );

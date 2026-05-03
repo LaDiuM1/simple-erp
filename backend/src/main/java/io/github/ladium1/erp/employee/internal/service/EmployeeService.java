@@ -174,6 +174,7 @@ public class EmployeeService implements EmployeeApi {
                 .phone(request.phone())
                 .address(toAddress(request.zipCode(), request.roadAddress(), request.detailAddress()))
                 .joinDate(request.joinDate())
+                .birthDate(request.birthDate())
                 .status(request.status())
                 .roleId(request.roleId())
                 .departmentId(request.departmentId())
@@ -195,6 +196,7 @@ public class EmployeeService implements EmployeeApi {
                 request.phone(),
                 toAddress(request.zipCode(), request.roadAddress(), request.detailAddress()),
                 request.joinDate(),
+                request.birthDate(),
                 request.status(),
                 request.roleId(),
                 request.departmentId(),

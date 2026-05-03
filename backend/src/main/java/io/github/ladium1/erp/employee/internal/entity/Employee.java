@@ -38,6 +38,9 @@ public class Employee extends BaseEntity {
     @Column(comment = "입사일")
     private LocalDate joinDate;
 
+    @Column(comment = "생년월일")
+    private LocalDate birthDate;
+
     @Column(comment = "이메일 주소")
     private String email;
 
@@ -69,6 +72,7 @@ public class Employee extends BaseEntity {
            String phone,
            Address address,
            LocalDate joinDate,
+           LocalDate birthDate,
            EmployeeStatus status,
            Long roleId,
            Long departmentId,
@@ -80,6 +84,7 @@ public class Employee extends BaseEntity {
         this.phone = phone;
         this.address = address;
         this.joinDate = joinDate;
+        this.birthDate = birthDate;
         this.status = status;
         this.roleId = roleId;
         this.departmentId = departmentId;
@@ -91,6 +96,7 @@ public class Employee extends BaseEntity {
                        String phone,
                        Address address,
                        LocalDate joinDate,
+                       LocalDate birthDate,
                        EmployeeStatus status,
                        Long roleId,
                        Long departmentId,
@@ -100,6 +106,7 @@ public class Employee extends BaseEntity {
         this.phone = phone;
         this.address = address;
         this.joinDate = joinDate;
+        this.birthDate = birthDate;
         this.status = status;
         this.roleId = roleId;
         this.departmentId = departmentId;

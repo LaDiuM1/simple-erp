@@ -16,6 +16,7 @@ public record EmployeeSummaryResponse(
         String email,
         String phone,
         LocalDate joinDate,
+        LocalDate birthDate,
         EmployeeStatus status
 ) {
 }
