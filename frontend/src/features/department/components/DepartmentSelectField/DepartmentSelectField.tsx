@@ -115,7 +115,6 @@ export default function DepartmentSelectField({
           useList: useGetDepartmentsSummaryQuery,
           rowKey: (m: DepartmentSummary) => m.id,
           rowLabel: (m: DepartmentSummary) => m.name,
-          pageSize: 5,
         }}
         searchFilter={departmentListFilters}
         column={departmentListColumns}

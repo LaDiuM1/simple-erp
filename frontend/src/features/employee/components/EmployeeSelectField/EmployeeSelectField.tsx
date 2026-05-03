@@ -104,7 +104,6 @@ export default function EmployeeSelectField({
           useList: useGetEmployeesQuery,
           rowKey: (m: EmployeeSummary) => m.id,
           rowLabel: (m: EmployeeSummary) => m.name,
-          pageSize: 5,
         }}
         searchFilter={employeeListFilters}
         column={employeeListColumns}

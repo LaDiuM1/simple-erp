@@ -115,7 +115,6 @@ export default function PositionSelectField({
           useList: useGetPositionsSummaryQuery,
           rowKey: (m: PositionSummary) => m.id,
           rowLabel: (m: PositionSummary) => m.name,
-          pageSize: 5,
         }}
         searchFilter={positionListFilters}
         column={positionListColumns}
