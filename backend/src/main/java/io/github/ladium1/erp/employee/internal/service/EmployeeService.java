@@ -93,6 +93,7 @@ public class EmployeeService implements EmployeeApi {
                 .id(employee.getId())
                 .loginId(employee.getLoginId())
                 .name(employee.getName())
+                .departmentId(employee.getDepartmentId())
                 .departmentName(refs.departmentName(employee.getDepartmentId()))
                 .positionName(refs.positionName(employee.getPositionId()))
                 .build();

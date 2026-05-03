@@ -27,7 +27,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -59,6 +65,30 @@ public class DepartmentService implements DepartmentApi {
             return List.of();
         }
         return departmentMapper.toDepartmentInfos(departmentRepository.findAllById(ids));
+    }
+
+    @Override
+    public Set<Long> findSubtreeIds(Long rootId) {
+        if (rootId == null) {
+            return Set.of();
+        }
+        // 부서 N 작다는 가정으로 전체 로드 후 BFS — 별도 재귀 쿼리 없이 단순 구조 유지.
+        Map<Long, List<Long>> childrenByParent = departmentRepository.findAll().stream()
+                .filter(d -> d.getParent() != null)
+                .collect(Collectors.groupingBy(
+                        d -> d.getParent().getId(),
+                        Collectors.mapping(Department::getId, Collectors.toList())
+                ));
+        Set<Long> result = new HashSet<>();
+        Deque<Long> queue = new ArrayDeque<>();
+        queue.add(rootId);
+        while (!queue.isEmpty()) {
+            Long curr = queue.poll();
+            if (result.add(curr)) {
+                queue.addAll(childrenByParent.getOrDefault(curr, List.of()));
+            }
+        }
+        return result;
     }
 
     public PageResponse<DepartmentSummaryResponse> search(DepartmentSearchCondition condition, Pageable pageable) {
