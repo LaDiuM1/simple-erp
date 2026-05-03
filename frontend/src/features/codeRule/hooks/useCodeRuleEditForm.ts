@@ -97,12 +97,11 @@ export function useCodeRuleEditForm(
   const [updateCodeRule, { isLoading: isSaving }] = useUpdateCodeRuleMutation();
   const [previewCodeRule, { isLoading: isPreviewing }] = usePreviewCodeRuleMutation();
 
-  // 매핑 fetch 완료 시 form values 에 1회 주입 (raw — 빈 row 자동 생성 X)
-  useEffect(() => {
-    if (mappingsInitialized || fetchedMappings === undefined) return;
-    setValues((prev) => ({ ...prev, attributeMappings: fetchedMappings }));
+  // 매핑 fetch 후 1회 seed — effect 안 setState (cascading render) 회피용 렌더 중 setState.
+  if (!mappingsInitialized && fetchedMappings !== undefined) {
     setMappingsInitialized(true);
-  }, [fetchedMappings, mappingsInitialized]);
+    setValues((prev) => ({ ...prev, attributeMappings: fetchedMappings }));
+  }
 
   const update = <K extends keyof CodeRuleFormValues>(key: K, v: CodeRuleFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));
@@ -201,18 +200,20 @@ export function useCodeRuleEditForm(
 
   const debounced = useDebouncedValue(values, 350);
 
+  const isPreviewable =
+    debounced.inputMode !== INPUT_MODE.MANUAL
+    && validatePattern(debounced.pattern, attributeKeySet) === null;
+
+  // isPreviewable 전환 시 stale preview 제거 — 같은 이유로 렌더 중 setState.
+  const [prevPreviewable, setPrevPreviewable] = useState(isPreviewable);
+  if (prevPreviewable !== isPreviewable) {
+    setPrevPreviewable(isPreviewable);
+    setPreview(null);
+    setPreviewError(null);
+  }
+
   useEffect(() => {
-    if (debounced.inputMode === INPUT_MODE.MANUAL) {
-      setPreview(null);
-      setPreviewError(null);
-      return;
-    }
-    const patternError = validatePattern(debounced.pattern, attributeKeySet);
-    if (patternError) {
-      setPreview(null);
-      setPreviewError(null);
-      return;
-    }
+    if (!isPreviewable) return;
     let cancelled = false;
     previewCodeRule({ target, body: codeRuleFormToPreviewRequest(debounced) })
       .unwrap()
@@ -231,7 +232,7 @@ export function useCodeRuleEditForm(
     return () => {
       cancelled = true;
     };
-  }, [debounced, previewCodeRule, target, attributeKeySet]);
+  }, [debounced, previewCodeRule, target, isPreviewable]);
 
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
