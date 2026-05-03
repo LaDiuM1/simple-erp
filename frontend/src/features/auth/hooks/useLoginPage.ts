@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { useLoginMutation } from '@/features/auth/api/authApi';
-import { setToken } from '@/features/auth/store/authSlice';
+import { performLogin } from '@/features/auth/store/authActions';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { getErrorMessage } from '@/shared/api/error';
 
@@ -26,7 +26,7 @@ export function useLoginPage() {
     e.preventDefault();
     const result = await login({ loginId, password });
     if ('data' in result && result.data) {
-      dispatch(setToken(result.data.accessToken));
+      dispatch(performLogin(result.data.accessToken));
       snackbar.success('로그인되었습니다.');
       navigate('/');
     }
