@@ -18,6 +18,7 @@ import {
 import Muted from '@/shared/ui/atoms/Muted';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { usePermission } from '@/shared/hooks/usePermission';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { MENU_CODE } from '@/shared/config/menuConfig';
 import { useDeleteSalesAssignmentMutation } from '@/features/salesCustomer/api/salesCustomerApi';
 import type { SalesAssignment } from '@/features/salesCustomer/types';
@@ -36,7 +37,7 @@ export function useAssignmentTab(
   const submit = useApiSubmit();
   const [deleteMut, { isLoading: isDeleting }] = useDeleteSalesAssignmentMutation();
 
-  const [creating, setCreating] = useState(false);
+  const [creating, createModal] = useToggle();
   const [editing, setEditing] = useState<SalesAssignment | null>(null);
   const [terminating, setTerminating] = useState<SalesAssignment | null>(null);
   const [deletingTarget, setDeletingTarget] = useState<SalesAssignment | null>(null);
@@ -168,10 +169,7 @@ export function useAssignmentTab(
     columns,
     emptyMessage: '배정된 영업 담당자가 없습니다.',
     rightSlot: canWrite ? (
-      <TabPrimaryActionButton
-        startIcon={<AddRoundedIcon />}
-        onClick={() => setCreating(true)}
-      >
+      <TabPrimaryActionButton startIcon={<AddRoundedIcon />} onClick={createModal.on}>
         담당자 배정
       </TabPrimaryActionButton>
     ) : null,
@@ -184,7 +182,7 @@ export function useAssignmentTab(
     terminating,
     deletingTarget,
     isDeleting,
-    onCloseCreate: () => setCreating(false),
+    onCloseCreate: createModal.off,
     onCloseEdit: () => setEditing(null),
     onCloseTerminate: () => setTerminating(null),
     onCancelDelete: () => setDeletingTarget(null),

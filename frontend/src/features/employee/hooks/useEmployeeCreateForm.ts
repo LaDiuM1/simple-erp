@@ -6,6 +6,7 @@ import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCheckLoginIdAvailabilityQuery,
@@ -45,7 +46,7 @@ export function useEmployeeCreateForm(): EmployeeCreateFormState {
     ...EMPTY_EMPLOYEE_FORM,
     joinDate: todayIsoDate(),
   }));
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [createEmployee, { isLoading: isSaving }] = useCreateEmployeeMutation();
 
   const update = <K extends keyof EmployeeFormValues>(key: K, v: EmployeeFormValues[K]) =>
@@ -92,11 +93,11 @@ export function useEmployeeCreateForm(): EmployeeCreateFormState {
       snackbar.error('이미 사용 중인 로그인 ID 입니다.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
+    confirm.off();
     const trimmed = trimStringValues(values, { skipKeys: ['password', 'passwordConfirm'] });
     await submit(createEmployee(employeeFormToCreateRequest(trimmed)), {
       success: '등록되었습니다.',
@@ -114,7 +115,7 @@ export function useEmployeeCreateForm(): EmployeeCreateFormState {
     handleAddressSearch,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH.EMPLOYEES),
   };
 }

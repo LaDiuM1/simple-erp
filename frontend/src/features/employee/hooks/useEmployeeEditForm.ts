@@ -5,6 +5,7 @@ import { MENU_PATH } from '@/shared/config/menuConfig';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useUpdateEmployeeMutation } from '@/features/employee/api/employeeApi';
 import {
@@ -43,7 +44,7 @@ export function useEmployeeEditForm(
   const [values, setValues] = useState<EmployeeFormValues>(() =>
     employeeDetailToFormValues(detail),
   );
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [updateEmployee, { isLoading: isSaving }] = useUpdateEmployeeMutation();
 
   const update = <K extends keyof EmployeeFormValues>(key: K, v: EmployeeFormValues[K]) =>
@@ -67,11 +68,11 @@ export function useEmployeeEditForm(
       snackbar.error('입력값을 확인해주세요.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
+    confirm.off();
     const trimmed = trimStringValues(values, { skipKeys: ['password', 'passwordConfirm'] });
     await submit(updateEmployee({ id, body: employeeFormToUpdateRequest(trimmed) }), {
       success: '저장되었습니다.',
@@ -89,7 +90,7 @@ export function useEmployeeEditForm(
     confirmOpen,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH.EMPLOYEES),
   };
 }

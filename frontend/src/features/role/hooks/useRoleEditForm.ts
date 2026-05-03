@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useUpdateRoleMutation } from '@/features/role/api/roleApi';
 import { MATRIX_MENUS } from '@/features/role/components/MenuPermissionMatrix';
@@ -46,7 +47,7 @@ export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormSta
     roleDetailToFormValues(detail, MATRIX_MENUS),
   );
   const [errors, setErrors] = useState<RoleErrors>({});
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
 
   const setField = <K extends keyof RoleFormValues>(key: K, v: RoleFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));
@@ -63,11 +64,11 @@ export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormSta
       snackbar.error('입력값을 확인해주세요.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
+    confirm.off();
     await submit(updateRole({ id, body: roleFormToUpdateRequest(trimStringValues(values), MATRIX_MENUS) }), {
       success: '권한이 수정되었습니다.',
       navigateTo: MENU_PATH[MENU_CODE.ROLES],
@@ -84,7 +85,7 @@ export function useRoleEditForm(id: number, detail: RoleDetail): RoleEditFormSta
     confirmOpen,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH[MENU_CODE.ROLES]),
   };
 }

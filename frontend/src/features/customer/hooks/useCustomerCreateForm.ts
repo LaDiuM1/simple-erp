@@ -6,6 +6,7 @@ import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCheckCustomerBizRegNoAvailabilityQuery,
@@ -39,7 +40,7 @@ export function useCustomerCreateForm(): CustomerCreateFormState {
   const openPostcode = useDaumPostcode();
 
   const [values, setValues] = useState<CustomerFormValues>(() => ({ ...EMPTY_CUSTOMER_FORM }));
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [createCustomer, { isLoading: isSaving }] = useCreateCustomerMutation();
 
   const update = <K extends keyof CustomerFormValues>(key: K, v: CustomerFormValues[K]) =>
@@ -86,11 +87,11 @@ export function useCustomerCreateForm(): CustomerCreateFormState {
       snackbar.error('이미 등록된 사업자등록번호입니다.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
+    confirm.off();
     await submit(createCustomer(customerFormToCreateRequest(trimStringValues(values))), {
       success: '등록되었습니다.',
       navigateTo: MENU_PATH.CUSTOMERS,
@@ -107,7 +108,7 @@ export function useCustomerCreateForm(): CustomerCreateFormState {
     handleAddressSearch,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH.CUSTOMERS),
   };
 }

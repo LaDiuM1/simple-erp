@@ -6,6 +6,7 @@ import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCheckCustomerBizRegNoAvailabilityQuery,
@@ -49,7 +50,7 @@ export function useCustomerEditForm(
   const [values, setValues] = useState<CustomerFormValues>(() =>
     customerDetailToFormValues(detail),
   );
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [updateCustomer, { isLoading: isSaving }] = useUpdateCustomerMutation();
 
   const update = <K extends keyof CustomerFormValues>(key: K, v: CustomerFormValues[K]) =>
@@ -100,11 +101,11 @@ export function useCustomerEditForm(
       snackbar.error('이미 등록된 사업자등록번호입니다.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
+    confirm.off();
     await submit(updateCustomer({ id, body: customerFormToUpdateRequest(trimStringValues(values)) }), {
       success: '저장되었습니다.',
       navigateTo: MENU_PATH.CUSTOMERS,
@@ -122,7 +123,7 @@ export function useCustomerEditForm(
     confirmOpen,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH.CUSTOMERS),
   };
 }

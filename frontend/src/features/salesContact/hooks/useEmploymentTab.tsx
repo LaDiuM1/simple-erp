@@ -19,6 +19,7 @@ import {
 } from '@/shared/ui/GenericTabbedTable';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { usePermission } from '@/shared/hooks/usePermission';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import Muted from '@/shared/ui/atoms/Muted';
 import { useDeleteSalesContactEmploymentMutation } from '@/features/salesContact/api/salesContactApi';
@@ -44,7 +45,7 @@ export function useEmploymentTab(
   const [deleteMut, { isLoading: isDeleting }] = useDeleteSalesContactEmploymentMutation();
 
   const [editing, setEditing] = useState<SalesContactEmployment | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, createModal] = useToggle();
   const [terminating, setTerminating] = useState<SalesContactEmployment | null>(null);
   const [deletingTarget, setDeletingTarget] = useState<SalesContactEmployment | null>(null);
 
@@ -188,10 +189,7 @@ export function useEmploymentTab(
     columns,
     emptyMessage: '등록된 재직 이력이 없습니다.',
     rightSlot: canWrite ? (
-      <TabPrimaryActionButton
-        startIcon={<AddRoundedIcon />}
-        onClick={() => setCreating(true)}
-      >
+      <TabPrimaryActionButton startIcon={<AddRoundedIcon />} onClick={createModal.on}>
         재직 등록
       </TabPrimaryActionButton>
     ) : null,
@@ -204,7 +202,7 @@ export function useEmploymentTab(
     terminating,
     deletingTarget,
     isDeleting,
-    onCloseCreate: () => setCreating(false),
+    onCloseCreate: createModal.off,
     onCloseEdit: () => setEditing(null),
     onCloseTerminate: () => setTerminating(null),
     onCancelDelete: () => setDeletingTarget(null),

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useCreateRoleMutation } from '@/features/role/api/roleApi';
 import { MATRIX_MENUS } from '@/features/role/components/MenuPermissionMatrix';
@@ -46,7 +47,7 @@ export function useRoleCreateForm(): RoleCreateFormState {
 
   const [values, setValues] = useState<RoleFormValues>(() => emptyRoleForm(MATRIX_MENUS));
   const [errors, setErrors] = useState<RoleErrors>({});
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [codeAvailable, setCodeAvailable] = useState<boolean | null>(null);
 
   const setField = <K extends keyof RoleFormValues>(key: K, v: RoleFormValues[K]) =>
@@ -68,11 +69,11 @@ export function useRoleCreateForm(): RoleCreateFormState {
       snackbar.error('이미 사용 중인 권한 코드입니다.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
+    confirm.off();
     await submit(createRole(roleFormToCreateRequest(trimStringValues(values), MATRIX_MENUS)), {
       success: '권한이 등록되었습니다.',
       navigateTo: MENU_PATH[MENU_CODE.ROLES],
@@ -90,7 +91,7 @@ export function useRoleCreateForm(): RoleCreateFormState {
     confirmOpen,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH[MENU_CODE.ROLES]),
   };
 }

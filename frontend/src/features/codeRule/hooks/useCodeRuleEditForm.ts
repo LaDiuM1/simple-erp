@@ -5,6 +5,7 @@ import { MENU_PATH, MENU_CODE } from '@/shared/config/menuConfig';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { useFieldValidation, type FieldValidation } from '@/shared/hooks/useFieldValidation';
+import { useToggle } from '@/shared/hooks/useToggle';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useGetCodeRuleAttributeMappingsQuery,
@@ -87,11 +88,11 @@ export function useCodeRuleEditForm(
 
   const [values, setValues] = useState<CodeRuleFormValues>(() => codeRuleToFormValues(rule));
   const [mappingsInitialized, setMappingsInitialized] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, confirm] = useToggle();
   const [preview, setPreview] = useState<CodeRulePreviewResponse | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [tokenModalOpen, setTokenModalOpen] = useState(false);
-  const [attributeDialogOpen, setAttributeDialogOpen] = useState(false);
+  const [tokenModalOpen, tokenModal] = useToggle();
+  const [attributeDialogOpen, attributeDialog] = useToggle();
   const [customLiterals, setCustomLiterals] = useState<string[]>([]);
 
   const patternInputRef = useRef<HTMLInputElement | null>(null);
@@ -129,9 +130,6 @@ export function useCodeRuleEditForm(
   );
   const needsAttributeInput = usedAttributeKeys.length > 0;
 
-  const openTokenModal = () => setTokenModalOpen(true);
-  const closeTokenModal = () => setTokenModalOpen(false);
-
   const insertTokenAtCursor = (token: string) => {
     setValues((prev) => {
       const input = patternInputRef.current;
@@ -153,15 +151,12 @@ export function useCodeRuleEditForm(
     const trimmed = literal.trim();
     if (!trimmed) return;
     setCustomLiterals((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
-    setTokenModalOpen(false);
+    tokenModal.off();
   };
 
   const removeCustomLiteral = (literal: string) => {
     setCustomLiterals((prev) => prev.filter((l) => l !== literal));
   };
-
-  const openAttributeDialog = () => setAttributeDialogOpen(true);
-  const closeAttributeDialog = () => setAttributeDialogOpen(false);
 
   /** 두번째 모달의 추가 — 매핑 1건 추가/갱신 + 패턴에 {KEY} 가 없으면 끝에 추가 */
   const onAttributeMappingConfirm = (mapping: CodeRuleAttributeMapping) => {
@@ -181,7 +176,7 @@ export function useCodeRuleEditForm(
       }
       return { ...prev, pattern: nextPattern, attributeMappings: nextMappings };
     });
-    setAttributeDialogOpen(false);
+    attributeDialog.off();
   };
 
   const removeMapping = (attributeKey: string, sourceValue: string) => {
@@ -243,11 +238,11 @@ export function useCodeRuleEditForm(
       snackbar.error('입력값을 확인해주세요.');
       return;
     }
-    setConfirmOpen(true);
+    confirm.on();
   };
 
   const handleConfirmedSubmit = async () => {
-    setConfirmOpen(false);
+    confirm.off();
     await submit(
       updateCodeRule({ target, body: codeRuleFormToUpdateRequest(trimStringValues(values)) }),
       { success: '저장되었습니다.', navigateTo: MENU_PATH[MENU_CODE.CODE_RULES] },
@@ -269,15 +264,15 @@ export function useCodeRuleEditForm(
     patternInputRef,
     attributeKeySet,
     tokenModalOpen,
-    openTokenModal,
-    closeTokenModal,
+    openTokenModal: tokenModal.on,
+    closeTokenModal: tokenModal.off,
     addCustomLiteral,
     removeCustomLiteral,
     customLiterals,
     insertTokenAtCursor,
     attributeDialogOpen,
-    openAttributeDialog,
-    closeAttributeDialog,
+    openAttributeDialog: attributeDialog.on,
+    closeAttributeDialog: attributeDialog.off,
     onAttributeMappingConfirm,
     removeMapping,
     attributes,
@@ -286,7 +281,7 @@ export function useCodeRuleEditForm(
     usedAttributeKeys,
     handleSubmit,
     handleConfirmedSubmit,
-    closeConfirm: () => setConfirmOpen(false),
+    closeConfirm: confirm.off,
     handleCancel: () => navigate(MENU_PATH[MENU_CODE.CODE_RULES]),
   };
 }
