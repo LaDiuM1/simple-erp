@@ -27,6 +27,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework:spring-aspects")
+    runtimeOnly("org.aspectj:aspectjweaver")
 
     // spring modulith
     implementation("org.springframework.modulith:spring-modulith-starter-core")
