@@ -84,6 +84,21 @@ class LoggingMdcFilterTest {
     }
 
     @Test
+    @DisplayName("X-Trace-Id 응답 헤더 부착")
+    void put_trace_id_response_header() throws Exception {
+        // given
+        String[] mdcCaptured = new String[1];
+        FilterChain chain = chainCapturing(TRACE_ID, mdcCaptured);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        // when
+        filter.doFilter(new MockHttpServletRequest(), response, chain);
+
+        // then
+        assertThat(response.getHeader("X-Trace-Id")).isEqualTo(mdcCaptured[0]);
+    }
+
+    @Test
     @DisplayName("userId 부착 — 인증 사용자")
     void put_user_id_when_authenticated() throws Exception {
         // given

@@ -17,8 +17,9 @@ import java.util.UUID;
 // SecurityConfig 에서 JwtAuthenticationFilter 직후에 등록 -> 인증 결과를 MDC 로 흘려보낼 수 있음.
 public class LoggingMdcFilter extends OncePerRequestFilter {
 
-    private static final String TRACE_ID = "traceId";
-    private static final String USER_ID  = "userId";
+    private static final String TRACE_ID        = "traceId";
+    private static final String USER_ID         = "userId";
+    public  static final String TRACE_ID_HEADER = "X-Trace-Id";
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -26,7 +27,9 @@ public class LoggingMdcFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            MDC.put(TRACE_ID, UUID.randomUUID().toString().substring(0, 8));
+            String traceId = UUID.randomUUID().toString().substring(0, 8);
+            MDC.put(TRACE_ID, traceId);
+            response.setHeader(TRACE_ID_HEADER, traceId);
             putUserIdIfAuthenticated();
             filterChain.doFilter(request, response);
         } finally {
