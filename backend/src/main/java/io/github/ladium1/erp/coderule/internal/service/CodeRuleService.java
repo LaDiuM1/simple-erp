@@ -19,7 +19,10 @@ import io.github.ladium1.erp.coderule.internal.mapper.CodeRuleMapper;
 import io.github.ladium1.erp.coderule.internal.repository.CodeRuleAttributeMappingRepository;
 import io.github.ladium1.erp.coderule.internal.repository.CodeRuleRepository;
 import io.github.ladium1.erp.coderule.internal.repository.CodeSequenceRepository;
+import io.github.ladium1.erp.global.audit.AuditAction;
+import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -133,6 +136,7 @@ public class CodeRuleService implements CodeRuleApi {
                 .toList();
     }
 
+    @Auditable(menu = Menu.CODE_RULES, action = AuditAction.UPDATE, targetType = "CodeRule")
     @Transactional
     public CodeRuleResponse update(CodeRuleTarget target, CodeRuleUpdateRequest request) {
         Set<String> attributeKeys = attributeKeys(target);

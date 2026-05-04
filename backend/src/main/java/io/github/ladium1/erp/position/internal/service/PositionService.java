@@ -5,7 +5,10 @@ import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
 import io.github.ladium1.erp.coderule.api.InputMode;
 import io.github.ladium1.erp.coderule.api.dto.CodeGenerationContext;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
+import io.github.ladium1.erp.global.audit.AuditAction;
+import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.position.api.PositionApi;
 import io.github.ladium1.erp.position.api.PositionDeletingEvent;
@@ -94,6 +97,7 @@ public class PositionService implements PositionApi {
         return !positionRepository.existsByCode(code.trim());
     }
 
+    @Auditable(menu = Menu.POSITIONS, action = AuditAction.CREATE, targetType = "Position", targetIdFromReturn = true)
     @Transactional
     public Long create(PositionCreateRequest request) {
         String code = resolveCode(request.code());
@@ -136,6 +140,7 @@ public class PositionService implements PositionApi {
         return trimmed;
     }
 
+    @Auditable(menu = Menu.POSITIONS, action = AuditAction.UPDATE, targetType = "Position", targetIdParam = "id")
     @Transactional
     public void update(Long id, PositionUpdateRequest request) {
         Position position = positionRepository.findById(id)
@@ -144,6 +149,7 @@ public class PositionService implements PositionApi {
         position.update(request.name(), request.description());
     }
 
+    @Auditable(menu = Menu.POSITIONS, action = AuditAction.DELETE, targetType = "Position", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
         if (!positionRepository.existsById(id)) {
@@ -158,6 +164,7 @@ public class PositionService implements PositionApi {
      * 일괄 삭제 — 단일 트랜잭션에서 ID 별 단건 delete 호출.
      * 한 건이라도 실패하면 전체 롤백.
      */
+    @Auditable(menu = Menu.POSITIONS, action = AuditAction.DELETE, targetType = "Position")
     @Transactional
     public void deleteAll(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return;
@@ -171,6 +178,7 @@ public class PositionService implements PositionApi {
      * <p>
      * 요청 배열은 전체 직책을 모두 포함해야 한다 (중복/누락 거부). 상위→하위 순으로 1, 2, 3 ... 부여.
      */
+    @Auditable(menu = Menu.POSITIONS, action = AuditAction.UPDATE, targetType = "Position")
     @Transactional
     public void reorder(PositionRankingRequest request) {
         List<Long> orderedIds = request.orderedIds();

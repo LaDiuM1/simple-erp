@@ -17,7 +17,10 @@ import io.github.ladium1.erp.department.internal.entity.Department;
 import io.github.ladium1.erp.department.internal.exception.DepartmentErrorCode;
 import io.github.ladium1.erp.department.internal.mapper.DepartmentMapper;
 import io.github.ladium1.erp.department.internal.repository.DepartmentRepository;
+import io.github.ladium1.erp.global.audit.AuditAction;
+import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.web.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -113,6 +116,7 @@ public class DepartmentService implements DepartmentApi {
         return !departmentRepository.existsByCode(code.trim());
     }
 
+    @Auditable(menu = Menu.DEPARTMENTS, action = AuditAction.CREATE, targetType = "Department", targetIdFromReturn = true)
     @Transactional
     public Long create(DepartmentCreateRequest request) {
         Department parent = resolveParent(request.parentId(), null);
@@ -153,6 +157,7 @@ public class DepartmentService implements DepartmentApi {
         return trimmed;
     }
 
+    @Auditable(menu = Menu.DEPARTMENTS, action = AuditAction.UPDATE, targetType = "Department", targetIdParam = "id")
     @Transactional
     public void update(Long id, DepartmentUpdateRequest request) {
         Department department = departmentRepository.findById(id)
@@ -162,6 +167,7 @@ public class DepartmentService implements DepartmentApi {
         department.update(request.name(), parent);
     }
 
+    @Auditable(menu = Menu.DEPARTMENTS, action = AuditAction.DELETE, targetType = "Department", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
         if (!departmentRepository.existsById(id)) {
@@ -179,6 +185,7 @@ public class DepartmentService implements DepartmentApi {
      * 일괄 삭제 — 단일 트랜잭션에서 ID 별 단건 delete 호출.
      * 한 건이라도 실패하면 전체 롤백.
      */
+    @Auditable(menu = Menu.DEPARTMENTS, action = AuditAction.DELETE, targetType = "Department")
     @Transactional
     public void deleteAll(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return;

@@ -1,6 +1,9 @@
 package io.github.ladium1.erp.salescontact.internal.service;
 
+import io.github.ladium1.erp.global.audit.AuditAction;
+import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.salescontact.internal.dto.AcquisitionSourceCreateRequest;
 import io.github.ladium1.erp.salescontact.internal.dto.AcquisitionSourceInfo;
 import io.github.ladium1.erp.salescontact.internal.entity.AcquisitionSource;
@@ -64,6 +67,7 @@ public class AcquisitionSourceService {
         }
     }
 
+    @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.CREATE, targetType = "AcquisitionSource", targetIdFromReturn = true)
     @Transactional
     public Long create(AcquisitionSourceCreateRequest request) {
         String name = request.name().trim();
@@ -82,6 +86,7 @@ public class AcquisitionSourceService {
      * 마스터 삭제 + 참조하는 영업 명부 정션도 함께 정리.
      * 텍스트 마스터라 명부에서 이미 사용 중이어도 큰 영향 없는 정책.
      */
+    @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.DELETE, targetType = "AcquisitionSource", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
         if (!sourceRepository.existsById(id)) {
