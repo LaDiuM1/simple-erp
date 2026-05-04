@@ -110,8 +110,10 @@ class PositionControllerTest {
     @Test
     @DisplayName("코드 사용 가능 여부 조회 성공")
     void check_code_availability_success() throws Exception {
+        // given
         given(positionService.isCodeAvailable("P999")).willReturn(true);
 
+        // when & then
         mockMvc.perform(get("/api/v1/positions/code-availability").param("code", "P999"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.available").value(true));
@@ -136,9 +138,11 @@ class PositionControllerTest {
     @Test
     @DisplayName("존재하지 않는 직책 조회 시 404")
     void get_detail_fail_not_found() throws Exception {
+        // given
         given(positionService.getDetail(99L))
                 .willThrow(new BusinessException(PositionErrorCode.POSITION_NOT_FOUND));
 
+        // when & then
         mockMvc.perform(get("/api/v1/positions/{id}", 99L))
                 .andExpect(status().isNotFound());
     }
@@ -234,6 +238,7 @@ class PositionControllerTest {
     @Test
     @DisplayName("직책 삭제 성공")
     void delete_success() throws Exception {
+        // when & then
         mockMvc.perform(delete("/api/v1/positions/{id}", 7L))
                 .andExpect(status().isNoContent());
         verify(positionService).delete(7L);

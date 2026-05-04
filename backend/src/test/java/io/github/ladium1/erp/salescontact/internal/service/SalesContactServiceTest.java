@@ -46,28 +46,33 @@ class SalesContactServiceTest {
     @Mock private SalesContactSourceRepository contactSourceRepository;
     @Mock private SalesContactMapper salesContactMapper;
     @Mock private CustomerApi customerApi;
-    @Mock private io.github.ladium1.erp.salescontact.internal.service.AcquisitionSourceService acquisitionSourceService;
+    @Mock private AcquisitionSourceService acquisitionSourceService;
 
     @Test
     @DisplayName("create 성공 — 명부 마스터 저장")
     void create_success() {
+        // given
         SalesContact saved = mockContact("정대성");
         ReflectionTestUtils.setField(saved, "id", 100L);
         given(contactRepository.save(any(SalesContact.class))).willReturn(saved);
 
+        // when
         Long id = salesContactService.create(new SalesContactCreateRequest(
                 "정대성", null, "010-0000-0000", null, "ds@daesung.co.kr", null,
                 LocalDate.of(2026, 4, 1), List.of(), null
         ));
 
+        // then
         assertThat(id).isEqualTo(100L);
     }
 
     @Test
     @DisplayName("update 실패 — 존재하지 않는 명부")
     void update_fail_not_found() {
+        // given
         given(contactRepository.findById(99L)).willReturn(Optional.empty());
 
+        // when & then
         assertThatThrownBy(() -> salesContactService.update(99L, baseUpdate("이름")))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", SalesContactErrorCode.CONTACT_NOT_FOUND);
@@ -76,19 +81,23 @@ class SalesContactServiceTest {
     @Test
     @DisplayName("delete 성공 — 명부 + 재직 이력 함께 제거")
     void delete_success_cascades_employments() {
+        // given
         given(contactRepository.existsById(1L)).willReturn(true);
         given(employmentRepository.findByContactIdOrderByEndDateAscStartDateDesc(1L))
                 .willReturn(List.of(mockEmployment(1L, 10L, null)));
 
+        // when
         salesContactService.delete(1L);
 
+        // then
         verify(employmentRepository).deleteAll(any());
         verify(contactRepository).deleteById(1L);
     }
 
     @Test
-    @DisplayName("createEmployment 성공 — customerId 만 채워짐 (외부 회사명 무시)")
+    @DisplayName("createEmployment 성공 — customerId 만 채워짐")
     void create_employment_with_customer_id() {
+        // given
         given(contactRepository.findById(1L)).willReturn(Optional.of(mockContact("정대성")));
         given(customerApi.getById(10L)).willReturn(CustomerInfo.builder().id(10L).name("대성상사").build());
 
@@ -96,34 +105,41 @@ class SalesContactServiceTest {
         ReflectionTestUtils.setField(saved, "id", 200L);
         given(employmentRepository.save(any(SalesContactEmployment.class))).willReturn(saved);
 
+        // when
         Long id = salesContactService.createEmployment(1L, new SalesContactEmploymentCreateRequest(
                 10L, "무시되어야 할 외부 회사명", "팀장", "영업1팀", LocalDate.of(2026, 4, 1)
         ));
 
+        // then
         assertThat(id).isEqualTo(200L);
     }
 
     @Test
     @DisplayName("createEmployment 성공 — externalCompanyName 만 채워짐")
     void create_employment_with_external_company() {
+        // given
         given(contactRepository.findById(1L)).willReturn(Optional.of(mockContact("정대성")));
         SalesContactEmployment saved = mockEmployment(1L, null, "외부회사");
         ReflectionTestUtils.setField(saved, "id", 201L);
         given(employmentRepository.save(any(SalesContactEmployment.class))).willReturn(saved);
 
+        // when
         Long id = salesContactService.createEmployment(1L, new SalesContactEmploymentCreateRequest(
                 null, "외부회사", null, null, LocalDate.of(2026, 4, 1)
         ));
 
+        // then
         assertThat(id).isEqualTo(201L);
         verify(customerApi, never()).getById(any());
     }
 
     @Test
-    @DisplayName("createEmployment 실패 — customerId / externalCompanyName 둘 다 없음 → COMPANY_REQUIRED")
+    @DisplayName("createEmployment 실패 — 회사 정보 둘 다 없음 (COMPANY_REQUIRED)")
     void create_employment_fail_company_required() {
+        // given
         given(contactRepository.findById(1L)).willReturn(Optional.of(mockContact("정대성")));
 
+        // when & then
         assertThatThrownBy(() -> salesContactService.createEmployment(1L, new SalesContactEmploymentCreateRequest(
                 null, null, null, null, LocalDate.of(2026, 4, 1)
         ))).isInstanceOf(BusinessException.class)
@@ -133,12 +149,14 @@ class SalesContactServiceTest {
     @Test
     @DisplayName("updateEmployment 실패 — 이미 종료된 재직")
     void update_employment_fail_already_terminated() {
+        // given
         SalesContactEmployment terminated = SalesContactEmployment.builder()
                 .contactId(1L).customerId(10L).startDate(LocalDate.of(2024, 1, 1))
                 .endDate(LocalDate.of(2025, 12, 31))
                 .build();
         given(employmentRepository.findById(7L)).willReturn(Optional.of(terminated));
 
+        // when & then
         assertThatThrownBy(() -> salesContactService.updateEmployment(7L, new SalesContactEmploymentUpdateRequest(
                 10L, null, "수정", null, LocalDate.of(2024, 1, 1)
         ))).isInstanceOf(BusinessException.class)
@@ -148,13 +166,16 @@ class SalesContactServiceTest {
     @Test
     @DisplayName("terminateEmployment 성공 — endDate / departureType / 메모 설정")
     void terminate_employment_success() {
+        // given
         SalesContactEmployment active = mockEmployment(1L, 10L, null);
         given(employmentRepository.findById(7L)).willReturn(Optional.of(active));
 
+        // when
         salesContactService.terminateEmployment(7L, new SalesContactEmploymentTerminateRequest(
                 LocalDate.of(2026, 4, 30), DepartureType.JOB_CHANGE, "이직"
         ));
 
+        // then
         assertThat(active.isActive()).isFalse();
         assertThat(active.getEndDate()).isEqualTo(LocalDate.of(2026, 4, 30));
         assertThat(active.getDepartureType()).isEqualTo(DepartureType.JOB_CHANGE);
@@ -164,11 +185,13 @@ class SalesContactServiceTest {
     @Test
     @DisplayName("terminateEmployment 실패 — endDate < startDate")
     void terminate_employment_fail_invalid_end_date() {
+        // given
         SalesContactEmployment active = SalesContactEmployment.builder()
                 .contactId(1L).customerId(10L).startDate(LocalDate.of(2026, 5, 1))
                 .build();
         given(employmentRepository.findById(7L)).willReturn(Optional.of(active));
 
+        // when & then
         assertThatThrownBy(() -> salesContactService.terminateEmployment(7L, new SalesContactEmploymentTerminateRequest(
                 LocalDate.of(2026, 4, 1), DepartureType.OTHER, null
         ))).isInstanceOf(BusinessException.class)
@@ -178,16 +201,19 @@ class SalesContactServiceTest {
     @Test
     @DisplayName("deleteEmployment 실패 — 존재하지 않음")
     void delete_employment_fail_not_found() {
+        // given
         given(employmentRepository.existsById(99L)).willReturn(false);
 
+        // when & then
         assertThatThrownBy(() -> salesContactService.deleteEmployment(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", SalesContactErrorCode.EMPLOYMENT_NOT_FOUND);
     }
 
     @Test
-    @DisplayName("getDetail 성공 — 외부 회사 재직 (customerId == null) 가 섞여도 NPE 없이 응답")
+    @DisplayName("getDetail 성공 — 외부 회사 재직 (customerId == null) 섞여도 NPE 없음")
     void get_detail_external_company_employment() {
+        // given
         SalesContact contact = mockContact("정대성");
         ReflectionTestUtils.setField(contact, "id", 1L);
         given(contactRepository.findById(1L)).willReturn(Optional.of(contact));
@@ -195,8 +221,10 @@ class SalesContactServiceTest {
                 .willReturn(List.of(mockEmployment(1L, null, "외부회사")));
         given(contactSourceRepository.findByContactIdIn(List.of(1L))).willReturn(List.of());
 
+        // when
         salesContactService.getDetail(1L);
 
+        // then
         // customerApi.findByIds 는 호출되지 않아야 함 — customerId 가 모두 null 이므로 lookup 스킵.
         verify(customerApi, never()).findByIds(any());
     }

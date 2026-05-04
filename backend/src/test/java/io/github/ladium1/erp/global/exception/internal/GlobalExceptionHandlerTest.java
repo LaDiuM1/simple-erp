@@ -45,6 +45,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("비즈니스 예외 처리")
     void handle_business_exception() throws Exception {
+        // when & then
         mockMvc.perform(get("/test/business-exception"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
@@ -52,8 +53,9 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("@Valid @RequestBody 검증 실패는 400 으로 응답되며 첫 필드 메시지가 노출된다")
+    @DisplayName("@Valid @RequestBody 검증 실패는 400 + 첫 필드 메시지")
     void handle_method_argument_not_valid() throws Exception {
+        // when & then
         mockMvc.perform(post("/test/valid-body")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"\"}"))
@@ -63,8 +65,9 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("ConstraintViolationException 은 400 으로 응답되며 필드명 + 메시지가 노출된다")
+    @DisplayName("ConstraintViolationException 은 400 + 필드명 + 메시지")
     void handle_constraint_violation() throws Exception {
+        // when & then
         mockMvc.perform(get("/test/constraint-violation"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
@@ -72,8 +75,9 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("잘못된 JSON 본문은 400 으로 응답된다")
+    @DisplayName("잘못된 JSON 본문은 400")
     void handle_message_not_readable() throws Exception {
+        // when & then
         mockMvc.perform(post("/test/valid-body")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("not-a-json"))
@@ -83,8 +87,9 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("경로 변수 타입 불일치는 400 으로 응답되며 파라미터 이름이 포함된다")
+    @DisplayName("경로 변수 타입 불일치는 400 + 파라미터 이름")
     void handle_type_mismatch() throws Exception {
+        // when & then
         mockMvc.perform(get("/test/typed/abc"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
@@ -92,8 +97,9 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("필수 쿼리 파라미터 누락은 400 으로 응답되며 파라미터 이름이 포함된다")
+    @DisplayName("필수 쿼리 파라미터 누락은 400 + 파라미터 이름")
     void handle_missing_parameter() throws Exception {
+        // when & then
         mockMvc.perform(get("/test/required-param"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
@@ -101,8 +107,9 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("허용되지 않은 HTTP 메서드는 405 로 응답된다")
+    @DisplayName("허용되지 않은 HTTP 메서드는 405")
     void handle_method_not_supported() throws Exception {
+        // when & then
         mockMvc.perform(put("/test/business-exception"))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.status").value(405))
@@ -110,8 +117,9 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("인증(401) 예외 처리")
+    @DisplayName("인증 예외는 401")
     void handle_authentication_exception() throws Exception {
+        // when & then
         mockMvc.perform(get("/test/auth-exception"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
@@ -119,8 +127,9 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("인가(403) 예외 처리")
+    @DisplayName("인가 예외는 403")
     void handle_access_denied_exception() throws Exception {
+        // when & then
         mockMvc.perform(get("/test/access-exception"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
@@ -128,8 +137,9 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("시스템 기타(500) 예외 처리")
+    @DisplayName("시스템 기타 예외는 500")
     void handle_exception() throws Exception {
+        // when & then
         mockMvc.perform(get("/test/runtime-exception"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.status").value(500))

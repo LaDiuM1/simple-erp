@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.global.security.internal;
 
+import io.github.ladium1.erp.global.logging.LoggingMdcFilter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -67,7 +68,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
+
+                // 인증 직후에 MDC 부착 -> 컨트롤러 / 서비스 로그 라인에 traceId / userId 가 따라가도록
+                .addFilterAfter(new LoggingMdcFilter(), JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -78,6 +82,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of(LoggingMdcFilter.TRACE_ID_HEADER));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

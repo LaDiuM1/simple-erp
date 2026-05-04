@@ -66,20 +66,28 @@ class CodeRuleServiceTest {
     @Test
     @DisplayName("getRule 성공")
     void get_rule_success() {
+        // given
         initWithoutAttributes();
         CodeRule rule = mockRule();
         CodeRuleInfo info = CodeRuleInfo.builder().target(TARGET).pattern("D{SEQ:3}").inputMode(InputMode.AUTO).build();
         given(codeRuleRepository.findByTarget(TARGET)).willReturn(Optional.of(rule));
         given(codeRuleMapper.toInfo(rule)).willReturn(info);
 
-        assertThat(codeRuleService.getRule(TARGET)).isEqualTo(info);
+        // when
+        CodeRuleInfo actual = codeRuleService.getRule(TARGET);
+
+        // then
+        assertThat(actual).isEqualTo(info);
     }
 
     @Test
     @DisplayName("getRule 실패 — RULE_NOT_FOUND")
     void get_rule_fail_not_found() {
+        // given
         initWithoutAttributes();
         given(codeRuleRepository.findByTarget(TARGET)).willReturn(Optional.empty());
+
+        // when & then
         assertThatThrownBy(() -> codeRuleService.getRule(TARGET))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CodeRuleErrorCode.RULE_NOT_FOUND);
@@ -88,6 +96,7 @@ class CodeRuleServiceTest {
     @Test
     @DisplayName("generate — 시퀀스 row 가 없으면 신규 생성")
     void generate_new_sequence() {
+        // given
         initWithoutAttributes();
         CodeRule rule = mockRule();
         given(codeRuleRepository.findByTarget(TARGET)).willReturn(Optional.of(rule));
@@ -98,8 +107,10 @@ class CodeRuleServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
         given(patternCompiler.render(eq("D{SEQ:3}"), any())).willReturn("D001");
 
+        // when
         String code = codeRuleService.generate(TARGET, CodeGenerationContext.empty());
 
+        // then
         assertThat(code).isEqualTo("D001");
         verify(codeSequenceRepository).saveAndFlush(any(CodeSequence.class));
     }
@@ -107,6 +118,7 @@ class CodeRuleServiceTest {
     @Test
     @DisplayName("generate — 기존 시퀀스 increment")
     void generate_increments_existing() {
+        // given
         initWithoutAttributes();
         CodeRule rule = mockRule();
         CodeSequence existing = CodeSequence.first(TARGET, SCOPE_KEY);
@@ -118,16 +130,19 @@ class CodeRuleServiceTest {
         given(codeSequenceRepository.findForUpdate(TARGET, SCOPE_KEY)).willReturn(Optional.of(existing));
         given(patternCompiler.render(eq("D{SEQ:3}"), any())).willReturn("D003");
 
+        // when
         String code = codeRuleService.generate(TARGET, CodeGenerationContext.empty());
 
+        // then
         assertThat(code).isEqualTo("D003");
         assertThat(existing.getCurrentSeq()).isEqualTo(3L);
         verify(codeSequenceRepository, never()).saveAndFlush(any(CodeSequence.class));
     }
 
     @Test
-    @DisplayName("preview — 시퀀스 increment 안 함")
+    @DisplayName("preview — 시퀀스 increment 없음")
     void preview_no_increment() {
+        // given
         initWithoutAttributes();
         CodeRule rule = mockRule();
         CodeSequence existing = CodeSequence.first(TARGET, SCOPE_KEY);
@@ -139,8 +154,10 @@ class CodeRuleServiceTest {
                 .willReturn(Optional.of(existing));
         given(patternCompiler.render(eq("D{SEQ:3}"), any())).willReturn("D002");
 
+        // when
         String code = codeRuleService.preview(TARGET, CodeGenerationContext.empty());
 
+        // then
         assertThat(code).isEqualTo("D002");
         assertThat(existing.getCurrentSeq()).isEqualTo(1L);
     }
@@ -148,21 +165,26 @@ class CodeRuleServiceTest {
     @Test
     @DisplayName("validate — 패턴 일치 시 통과")
     void validate_passes() {
+        // given
         initWithoutAttributes();
         CodeRule rule = mockRule();
         given(codeRuleRepository.findByTarget(TARGET)).willReturn(Optional.of(rule));
         given(patternCompiler.matches("D{SEQ:3}", "D004")).willReturn(true);
+
+        // when & then
         codeRuleService.validate(TARGET, "D004");
     }
 
     @Test
-    @DisplayName("validate — 패턴 불일치 시 CODE_FORMAT_MISMATCH")
+    @DisplayName("validate 실패 — 패턴 불일치 시 CODE_FORMAT_MISMATCH")
     void validate_fail_mismatch() {
+        // given
         initWithoutAttributes();
         CodeRule rule = mockRule();
         given(codeRuleRepository.findByTarget(TARGET)).willReturn(Optional.of(rule));
         given(patternCompiler.matches("D{SEQ:3}", "X-bad")).willReturn(false);
 
+        // when & then
         assertThatThrownBy(() -> codeRuleService.validate(TARGET, "X-bad"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CodeRuleErrorCode.CODE_FORMAT_MISMATCH);
@@ -170,7 +192,8 @@ class CodeRuleServiceTest {
 
     @Test
     @DisplayName("findAll — CodeRuleResponse 리스트 반환")
-    void find_all() {
+    void find_all_success() {
+        // given
         initWithoutAttributes();
         CodeRule rule = mockRule();
         given(codeRuleRepository.findAll()).willReturn(List.of(rule));
@@ -181,16 +204,19 @@ class CodeRuleServiceTest {
                 .willReturn(Optional.empty());
         given(patternCompiler.render(eq("D{SEQ:3}"), any())).willReturn("D001");
 
+        // when
         List<CodeRuleResponse> result = codeRuleService.findAll();
 
+        // then
         assertThat(result).hasSize(1);
         assertThat(result.get(0).target()).isEqualTo(TARGET);
         assertThat(result.get(0).nextCode()).isEqualTo("D001");
     }
 
     @Test
-    @DisplayName("update — 패턴 검증 통과 후 엔티티 update")
+    @DisplayName("update 성공 — 패턴 검증 통과 후 엔티티 update")
     void update_success() {
+        // given
         initWithoutAttributes();
         CodeRule rule = mockRule();
         CodeRuleUpdateRequest request = new CodeRuleUpdateRequest(
@@ -204,16 +230,19 @@ class CodeRuleServiceTest {
                 .willReturn(Optional.empty());
         given(patternCompiler.render(any(), any())).willReturn("EMP-2026-0001");
 
+        // when
         CodeRuleResponse response = codeRuleService.update(TARGET, request);
 
+        // then
         verify(patternCompiler).validate(eq("EMP-{YYYY}-{SEQ:4}"), any());
         assertThat(rule.getPattern()).isEqualTo("EMP-{YYYY}-{SEQ:4}");
         assertThat(response.target()).isEqualTo(TARGET);
     }
 
     @Test
-    @DisplayName("update — 잘못된 패턴이면 INVALID_PATTERN 전파")
+    @DisplayName("update 실패 — 잘못된 패턴이면 INVALID_PATTERN 전파")
     void update_fail_invalid_pattern() {
+        // given
         initWithoutAttributes();
         CodeRuleUpdateRequest request = new CodeRuleUpdateRequest(
                 "{BAD}{SEQ:3}", InputMode.AUTO, null, null
@@ -221,6 +250,7 @@ class CodeRuleServiceTest {
         willThrow(new BusinessException(CodeRuleErrorCode.INVALID_PATTERN))
                 .given(patternCompiler).validate(eq("{BAD}{SEQ:3}"), any());
 
+        // when & then
         assertThatThrownBy(() -> codeRuleService.update(TARGET, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CodeRuleErrorCode.INVALID_PATTERN);
@@ -228,7 +258,8 @@ class CodeRuleServiceTest {
 
     @Test
     @DisplayName("previewFromRequest — nextCode + samples 5건 반환")
-    void preview_from_request() {
+    void preview_from_request_success() {
+        // given
         initWithoutAttributes();
         CodeRulePreviewRequest request = new CodeRulePreviewRequest(
                 "D{SEQ:3}", InputMode.AUTO, null, null, null
@@ -239,8 +270,10 @@ class CodeRuleServiceTest {
                 .willReturn(Optional.empty());
         given(patternCompiler.render(eq("D{SEQ:3}"), any())).willReturn("D-RENDERED");
 
+        // when
         CodeRulePreviewResponse response = codeRuleService.previewFromRequest(TARGET, request);
 
+        // then
         verify(patternCompiler).validate(eq("D{SEQ:3}"), any());
         assertThat(response.nextCode()).isEqualTo("D-RENDERED");
         assertThat(response.samples()).hasSize(5);
