@@ -4,7 +4,10 @@ import io.github.ladium1.erp.customer.api.CustomerApi;
 import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
+import io.github.ladium1.erp.global.audit.AuditAction;
+import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.salescontact.api.SalesContactApi;
 import io.github.ladium1.erp.salescontact.api.dto.SalesContactInfo;
 import io.github.ladium1.erp.salescustomer.api.SalesCustomerApi;
@@ -210,6 +213,7 @@ public class SalesCustomerService implements SalesCustomerApi {
                 .toList();
     }
 
+    @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.CREATE, targetType = "SalesActivity", targetIdFromReturn = true)
     @Transactional
     public Long createActivity(SalesActivityCreateRequest request) {
         customerApi.getById(request.customerId());
@@ -230,6 +234,7 @@ public class SalesCustomerService implements SalesCustomerApi {
         return activityRepository.save(activity).getId();
     }
 
+    @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.UPDATE, targetType = "SalesActivity", targetIdParam = "id")
     @Transactional
     public void updateActivity(Long id, SalesActivityUpdateRequest request) {
         SalesActivity activity = activityRepository.findById(id)
@@ -249,6 +254,7 @@ public class SalesCustomerService implements SalesCustomerApi {
         );
     }
 
+    @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.DELETE, targetType = "SalesActivity", targetIdParam = "id")
     @Transactional
     public void deleteActivity(Long id) {
         if (!activityRepository.existsById(id)) {
@@ -257,6 +263,7 @@ public class SalesCustomerService implements SalesCustomerApi {
         activityRepository.deleteById(id);
     }
 
+    @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.CREATE, targetType = "SalesAssignment", targetIdFromReturn = true)
     @Transactional
     public Long createAssignment(SalesAssignmentCreateRequest request) {
         customerApi.getById(request.customerId());
@@ -279,6 +286,7 @@ public class SalesCustomerService implements SalesCustomerApi {
         return assignmentRepository.save(assignment).getId();
     }
 
+    @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.UPDATE, targetType = "SalesAssignment", targetIdParam = "id")
     @Transactional
     public void updateAssignment(Long id, SalesAssignmentUpdateRequest request) {
         SalesAssignment assignment = assignmentRepository.findById(id)
@@ -298,6 +306,7 @@ public class SalesCustomerService implements SalesCustomerApi {
         assignment.update(request.startDate(), request.primary(), request.reason());
     }
 
+    @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.UPDATE, targetType = "SalesAssignment", targetIdParam = "id")
     @Transactional
     public void terminateAssignment(Long id, SalesAssignmentTerminateRequest request) {
         SalesAssignment assignment = assignmentRepository.findById(id)
@@ -311,6 +320,7 @@ public class SalesCustomerService implements SalesCustomerApi {
         assignment.terminate(request.endDate(), request.reason());
     }
 
+    @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.DELETE, targetType = "SalesAssignment", targetIdParam = "id")
     @Transactional
     public void deleteAssignment(Long id) {
         if (!assignmentRepository.existsById(id)) {

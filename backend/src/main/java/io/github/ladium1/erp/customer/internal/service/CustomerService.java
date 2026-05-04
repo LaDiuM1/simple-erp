@@ -23,7 +23,10 @@ import io.github.ladium1.erp.customer.internal.excel.CustomerExcelImporter.Holde
 import io.github.ladium1.erp.customer.internal.exception.CustomerErrorCode;
 import io.github.ladium1.erp.customer.internal.mapper.CustomerMapper;
 import io.github.ladium1.erp.customer.internal.repository.CustomerRepository;
+import io.github.ladium1.erp.global.audit.AuditAction;
+import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRow;
 import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRows;
 import io.github.ladium1.erp.global.excel.ExcelRowError;
@@ -246,6 +249,7 @@ public class CustomerService implements CustomerApi {
         return !customerRepository.existsByBizRegNo(bizRegNo.trim());
     }
 
+    @Auditable(menu = Menu.CUSTOMERS, action = AuditAction.CREATE, targetType = "Customer", targetIdFromReturn = true)
     @Transactional
     public Long create(CustomerCreateRequest request) {
         String code = resolveCode(request.code(), request.type());
@@ -281,6 +285,7 @@ public class CustomerService implements CustomerApi {
         return customerRepository.save(customer).getId();
     }
 
+    @Auditable(menu = Menu.CUSTOMERS, action = AuditAction.UPDATE, targetType = "Customer", targetIdParam = "id")
     @Transactional
     public void update(Long id, CustomerUpdateRequest request) {
         assertVisible(id);
@@ -314,6 +319,7 @@ public class CustomerService implements CustomerApi {
         );
     }
 
+    @Auditable(menu = Menu.CUSTOMERS, action = AuditAction.DELETE, targetType = "Customer", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
         assertVisible(id);
@@ -327,6 +333,7 @@ public class CustomerService implements CustomerApi {
      * 일괄 삭제 — 단일 트랜잭션에서 ID 별 단건 delete 호출.
      * 한 건이라도 실패하면 전체 롤백.
      */
+    @Auditable(menu = Menu.CUSTOMERS, action = AuditAction.DELETE, targetType = "Customer")
     @Transactional
     public void deleteAll(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return;

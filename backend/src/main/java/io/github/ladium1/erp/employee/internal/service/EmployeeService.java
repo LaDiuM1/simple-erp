@@ -2,7 +2,10 @@ package io.github.ladium1.erp.employee.internal.service;
 
 import io.github.ladium1.erp.department.api.DepartmentApi;
 import io.github.ladium1.erp.department.api.dto.DepartmentInfo;
+import io.github.ladium1.erp.global.audit.AuditAction;
+import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
@@ -169,6 +172,7 @@ public class EmployeeService implements EmployeeApi {
         return employeeMapper.toDetailResponse(employee, departmentInfo, positionInfo, roleInfo);
     }
 
+    @Auditable(menu = Menu.EMPLOYEES, action = AuditAction.CREATE, targetType = "Employee", targetIdFromReturn = true)
     @Transactional
     public Long create(EmployeeCreateRequest request) {
         if (employeeRepository.existsByLoginId(request.loginId())) {
@@ -194,6 +198,7 @@ public class EmployeeService implements EmployeeApi {
         return employeeRepository.save(employee).getId();
     }
 
+    @Auditable(menu = Menu.EMPLOYEES, action = AuditAction.UPDATE, targetType = "Employee", targetIdParam = "id")
     @Transactional
     public void update(Long id, EmployeeUpdateRequest request) {
         Employee employee = employeeRepository.findById(id)
@@ -219,6 +224,7 @@ public class EmployeeService implements EmployeeApi {
         }
     }
 
+    @Auditable(menu = Menu.EMPLOYEES, action = AuditAction.DELETE, targetType = "Employee", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
         if (!employeeRepository.existsById(id)) {
@@ -231,6 +237,7 @@ public class EmployeeService implements EmployeeApi {
      * 일괄 삭제 — 단일 트랜잭션 내에서 ID 별로 단건 delete 를 호출.
      * 한 건이라도 실패하면 전체 롤백 (BusinessException 전파).
      */
+    @Auditable(menu = Menu.EMPLOYEES, action = AuditAction.DELETE, targetType = "Employee")
     @Transactional
     public void deleteAll(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return;

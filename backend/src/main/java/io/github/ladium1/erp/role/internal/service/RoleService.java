@@ -1,5 +1,7 @@
 package io.github.ladium1.erp.role.internal.service;
 
+import io.github.ladium1.erp.global.audit.AuditAction;
+import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.DataScope;
@@ -61,6 +63,7 @@ public class RoleService implements RoleApi {
                 .map(roleMapper::toRoleInfo);
     }
 
+    @Auditable(menu = Menu.ROLES, action = AuditAction.UPDATE, targetType = "Role")
     @Override
     @Transactional
     public RoleInfo bootstrapSystemRole(String code, String name, String description) {
@@ -145,6 +148,7 @@ public class RoleService implements RoleApi {
         return !roleRepository.existsByCode(code.trim());
     }
 
+    @Auditable(menu = Menu.ROLES, action = AuditAction.CREATE, targetType = "Role", targetIdFromReturn = true)
     @Transactional
     public Long create(RoleCreateRequest request) {
         if (roleRepository.existsByCode(request.code())) {
@@ -160,6 +164,7 @@ public class RoleService implements RoleApi {
         return saved.getId();
     }
 
+    @Auditable(menu = Menu.ROLES, action = AuditAction.UPDATE, targetType = "Role", targetIdParam = "id")
     @Transactional
     public void update(Long id, RoleUpdateRequest request) {
         Role role = roleRepository.findById(id)
@@ -171,6 +176,7 @@ public class RoleService implements RoleApi {
         }
     }
 
+    @Auditable(menu = Menu.ROLES, action = AuditAction.DELETE, targetType = "Role", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
         Role role = roleRepository.findById(id)
@@ -188,6 +194,7 @@ public class RoleService implements RoleApi {
      * 일괄 삭제 — 단일 트랜잭션에서 ID 별 단건 delete 호출.
      * 한 건이라도 실패하면 전체 롤백.
      */
+    @Auditable(menu = Menu.ROLES, action = AuditAction.DELETE, targetType = "Role")
     @Transactional
     public void deleteAll(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return;

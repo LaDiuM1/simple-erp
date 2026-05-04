@@ -2,7 +2,10 @@ package io.github.ladium1.erp.salescontact.internal.service;
 
 import io.github.ladium1.erp.customer.api.CustomerApi;
 import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
+import io.github.ladium1.erp.global.audit.AuditAction;
+import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.salescontact.api.SalesContactApi;
 import io.github.ladium1.erp.salescontact.api.dto.RecentSalesContactInfo;
@@ -370,6 +373,7 @@ public class SalesContactService implements SalesContactApi {
         return !contactRepository.existsByMobilePhoneAndIdNot(trimmed, excludeId);
     }
 
+    @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.CREATE, targetType = "SalesContact", targetIdFromReturn = true)
     @Transactional
     public Long create(SalesContactCreateRequest request) {
         List<Long> sourceIds = distinctOrEmpty(request.sourceIds());
@@ -395,6 +399,7 @@ public class SalesContactService implements SalesContactApi {
         return id;
     }
 
+    @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.UPDATE, targetType = "SalesContact", targetIdParam = "id")
     @Transactional
     public void update(Long id, SalesContactUpdateRequest request) {
         SalesContact contact = contactRepository.findById(id)
@@ -423,6 +428,7 @@ public class SalesContactService implements SalesContactApi {
         replaceSources(id, sourceIds);
     }
 
+    @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.DELETE, targetType = "SalesContact", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
         if (!contactRepository.existsById(id)) {
@@ -438,6 +444,7 @@ public class SalesContactService implements SalesContactApi {
      * 일괄 삭제 — 단일 트랜잭션에서 ID 별 단건 delete 호출.
      * 한 건이라도 실패하면 전체 롤백.
      */
+    @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.DELETE, targetType = "SalesContact")
     @Transactional
     public void deleteAll(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return;
@@ -446,6 +453,7 @@ public class SalesContactService implements SalesContactApi {
         }
     }
 
+    @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.CREATE, targetType = "SalesContactEmployment", targetIdFromReturn = true)
     @Transactional
     public Long createEmployment(Long contactId, SalesContactEmploymentCreateRequest request) {
         SalesContact contact = contactRepository.findById(contactId)
@@ -463,6 +471,7 @@ public class SalesContactService implements SalesContactApi {
         return employmentRepository.save(employment).getId();
     }
 
+    @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.UPDATE, targetType = "SalesContactEmployment", targetIdParam = "id")
     @Transactional
     public void updateEmployment(Long id, SalesContactEmploymentUpdateRequest request) {
         SalesContactEmployment employment = employmentRepository.findById(id)
@@ -481,6 +490,7 @@ public class SalesContactService implements SalesContactApi {
         );
     }
 
+    @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.UPDATE, targetType = "SalesContactEmployment", targetIdParam = "id")
     @Transactional
     public void terminateEmployment(Long id, SalesContactEmploymentTerminateRequest request) {
         SalesContactEmployment employment = employmentRepository.findById(id)
@@ -494,6 +504,7 @@ public class SalesContactService implements SalesContactApi {
         employment.terminate(request.endDate(), request.departureType(), request.departureNote());
     }
 
+    @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.DELETE, targetType = "SalesContactEmployment", targetIdParam = "id")
     @Transactional
     public void deleteEmployment(Long id) {
         if (!employmentRepository.existsById(id)) {
