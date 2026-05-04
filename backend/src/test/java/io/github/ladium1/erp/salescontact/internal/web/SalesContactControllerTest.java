@@ -63,6 +63,7 @@ class SalesContactControllerTest {
     @Test
     @DisplayName("명부 검색 성공")
     void search_success() throws Exception {
+        // given
         SalesContactSummaryResponse summary = SalesContactSummaryResponse.builder()
                 .id(1L).name("정대성").mobilePhone("010-1111-2222").email("ds@daesung.co.kr")
                 .currentCompanyName("대성상사").currentPosition("팀장")
@@ -72,6 +73,7 @@ class SalesContactControllerTest {
         );
         given(salesContactService.search(any(), any())).willReturn(page);
 
+        // when & then
         mockMvc.perform(get("/api/v1/sales-contacts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].name").value("정대성"))
@@ -81,10 +83,12 @@ class SalesContactControllerTest {
     @Test
     @DisplayName("명부 상세 조회 성공")
     void get_detail_success() throws Exception {
+        // given
         SalesContactDetailResponse detail = SalesContactDetailResponse.builder()
                 .id(7L).name("정대성").employments(List.of()).build();
         given(salesContactService.getDetail(7L)).willReturn(detail);
 
+        // when & then
         mockMvc.perform(get("/api/v1/sales-contacts/{id}", 7L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("정대성"));
@@ -93,9 +97,11 @@ class SalesContactControllerTest {
     @Test
     @DisplayName("존재하지 않는 명부 조회 시 404")
     void get_detail_fail_not_found() throws Exception {
+        // given
         given(salesContactService.getDetail(99L))
                 .willThrow(new BusinessException(SalesContactErrorCode.CONTACT_NOT_FOUND));
 
+        // when & then
         mockMvc.perform(get("/api/v1/sales-contacts/{id}", 99L))
                 .andExpect(status().isNotFound());
     }
@@ -103,11 +109,13 @@ class SalesContactControllerTest {
     @Test
     @DisplayName("고객사별 재직 명부 조회 성공")
     void find_employments_by_customer_success() throws Exception {
+        // given
         SalesContactEmploymentResponse emp = SalesContactEmploymentResponse.builder()
                 .id(1L).contactId(7L).contactName("정대성").customerId(10L).customerName("대성상사")
                 .position("팀장").startDate(LocalDate.of(2026, 1, 1)).active(true).build();
         given(salesContactService.findEmploymentsByCustomerId(10L)).willReturn(List.of(emp));
 
+        // when & then
         mockMvc.perform(get("/api/v1/sales-contacts/employments").param("customerId", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].contactName").value("정대성"))
@@ -117,12 +125,14 @@ class SalesContactControllerTest {
     @Test
     @DisplayName("명부 등록 성공")
     void create_success() throws Exception {
+        // given
         SalesContactCreateRequest request = new SalesContactCreateRequest(
                 "정대성", null, "010-1111-2222", null,
                 "ds@daesung.co.kr", null, null, null, null
         );
         given(salesContactService.create(any())).willReturn(42L);
 
+        // when & then
         mockMvc.perform(post("/api/v1/sales-contacts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -133,11 +143,13 @@ class SalesContactControllerTest {
     @Test
     @DisplayName("재직 등록 성공")
     void create_employment_success() throws Exception {
+        // given
         SalesContactEmploymentCreateRequest request = new SalesContactEmploymentCreateRequest(
                 10L, null, "팀장", "영업1팀", LocalDate.of(2026, 4, 1)
         );
         given(salesContactService.createEmployment(eq(7L), any())).willReturn(50L);
 
+        // when & then
         mockMvc.perform(post("/api/v1/sales-contacts/{contactId}/employments", 7L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -148,10 +160,12 @@ class SalesContactControllerTest {
     @Test
     @DisplayName("재직 종료 성공")
     void terminate_employment_success() throws Exception {
+        // given
         SalesContactEmploymentTerminateRequest request = new SalesContactEmploymentTerminateRequest(
                 LocalDate.of(2026, 4, 30), DepartureType.JOB_CHANGE, "이직"
         );
 
+        // when & then
         mockMvc.perform(put("/api/v1/sales-contacts/employments/{id}/terminate", 7L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -162,12 +176,14 @@ class SalesContactControllerTest {
     @Test
     @DisplayName("재직 종료 실패 — 이미 종료된 재직 (400)")
     void terminate_employment_fail_already_terminated() throws Exception {
+        // given
         SalesContactEmploymentTerminateRequest request = new SalesContactEmploymentTerminateRequest(
                 LocalDate.of(2026, 4, 30), DepartureType.OTHER, null
         );
         willThrow(new BusinessException(SalesContactErrorCode.EMPLOYMENT_ALREADY_TERMINATED))
                 .given(salesContactService).terminateEmployment(eq(7L), any());
 
+        // when & then
         mockMvc.perform(put("/api/v1/sales-contacts/employments/{id}/terminate", 7L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -177,6 +193,7 @@ class SalesContactControllerTest {
     @Test
     @DisplayName("재직 삭제 성공")
     void delete_employment_success() throws Exception {
+        // when & then
         mockMvc.perform(delete("/api/v1/sales-contacts/employments/{id}", 7L))
                 .andExpect(status().isNoContent());
         verify(salesContactService).deleteEmployment(7L);
@@ -185,6 +202,7 @@ class SalesContactControllerTest {
     @Test
     @DisplayName("명부 삭제 성공")
     void delete_contact_success() throws Exception {
+        // when & then
         mockMvc.perform(delete("/api/v1/sales-contacts/{id}", 7L))
                 .andExpect(status().isNoContent());
         verify(salesContactService).delete(7L);

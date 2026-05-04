@@ -107,11 +107,13 @@ class SalesCustomerControllerTest {
     @Test
     @DisplayName("활동 등록 성공")
     void create_activity_success() throws Exception {
+        // given
         SalesActivityCreateRequest request = new SalesActivityCreateRequest(
                 1L, SalesActivityType.VISIT, LocalDateTime.now(),
                 "미팅", "내용", 10L, null);
         given(salesCustomerService.createActivity(any())).willReturn(42L);
 
+        // when & then
         mockMvc.perform(post("/api/v1/sales-customers/activities")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -122,12 +124,14 @@ class SalesCustomerControllerTest {
     @Test
     @DisplayName("존재하지 않는 활동 수정 시 404")
     void update_activity_fail_not_found() throws Exception {
+        // given
         SalesActivityUpdateRequest request = new SalesActivityUpdateRequest(
                 SalesActivityType.CALL, LocalDateTime.now(),
                 "수정", "내용", 10L, null);
         willThrow(new BusinessException(SalesCustomerErrorCode.ACTIVITY_NOT_FOUND))
                 .given(salesCustomerService).updateActivity(eq(99L), any());
 
+        // when & then
         mockMvc.perform(put("/api/v1/sales-customers/activities/{id}", 99L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -137,6 +141,7 @@ class SalesCustomerControllerTest {
     @Test
     @DisplayName("활동 삭제 성공")
     void delete_activity_success() throws Exception {
+        // when & then
         mockMvc.perform(delete("/api/v1/sales-customers/activities/{id}", 7L))
                 .andExpect(status().isNoContent());
         verify(salesCustomerService).deleteActivity(7L);
@@ -145,10 +150,12 @@ class SalesCustomerControllerTest {
     @Test
     @DisplayName("배정 등록 성공")
     void create_assignment_success() throws Exception {
+        // given
         SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
                 1L, 10L, LocalDate.of(2026, 4, 1), true, "신규 주담당");
         given(salesCustomerService.createAssignment(any())).willReturn(50L);
 
+        // when & then
         mockMvc.perform(post("/api/v1/sales-customers/assignments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -159,9 +166,11 @@ class SalesCustomerControllerTest {
     @Test
     @DisplayName("배정 수정 성공")
     void update_assignment_success() throws Exception {
+        // given
         SalesAssignmentUpdateRequest request = new SalesAssignmentUpdateRequest(
                 LocalDate.of(2026, 4, 15), false, "보조로 변경");
 
+        // when & then
         mockMvc.perform(put("/api/v1/sales-customers/assignments/{id}", 7L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -172,9 +181,11 @@ class SalesCustomerControllerTest {
     @Test
     @DisplayName("배정 종료 성공")
     void terminate_assignment_success() throws Exception {
+        // given
         SalesAssignmentTerminateRequest request = new SalesAssignmentTerminateRequest(
                 LocalDate.of(2026, 4, 30), "이직");
 
+        // when & then
         mockMvc.perform(put("/api/v1/sales-customers/assignments/{id}/terminate", 7L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -185,11 +196,13 @@ class SalesCustomerControllerTest {
     @Test
     @DisplayName("배정 종료 실패 — 이미 종료된 배정 (400)")
     void terminate_assignment_fail_already_terminated() throws Exception {
+        // given
         SalesAssignmentTerminateRequest request = new SalesAssignmentTerminateRequest(
                 LocalDate.of(2026, 4, 30), "재시도");
         willThrow(new BusinessException(SalesCustomerErrorCode.ASSIGNMENT_ALREADY_TERMINATED))
                 .given(salesCustomerService).terminateAssignment(eq(7L), any());
 
+        // when & then
         mockMvc.perform(put("/api/v1/sales-customers/assignments/{id}/terminate", 7L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -199,6 +212,7 @@ class SalesCustomerControllerTest {
     @Test
     @DisplayName("배정 삭제 성공")
     void delete_assignment_success() throws Exception {
+        // when & then
         mockMvc.perform(delete("/api/v1/sales-customers/assignments/{id}", 7L))
                 .andExpect(status().isNoContent());
         verify(salesCustomerService).deleteAssignment(7L);

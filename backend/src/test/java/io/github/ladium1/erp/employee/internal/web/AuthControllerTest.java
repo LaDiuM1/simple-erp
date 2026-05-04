@@ -35,12 +35,13 @@ class AuthControllerTest {
 
     @Test
     @DisplayName("로그인 성공")
-    void login_endpoint() throws Exception {
+    void login_success() throws Exception {
+        // given
         LoginRequest request = new LoginRequest("testId", "testPassword");
         TokenResponse response = new TokenResponse("mock.jwt.token");
-
         given(authService.login(any(LoginRequest.class))).willReturn(response);
 
+        // when & then
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

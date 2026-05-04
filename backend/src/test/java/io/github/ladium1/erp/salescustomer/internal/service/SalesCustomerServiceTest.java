@@ -5,6 +5,7 @@ import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.salescontact.api.SalesContactApi;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityCreateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityUpdateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesAssignmentCreateRequest;
@@ -51,7 +52,7 @@ class SalesCustomerServiceTest {
     @Mock private SalesCustomerMapper salesCustomerMapper;
     @Mock private CustomerApi customerApi;
     @Mock private EmployeeApi employeeApi;
-    @Mock private io.github.ladium1.erp.salescontact.api.SalesContactApi salesContactApi;
+    @Mock private SalesContactApi salesContactApi;
 
     @Test
     @DisplayName("getDetail 성공 — customer + activities + assignments 통합 반환")
@@ -76,14 +77,15 @@ class SalesCustomerServiceTest {
     }
 
     @Test
-    @DisplayName("aggregateByCustomerIds — 빈 입력 시 즉시 빈 리스트 (DB 미조회)")
+    @DisplayName("aggregateByCustomerIds — 빈 입력 시 빈 결과 (DB 미조회)")
     void aggregate_empty() {
+        // when & then
         assertThat(salesCustomerService.aggregateByCustomerIds(List.of())).isEmpty();
         verify(activityRepository, never()).aggregateByCustomerIds(any());
     }
 
     @Test
-    @DisplayName("aggregateByCustomerIds — 활동 카운트 + 활성 담당자 + primary 담당자명 매핑")
+    @DisplayName("aggregateByCustomerIds 성공 — 활동 카운트 + 활성 담당자 + primary 담당자명")
     void aggregate_success() {
         // given
         Long customerId = 1L;
@@ -139,8 +141,10 @@ class SalesCustomerServiceTest {
     @Test
     @DisplayName("updateActivity 실패 — 존재하지 않는 활동")
     void update_activity_fail_not_found() {
+        // given
         given(activityRepository.findById(99L)).willReturn(Optional.empty());
 
+        // when & then
         assertThatThrownBy(() ->
                 salesCustomerService.updateActivity(99L, baseActivityUpdateRequest(10L)))
                 .isInstanceOf(BusinessException.class)
@@ -150,8 +154,10 @@ class SalesCustomerServiceTest {
     @Test
     @DisplayName("deleteActivity 실패 — 존재하지 않는 활동")
     void delete_activity_fail_not_found() {
+        // given
         given(activityRepository.existsById(99L)).willReturn(false);
 
+        // when & then
         assertThatThrownBy(() -> salesCustomerService.deleteActivity(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.ACTIVITY_NOT_FOUND);
@@ -181,7 +187,7 @@ class SalesCustomerServiceTest {
     }
 
     @Test
-    @DisplayName("createAssignment — primary 가 false 면 기존 primary 그대로 유지")
+    @DisplayName("createAssignment — primary=false 면 기존 primary 그대로 유지")
     void create_assignment_keeps_existing_primary() {
         // given
         SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
@@ -200,6 +206,7 @@ class SalesCustomerServiceTest {
     @Test
     @DisplayName("updateAssignment 실패 — 이미 종료된 배정")
     void update_assignment_fail_already_terminated() {
+        // given
         SalesAssignment terminated = SalesAssignment.builder()
                 .customerId(1L).employeeId(10L)
                 .startDate(LocalDate.of(2024, 1, 1))
@@ -210,6 +217,7 @@ class SalesCustomerServiceTest {
         SalesAssignmentUpdateRequest request = new SalesAssignmentUpdateRequest(
                 LocalDate.of(2024, 1, 1), true, "변경");
 
+        // when & then
         assertThatThrownBy(() -> salesCustomerService.updateAssignment(7L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.ASSIGNMENT_ALREADY_TERMINATED);
@@ -237,6 +245,7 @@ class SalesCustomerServiceTest {
     @Test
     @DisplayName("terminateAssignment 실패 — endDate < startDate")
     void terminate_assignment_fail_invalid_end_date() {
+        // given
         SalesAssignment active = SalesAssignment.builder()
                 .customerId(1L).employeeId(10L)
                 .startDate(LocalDate.of(2026, 5, 1))
@@ -246,6 +255,7 @@ class SalesCustomerServiceTest {
         SalesAssignmentTerminateRequest request = new SalesAssignmentTerminateRequest(
                 LocalDate.of(2026, 4, 1), "잘못 입력");
 
+        // when & then
         assertThatThrownBy(() -> salesCustomerService.terminateAssignment(7L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.INVALID_END_DATE);
@@ -254,6 +264,7 @@ class SalesCustomerServiceTest {
     @Test
     @DisplayName("terminateAssignment 실패 — 이미 종료된 배정")
     void terminate_assignment_fail_already_terminated() {
+        // given
         SalesAssignment terminated = SalesAssignment.builder()
                 .customerId(1L).employeeId(10L)
                 .startDate(LocalDate.of(2024, 1, 1))
@@ -264,6 +275,7 @@ class SalesCustomerServiceTest {
         SalesAssignmentTerminateRequest request = new SalesAssignmentTerminateRequest(
                 LocalDate.of(2026, 4, 30), "이직");
 
+        // when & then
         assertThatThrownBy(() -> salesCustomerService.terminateAssignment(7L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.ASSIGNMENT_ALREADY_TERMINATED);
@@ -272,8 +284,10 @@ class SalesCustomerServiceTest {
     @Test
     @DisplayName("deleteAssignment 실패 — 존재하지 않는 배정")
     void delete_assignment_fail_not_found() {
+        // given
         given(assignmentRepository.existsById(99L)).willReturn(false);
 
+        // when & then
         assertThatThrownBy(() -> salesCustomerService.deleteAssignment(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.ASSIGNMENT_NOT_FOUND);

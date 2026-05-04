@@ -56,24 +56,13 @@ class CodeRuleControllerTest {
         given(menuPermissionEvaluator.canWrite(any(), any())).willReturn(true);
     }
 
-    private static CodeRuleResponse sampleResponse() {
-        return CodeRuleResponse.builder()
-                .id(1L)
-                .target(CodeRuleTarget.DEPARTMENT)
-                .targetLabel("부서 코드")
-                .pattern("D{SEQ:3}")
-                .inputMode(InputMode.AUTO)
-                .hasParent(true)
-                .description("부서")
-                .nextCode("D001")
-                .build();
-    }
-
     @Test
     @DisplayName("채번 규칙 목록 조회 성공")
     void find_all_success() throws Exception {
+        // given
         given(codeRuleService.findAll()).willReturn(List.of(sampleResponse()));
 
+        // when & then
         mockMvc.perform(get("/api/v1/code-rules"))
                 .andDo(print())
                 .andExpect(status().isOk())
@@ -85,8 +74,10 @@ class CodeRuleControllerTest {
     @Test
     @DisplayName("채번 규칙 단건 조회 성공")
     void get_success() throws Exception {
+        // given
         given(codeRuleService.get(CodeRuleTarget.DEPARTMENT)).willReturn(sampleResponse());
 
+        // when & then
         mockMvc.perform(get("/api/v1/code-rules/{target}", "DEPARTMENT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.target").value("DEPARTMENT"))
@@ -94,11 +85,13 @@ class CodeRuleControllerTest {
     }
 
     @Test
-    @DisplayName("채번 규칙 조회 — RULE_NOT_FOUND 시 404")
+    @DisplayName("채번 규칙 조회 시 RULE_NOT_FOUND 면 404")
     void get_fail_not_found() throws Exception {
+        // given
         willThrow(new BusinessException(CodeRuleErrorCode.RULE_NOT_FOUND))
                 .given(codeRuleService).get(CodeRuleTarget.DEPARTMENT);
 
+        // when & then
         mockMvc.perform(get("/api/v1/code-rules/{target}", "DEPARTMENT"))
                 .andExpect(status().isNotFound());
     }
@@ -106,11 +99,13 @@ class CodeRuleControllerTest {
     @Test
     @DisplayName("채번 규칙 수정 성공")
     void update_success() throws Exception {
+        // given
         CodeRuleUpdateRequest request = new CodeRuleUpdateRequest(
                 "EMP-{YYYY}-{SEQ:4}", InputMode.AUTO_OR_MANUAL, "수정", null
         );
         given(codeRuleService.update(eq(CodeRuleTarget.DEPARTMENT), any())).willReturn(sampleResponse());
 
+        // when & then
         mockMvc.perform(put("/api/v1/code-rules/{target}", "DEPARTMENT")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -121,12 +116,14 @@ class CodeRuleControllerTest {
     @Test
     @DisplayName("잘못된 패턴으로 수정 시 400")
     void update_fail_invalid_pattern() throws Exception {
+        // given
         CodeRuleUpdateRequest request = new CodeRuleUpdateRequest(
                 "{BAD}{SEQ:3}", InputMode.AUTO, null, null
         );
         willThrow(new BusinessException(CodeRuleErrorCode.INVALID_PATTERN))
                 .given(codeRuleService).update(eq(CodeRuleTarget.DEPARTMENT), any());
 
+        // when & then
         mockMvc.perform(put("/api/v1/code-rules/{target}", "DEPARTMENT")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -136,6 +133,7 @@ class CodeRuleControllerTest {
     @Test
     @DisplayName("미리보기 성공 — nextCode + samples 반환")
     void preview_success() throws Exception {
+        // given
         CodeRulePreviewRequest request = new CodeRulePreviewRequest(
                 "D{SEQ:3}", InputMode.AUTO, null, null, null
         );
@@ -146,11 +144,25 @@ class CodeRuleControllerTest {
         given(codeRuleService.previewFromRequest(eq(CodeRuleTarget.DEPARTMENT), any()))
                 .willReturn(response);
 
+        // when & then
         mockMvc.perform(post("/api/v1/code-rules/{target}/preview", "DEPARTMENT")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.nextCode").value("D004"))
                 .andExpect(jsonPath("$.data.samples", org.hamcrest.Matchers.hasSize(5)));
+    }
+
+    private static CodeRuleResponse sampleResponse() {
+        return CodeRuleResponse.builder()
+                .id(1L)
+                .target(CodeRuleTarget.DEPARTMENT)
+                .targetLabel("부서 코드")
+                .pattern("D{SEQ:3}")
+                .inputMode(InputMode.AUTO)
+                .hasParent(true)
+                .description("부서")
+                .nextCode("D001")
+                .build();
     }
 }

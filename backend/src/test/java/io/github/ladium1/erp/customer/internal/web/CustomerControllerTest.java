@@ -96,9 +96,11 @@ class CustomerControllerTest {
     @Test
     @DisplayName("존재하지 않는 고객사 조회 시 404")
     void get_detail_fail_not_found() throws Exception {
+        // given
         given(customerService.getDetail(99L))
                 .willThrow(new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND));
 
+        // when & then
         mockMvc.perform(get("/api/v1/customers/{id}", 99L))
                 .andExpect(status().isNotFound());
     }
@@ -106,8 +108,10 @@ class CustomerControllerTest {
     @Test
     @DisplayName("코드 사용 가능 여부 조회 성공")
     void check_code_availability_success() throws Exception {
+        // given
         given(customerService.isCodeAvailable("C9999")).willReturn(true);
 
+        // when & then
         mockMvc.perform(get("/api/v1/customers/code-availability").param("code", "C9999"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.available").value(true));
@@ -116,8 +120,10 @@ class CustomerControllerTest {
     @Test
     @DisplayName("사업자번호 사용 가능 여부 조회 성공")
     void check_biz_reg_no_availability_success() throws Exception {
+        // given
         given(customerService.isBizRegNoAvailable("999-99-99999")).willReturn(true);
 
+        // when & then
         mockMvc.perform(get("/api/v1/customers/bizregno-availability").param("bizRegNo", "999-99-99999"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.available").value(true));
@@ -156,10 +162,12 @@ class CustomerControllerTest {
     @Test
     @DisplayName("중복 사업자번호 등록 시 409")
     void create_fail_duplicate_biz_reg_no() throws Exception {
+        // given
         CustomerCreateRequest request = baseCreateRequest("중복사업자");
         willThrow(new BusinessException(CustomerErrorCode.DUPLICATE_BIZ_REG_NO))
                 .given(customerService).create(any());
 
+        // when & then
         mockMvc.perform(post("/api/v1/customers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -183,10 +191,12 @@ class CustomerControllerTest {
     @Test
     @DisplayName("존재하지 않는 고객사 수정 시 404")
     void update_fail_not_found() throws Exception {
+        // given
         CustomerUpdateRequest request = baseUpdateRequest("이름");
         willThrow(new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND))
                 .given(customerService).update(eq(99L), any());
 
+        // when & then
         mockMvc.perform(put("/api/v1/customers/{id}", 99L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -196,6 +206,7 @@ class CustomerControllerTest {
     @Test
     @DisplayName("고객사 삭제 성공")
     void delete_success() throws Exception {
+        // when & then
         mockMvc.perform(delete("/api/v1/customers/{id}", 7L))
                 .andExpect(status().isNoContent());
         verify(customerService).delete(7L);
@@ -204,9 +215,11 @@ class CustomerControllerTest {
     @Test
     @DisplayName("존재하지 않는 고객사 삭제 시 404")
     void delete_fail_not_found() throws Exception {
+        // given
         willThrow(new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND))
                 .given(customerService).delete(99L);
 
+        // when & then
         mockMvc.perform(delete("/api/v1/customers/{id}", 99L))
                 .andExpect(status().isNotFound());
     }

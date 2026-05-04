@@ -19,7 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,8 +65,8 @@ class AuthServiceTest {
         TokenResponse response = authService.login(request);
 
         // then
-        assertNotNull(response);
-        assertEquals("mock.jwt.token", response.accessToken());
+        assertThat(response).isNotNull();
+        assertThat(response.accessToken()).isEqualTo("mock.jwt.token");
     }
 
     @Test
@@ -76,8 +77,9 @@ class AuthServiceTest {
         given(employeeRepository.findNotResignedByLoginId(TEST_ID)).willReturn(Optional.empty());
 
         // when & then
-        BusinessException exception = assertThrows(BusinessException.class, () -> authService.login(request));
-        assertEquals(EmployeeErrorCode.EMPLOYEE_NOT_FOUND, exception.getErrorCode());
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", EmployeeErrorCode.EMPLOYEE_NOT_FOUND);
     }
 
     @Test
@@ -94,7 +96,8 @@ class AuthServiceTest {
         given(passwordEncoder.matches(TEST_PASSWORD, employee.getPassword())).willReturn(false);
 
         // when & then
-        BusinessException exception = assertThrows(BusinessException.class, () -> authService.login(request));
-        assertEquals(EmployeeErrorCode.INVALID_PASSWORD, exception.getErrorCode());
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", EmployeeErrorCode.INVALID_PASSWORD);
     }
 }
