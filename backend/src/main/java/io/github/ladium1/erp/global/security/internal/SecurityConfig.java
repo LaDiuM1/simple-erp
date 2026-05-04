@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.global.security.internal;
 
+import io.github.ladium1.erp.global.logging.LoggingMdcFilter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -67,7 +68,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
+
+                // 인증 직후에 MDC 부착 -> 컨트롤러 / 서비스 로그 라인에 traceId / userId 가 따라가도록
+                .addFilterAfter(new LoggingMdcFilter(), JwtAuthenticationFilter.class);
 
         return http.build();
     }
