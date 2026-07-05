@@ -17,8 +17,15 @@ export function formatRelativeTime(iso: string): string {
   return `${target.getFullYear()}.${pad(target.getMonth() + 1)}.${pad(target.getDate())}`;
 }
 
-export function formatClockTime(date: Date): string {
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+/** "M/D" 형태의 짧은 날짜 — 차트 x축 / 팔로업 마지막 접촉일 등 컴팩트 표기. */
+export function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+/** 주어진 시점부터 오늘까지 경과 일수. */
+export function daysSince(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 }
 
 export function formatTodayLong(date: Date): string {
