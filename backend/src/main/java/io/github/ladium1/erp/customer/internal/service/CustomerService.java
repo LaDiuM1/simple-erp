@@ -49,6 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -118,6 +119,16 @@ public class CustomerService implements CustomerApi {
                         .createdAt(c.getCreatedAt())
                         .build())
                 .toList();
+    }
+
+    @Override
+    public long countCreatedSince(LocalDateTime since) {
+        return customerRepository.countByCreatedAtGreaterThanEqual(since);
+    }
+
+    @Override
+    public Optional<Set<Long>> resolveVisibleCustomerIds() {
+        return resolveVisibleIds();
     }
 
     public PageResponse<CustomerSummaryResponse> search(CustomerSearchCondition condition, Pageable pageable) {

@@ -1,4 +1,4 @@
-import { styled } from '@mui/material/styles';
+import { alpha, styled } from '@mui/material/styles';
 import { AppBar, Box } from '@mui/material';
 import { NavLink } from 'react-router-dom';
 
@@ -18,7 +18,7 @@ export const StyledAppBar = styled(AppBar)(({ theme }) => ({
   backgroundColor: theme.palette.background.paper,
   color: theme.palette.text.primary,
   borderBottom: `1px solid ${theme.palette.divider}`,
-  boxShadow: '0 2px 6px -1px rgba(15, 23, 42, 0.06)',
+  boxShadow: 'none',
 }));
 
 export const AppBarInner = styled(Box)({
@@ -39,7 +39,7 @@ export const HamburgerButton = styled(Box)(({ theme }) => ({
   cursor: 'pointer',
   transition: 'background-color 0.15s',
   flexShrink: 0,
-  '&:hover': { backgroundColor: 'rgba(15, 23, 42, 0.06)' },
+  '&:hover': { backgroundColor: alpha(theme.palette.text.primary, 0.05) },
   [theme.breakpoints.down('md')]: { display: 'flex' },
 }));
 
@@ -61,8 +61,8 @@ export const BrandLink = styled(NavLink)({
 export const BrandLogo = styled(Box)(({ theme }) => ({
   width: 36,
   height: 36,
-  backgroundColor: theme.palette.primary.main,
-  borderRadius: 6,
+  backgroundColor: theme.palette.text.primary,
+  borderRadius: 8,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -90,12 +90,11 @@ export const MobileOverlay = styled(Box)({
 
 export const Sidebar = styled(Box)(({ theme }) => ({
   width: SIDEBAR_WIDTH,
-  backgroundColor: theme.palette.headerBg,
+  backgroundColor: theme.palette.background.paper,
   borderRight: `1px solid ${theme.palette.divider}`,
-  padding: '0.625rem 0.5rem 1.25rem',
+  padding: '0.625rem 0.75rem 1.25rem',
   overflowY: 'auto',
   flexShrink: 0,
-  boxShadow: '4px 0 10px -3px rgba(15, 23, 42, 0.06)',
   position: 'relative',
   zIndex: 1,
   [theme.breakpoints.down('md')]: {
@@ -118,54 +117,72 @@ export const NavGroup = styled(Box)({
   '& + &': { marginTop: '0.125rem' },
 });
 
+/**
+ * 그룹 헤더 — Ink & White 톤의 uppercase 마이크로 라벨. 접기/펼치기 버튼 역할은 유지.
+ */
 export const NavGroupHeader = styled('button')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   width: '100%',
-  padding: '0.5rem 0.625rem',
+  padding: '0.875rem 0.625rem 0.375rem',
   border: 'none',
   borderRadius: 0,
   backgroundColor: 'transparent',
-  fontSize: '0.9375rem',
+  fontSize: '0.6875rem',
   fontWeight: 700,
-  letterSpacing: '-0.005em',
-  color: theme.palette.text.primary,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase',
+  color: theme.palette.text.disabled,
   cursor: 'pointer',
   textAlign: 'left',
   fontFamily: 'inherit',
-  transition: 'background-color 0.12s',
-  '&:hover': { backgroundColor: 'rgba(15, 23, 42, 0.04)' },
+  transition: 'color 0.12s',
+  '&:hover': { color: theme.palette.text.secondary },
   '&:focus-visible': {
     outline: `2px solid ${theme.palette.primary.light}`,
     outlineOffset: -2,
   },
 }));
 
+/**
+ * 네비 항목 — active 는 배경 틴트 대신 잉크 텍스트 + 좌측 2px 잉크 바 (Ink & White).
+ */
 export const NavItem = styled(NavLink)(({ theme }) => ({
+  position: 'relative',
   display: 'flex',
   alignItems: 'center',
-  padding: '0.375rem 0.625rem',
+  padding: '0.4375rem 0.625rem',
   margin: 0,
   borderRadius: 0,
   fontSize: '0.8125rem',
   fontWeight: 500,
   color: theme.palette.text.secondary,
   textDecoration: 'none',
-  transition: 'background-color 0.12s, color 0.12s',
+  transition: 'color 0.12s',
   '&:hover': {
-    backgroundColor: 'rgba(15, 23, 42, 0.04)',
     color: theme.palette.text.primary,
   },
   '&.active': {
-    backgroundColor: 'rgba(59, 130, 246, 0.09)',
-    color: theme.palette.primary.main,
-    fontWeight: 600,
+    color: theme.palette.text.primary,
+    fontWeight: 650,
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      left: '-0.75rem',
+      top: 5,
+      bottom: 5,
+      width: 2,
+      backgroundColor: theme.palette.text.primary,
+    },
   },
 }));
 
 export const ChildNavItem = styled(NavItem)({
-  paddingLeft: '1.625rem',
+  paddingLeft: '1.125rem',
+  '&.active::before': {
+    left: '-0.75rem',
+  },
 });
 
 export const ContentColumn = styled(Box)({

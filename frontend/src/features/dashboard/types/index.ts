@@ -42,10 +42,33 @@ export interface RecentSalesActivity {
   ourEmployeeName: string | null;
 }
 
+export interface WeeklyActivityCount {
+  /** 해당 주의 월요일 (ISO date) */
+  weekStart: string;
+  count: number;
+}
+
+export interface FollowUpCustomer {
+  customerId: number;
+  customerCode: string | null;
+  customerName: string | null;
+  /** null = 활동 기록 없음 */
+  lastActivityDate: string | null;
+  primaryAssigneeId: number | null;
+  primaryAssigneeName: string | null;
+}
+
 export interface DashboardSummary {
   kpi: DashboardKpi;
   recentCustomers: RecentCustomer[];
   recentActivities: RecentSalesActivity[];
+  /** 최근 8주 활동 추이 — 오래된 주 -> 이번 주 순 */
+  weeklyActivityTrend: WeeklyActivityCount[];
+  followUps: FollowUpCustomer[];
+  newCustomersThisWeek: number;
+  newSalesContactsThisWeek: number;
+  newSalesContactsThisMonth: number;
+  uncontactedCustomersThisMonth: number;
 }
 
 export { CUSTOMER_STATUS_LABELS, CUSTOMER_TYPE_LABELS };

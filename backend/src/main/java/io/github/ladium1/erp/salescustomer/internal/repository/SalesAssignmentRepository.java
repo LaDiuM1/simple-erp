@@ -20,6 +20,11 @@ public interface SalesAssignmentRepository extends JpaRepository<SalesAssignment
     List<SalesAssignment> findByCustomerIdInAndEndDateIsNull(Collection<Long> customerIds);
 
     /**
+     * 전체 활성 배정 — 대시보드 팔로업 대상 (담당이 배정된 고객사) 산출용.
+     */
+    List<SalesAssignment> findByEndDateIsNull();
+
+    /**
      * 한 고객사에 현재 주담당이 있는지 — primary 변경 시 기존 primary 해제용.
      */
     List<SalesAssignment> findByCustomerIdAndPrimaryTrueAndEndDateIsNull(Long customerId);

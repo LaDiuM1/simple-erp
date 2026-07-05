@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { alpha } from '@mui/material/styles';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -219,7 +220,7 @@ function ProfileLink({ profile, onClick }: { profile: ProfileSummary; onClick: (
         borderRadius: '6px',
         textAlign: 'left',
         transition: 'background-color 0.15s',
-        '&:hover': { backgroundColor: 'rgba(15, 23, 42, 0.05)' },
+        '&:hover': { backgroundColor: (theme) => alpha(theme.palette.text.primary, 0.05) },
       }}
     >
       <Typography

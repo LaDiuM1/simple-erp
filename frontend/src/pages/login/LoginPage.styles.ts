@@ -1,4 +1,4 @@
-import { styled } from '@mui/material/styles';
+import { alpha, styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import InputBase from '@mui/material/InputBase';
@@ -81,11 +81,11 @@ export const StyledInput = styled(InputBase)(({ theme }) => ({
   borderRadius: 8,
   backgroundColor: theme.palette.background.paper,
   border: `1.5px solid ${theme.palette.divider}`,
-  boxShadow: '0 0 0 0 rgba(59, 130, 246, 0)',
+  boxShadow: `0 0 0 0 ${alpha(theme.palette.primary.main, 0)}`,
   transition: 'border-color 0.15s, box-shadow 0.15s',
   '&.Mui-focused': {
     borderColor: theme.palette.primary.light,
-    boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.12)',
+    boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.12)}`,
   },
   '& input': {
     padding: '0.6875rem 0.875rem',

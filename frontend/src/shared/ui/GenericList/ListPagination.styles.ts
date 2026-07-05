@@ -1,9 +1,9 @@
-import { styled } from '@mui/material/styles';
+import { alpha, styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Pagination from '@mui/material/Pagination';
 import Typography from '@mui/material/Typography';
 
-/** 목록 하단 페이지네이션 바 — surface 임베드. 상단 구분선 + 위쪽 그림자. */
+/** 목록 하단 페이지네이션 바 — surface 임베드. 상단 헤어라인 구분선. */
 export const PaginationBar = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
@@ -11,7 +11,6 @@ export const PaginationBar = styled(Box)(({ theme }) => ({
   gap: '0.75rem',
   padding: '0.75rem 1.25rem',
   borderTop: `1px solid ${theme.palette.divider}`,
-  boxShadow: '0 -2px 6px -2px rgba(15, 23, 42, 0.05)',
   flexShrink: 0,
   backgroundColor: theme.palette.background.paper,
   position: 'relative',
@@ -53,7 +52,7 @@ export const StyledPagination = styled(Pagination)(({ theme }) => ({
     borderRadius: '8px',
     transition: 'background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
     '&:hover': {
-      backgroundColor: 'rgba(15, 23, 42, 0.05)',
+      backgroundColor: alpha(theme.palette.text.primary, 0.05),
       color: theme.palette.text.primary,
     },
     '&.Mui-disabled': { opacity: 0.35 },
@@ -68,13 +67,12 @@ export const StyledPagination = styled(Pagination)(({ theme }) => ({
     backgroundColor: theme.palette.primary.main,
     color: theme.palette.primary.contrastText,
     fontWeight: 600,
-    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.12)',
     '&:hover': { backgroundColor: theme.palette.primary.dark },
   },
   '& .MuiPaginationItem-previousNext, & .MuiPaginationItem-firstLast': {
     color: theme.palette.text.secondary,
     '&:hover': {
-      backgroundColor: 'rgba(15, 23, 42, 0.05)',
+      backgroundColor: alpha(theme.palette.text.primary, 0.05),
       color: theme.palette.text.primary,
     },
   },

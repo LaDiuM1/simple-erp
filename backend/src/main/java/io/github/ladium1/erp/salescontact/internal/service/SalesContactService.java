@@ -50,6 +50,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -117,6 +118,11 @@ public class SalesContactService implements SalesContactApi {
     @Override
     public long count() {
         return contactRepository.count();
+    }
+
+    @Override
+    public long countCreatedSince(LocalDateTime since) {
+        return contactRepository.countByCreatedAtGreaterThanEqual(since);
     }
 
     @Override
