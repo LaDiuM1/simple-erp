@@ -57,24 +57,25 @@ const theme = createTheme({
     values: { xs: 0, sm: 480, md: 768, lg: 1024, xl: 1280 },
   },
   palette: {
+    // 2026 리뉴얼 — Ink & White + 코발트. 잉크 텍스트 / 헤어라인 보더 / 코발트 원포인트
     primary: {
-      main: '#3B82F6',
-      dark: '#2563EB',
-      light: '#93C5FD',
+      main: '#2453E6',
+      dark: '#1B41BE',
+      light: '#94ADF4',
       contrastText: '#ffffff',
     },
-    primarySubtle: '#EFF6FF',
-    primaryLight: '#DBEAFE',
+    primarySubtle: '#EEF2FE',
+    primaryLight: '#D9E2FC',
     background: {
       default: '#FFFFFF',
       paper: '#FFFFFF',
     },
     text: {
-      primary: '#1E293B',
-      secondary: '#64748B',
-      disabled: '#94A3B8',
+      primary: '#131519',
+      secondary: '#697077',
+      disabled: '#A6ABB3',
     },
-    divider: '#E2E8F0',
+    divider: '#ECEDF0',
     error: {
       main: '#EF4444',
       dark: '#dc2626',
@@ -86,19 +87,21 @@ const theme = createTheme({
     success: {
       main: '#0f903a',
     },
-    headerBg: '#F8FAFC',
+    headerBg: '#F8F9FA',
     successBg: '#D1FAE5',
     successDark: '#065F46',
     statusActive: '#10B981',
     statusPending: '#F59E0B',
-    loginGradient: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 50%, #f0fdf4 100%)',
-    profileGradient: 'linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)',
+    loginGradient: 'linear-gradient(135deg, #EEF2FE 0%, #F6F8FE 50%, #F0FDF4 100%)',
+    profileGradient: 'linear-gradient(135deg, #EEF2FE 0%, #F6F8FE 100%)',
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 10,
   },
   typography: {
     fontFamily: [
+      '"Pretendard Variable"',
+      'Pretendard',
       '-apple-system',
       'BlinkMacSystemFont',
       '"Segoe UI"',
@@ -127,7 +130,7 @@ const theme = createTheme({
         disableElevation: true,
       },
       styleOverrides: {
-        root: { textTransform: 'none', borderRadius: '6px' },
+        root: { textTransform: 'none', borderRadius: '8px' },
       },
     },
     /**
@@ -183,7 +186,7 @@ const theme = createTheme({
     MuiOutlinedInput: {
       styleOverrides: {
         root: ({ theme: t }) => ({
-          borderRadius: '6px',
+          borderRadius: '8px',
           transition: 'box-shadow 0.15s ease',
           '& .MuiOutlinedInput-notchedOutline': {
             borderColor: t.palette.divider,
