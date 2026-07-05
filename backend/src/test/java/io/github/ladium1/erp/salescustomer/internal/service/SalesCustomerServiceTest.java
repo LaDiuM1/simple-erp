@@ -6,6 +6,8 @@ import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.salescontact.api.SalesContactApi;
+import io.github.ladium1.erp.salescustomer.api.dto.FollowUpCustomerInfo;
+import io.github.ladium1.erp.salescustomer.api.dto.WeeklyActivityCountInfo;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityCreateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityUpdateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesAssignmentCreateRequest;
@@ -29,10 +31,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -291,6 +296,95 @@ class SalesCustomerServiceTest {
         assertThatThrownBy(() -> salesCustomerService.deleteAssignment(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.ASSIGNMENT_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("주간 활동 집계 — 활동 없는 주는 0 채움, 오래된 주 -> 이번 주 순")
+    void count_activities_by_week_success() {
+        // given
+        LocalDate currentWeekStart = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate rangeStart = currentWeekStart.minusWeeks(7);
+        given(activityRepository.findActivityDatesSince(rangeStart.atStartOfDay())).willReturn(List.of(
+                currentWeekStart.atTime(10, 0),
+                currentWeekStart.atTime(14, 0),
+                currentWeekStart.minusWeeks(1).atTime(9, 0)
+        ));
+
+        // when
+        List<WeeklyActivityCountInfo> trend = salesCustomerService.countActivitiesByWeek(8);
+
+        // then
+        assertThat(trend).hasSize(8);
+        assertThat(trend.getFirst().weekStart()).isEqualTo(rangeStart);
+        assertThat(trend.getFirst().count()).isZero();
+        assertThat(trend.get(6).count()).isEqualTo(1L);
+        assertThat(trend.getLast().weekStart()).isEqualTo(currentWeekStart);
+        assertThat(trend.getLast().count()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("팔로업 대상 — 활동 없음 최우선, 이후 오래된 순 + 담당자명 enrich")
+    void find_follow_up_targets_success() {
+        // given
+        SalesAssignment recentCustomer = mockAssignment(1L, 10L, true);
+        SalesAssignment staleCustomer = mockAssignment(2L, 11L, true);
+        SalesAssignment neverContacted = mockAssignment(3L, 10L, true);
+        given(assignmentRepository.findByEndDateIsNull())
+                .willReturn(List.of(recentCustomer, staleCustomer, neverContacted));
+        given(activityRepository.aggregateByCustomerIds(List.of(1L, 2L, 3L))).willReturn(List.of(
+                new AggregatedActivityCount(1L, 3L, LocalDateTime.now().minusDays(1)),
+                new AggregatedActivityCount(2L, 1L, LocalDateTime.now().minusDays(10))
+        ));
+        given(customerApi.findByIds(List.of(3L, 2L))).willReturn(List.of(
+                CustomerInfo.builder().id(2L).code("C0002").name("대양테크").build(),
+                CustomerInfo.builder().id(3L).code("C0003").name("서진레이저").build()
+        ));
+        given(employeeApi.findByIds(any())).willReturn(List.of(
+                EmployeeInfo.builder().id(10L).loginId("kim").name("김대성").build(),
+                EmployeeInfo.builder().id(11L).loginId("park").name("박지훈").build()
+        ));
+
+        // when
+        List<FollowUpCustomerInfo> result = salesCustomerService.findFollowUpTargets(7, 5, null);
+
+        // then
+        assertThat(result).hasSize(2);
+        assertThat(result.getFirst().customerId()).isEqualTo(3L);
+        assertThat(result.getFirst().lastActivityDate()).isNull();
+        assertThat(result.getFirst().primaryAssigneeName()).isEqualTo("김대성");
+        assertThat(result.getLast().customerId()).isEqualTo(2L);
+        assertThat(result.getLast().primaryAssigneeName()).isEqualTo("박지훈");
+    }
+
+    @Test
+    @DisplayName("팔로업 대상 — 가시 고객 집합 밖 고객사 제외 (데이터 스코프)")
+    void find_follow_up_targets_scoped() {
+        // given
+        given(assignmentRepository.findByEndDateIsNull())
+                .willReturn(List.of(mockAssignment(1L, 10L, true), mockAssignment(2L, 11L, true)));
+        given(activityRepository.aggregateByCustomerIds(List.of(2L))).willReturn(List.of());
+        given(customerApi.findByIds(List.of(2L))).willReturn(List.of(
+                CustomerInfo.builder().id(2L).code("C0002").name("대양테크").build()));
+        given(employeeApi.findByIds(List.of(11L))).willReturn(List.of(
+                EmployeeInfo.builder().id(11L).loginId("park").name("박지훈").build()));
+
+        // when
+        List<FollowUpCustomerInfo> result = salesCustomerService.findFollowUpTargets(7, 5, Set.of(2L));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().customerId()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("팔로업 대상 — 활성 배정 없으면 빈 목록")
+    void find_follow_up_targets_empty() {
+        // given
+        given(assignmentRepository.findByEndDateIsNull()).willReturn(List.of());
+
+        // when & then
+        assertThat(salesCustomerService.findFollowUpTargets(7, 5, null)).isEmpty();
+        verify(activityRepository, never()).aggregateByCustomerIds(any());
     }
 
     private SalesActivity mockActivity() {

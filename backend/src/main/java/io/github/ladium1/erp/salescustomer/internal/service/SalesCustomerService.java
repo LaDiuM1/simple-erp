@@ -11,7 +11,9 @@ import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.salescontact.api.SalesContactApi;
 import io.github.ladium1.erp.salescontact.api.dto.SalesContactInfo;
 import io.github.ladium1.erp.salescustomer.api.SalesCustomerApi;
+import io.github.ladium1.erp.salescustomer.api.dto.FollowUpCustomerInfo;
 import io.github.ladium1.erp.salescustomer.api.dto.RecentSalesActivityInfo;
+import io.github.ladium1.erp.salescustomer.api.dto.WeeklyActivityCountInfo;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityCreateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityResponse;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityUpdateRequest;
@@ -34,13 +36,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -94,6 +104,96 @@ public class SalesCustomerService implements SalesCustomerApi {
                             .activityDate(a.getActivityDate())
                             .ourEmployeeId(a.getOurEmployeeId())
                             .ourEmployeeName(employee == null ? null : employee.name())
+                            .build();
+                })
+                .toList();
+    }
+
+    @Override
+    public List<WeeklyActivityCountInfo> countActivitiesByWeek(int weeks) {
+        LocalDate currentWeekStart = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate rangeStart = currentWeekStart.minusWeeks(weeks - 1L);
+
+        // 활동 일시만 가져와 주(월요일 시작) 단위로 버킷팅 — DB 방언 의존 없는 집계
+        Map<LocalDate, Long> countsByWeek = activityRepository.findActivityDatesSince(rangeStart.atStartOfDay()).stream()
+                .collect(groupingBy(
+                        d -> d.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                        counting()
+                ));
+
+        return IntStream.range(0, weeks)
+                .mapToObj(i -> {
+                    LocalDate weekStart = rangeStart.plusWeeks(i);
+                    return WeeklyActivityCountInfo.builder()
+                            .weekStart(weekStart)
+                            .count(countsByWeek.getOrDefault(weekStart, 0L))
+                            .build();
+                })
+                .toList();
+    }
+
+    @Override
+    public long countDistinctCustomersWithActivitySince(LocalDateTime since) {
+        return activityRepository.countDistinctCustomerIdsSince(since);
+    }
+
+    @Override
+    public List<FollowUpCustomerInfo> findFollowUpTargets(int staleDays, int limit, Set<Long> visibleCustomerIds) {
+        List<SalesAssignment> activeAssignments = assignmentRepository.findByEndDateIsNull().stream()
+                .filter(a -> visibleCustomerIds == null || visibleCustomerIds.contains(a.getCustomerId()))
+                .toList();
+        if (activeAssignments.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> customerIds = activeAssignments.stream().map(SalesAssignment::getCustomerId).distinct().toList();
+        Map<Long, AggregatedActivityCount> activityMap = activityRepository.aggregateByCustomerIds(customerIds).stream()
+                .collect(toMap(AggregatedActivityCount::customerId, a -> a));
+
+        // 마지막 활동이 없거나 cutoff 이전인 고객만 — 활동 없음이 최우선, 이후 오래된 순
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(staleDays);
+        List<Long> targetIds = customerIds.stream()
+                .filter(cid -> {
+                    AggregatedActivityCount act = activityMap.get(cid);
+                    return act == null || act.lastActivityDate().isBefore(cutoff);
+                })
+                .sorted(Comparator.comparing(
+                        cid -> activityMap.get(cid) == null ? null : activityMap.get(cid).lastActivityDate(),
+                        Comparator.nullsFirst(Comparator.naturalOrder())
+                ))
+                .limit(limit)
+                .toList();
+        if (targetIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, CustomerInfo> customerMap = customerApi.findByIds(targetIds).stream()
+                .collect(toMap(CustomerInfo::id, c -> c));
+        Map<Long, SalesAssignment> primaryByCustomer = activeAssignments.stream()
+                .filter(SalesAssignment::isPrimary)
+                .collect(toMap(SalesAssignment::getCustomerId, a -> a, (a, b) -> a));
+        List<Long> assigneeIds = targetIds.stream()
+                .map(primaryByCustomer::get)
+                .filter(java.util.Objects::nonNull)
+                .map(SalesAssignment::getEmployeeId)
+                .distinct()
+                .toList();
+        Map<Long, EmployeeInfo> employeeMap = employeeApi.findByIds(assigneeIds).stream()
+                .collect(toMap(EmployeeInfo::id, e -> e));
+
+        return targetIds.stream()
+                .map(cid -> {
+                    CustomerInfo customer = customerMap.get(cid);
+                    AggregatedActivityCount act = activityMap.get(cid);
+                    SalesAssignment primary = primaryByCustomer.get(cid);
+                    EmployeeInfo assignee = primary == null ? null : employeeMap.get(primary.getEmployeeId());
+                    return FollowUpCustomerInfo.builder()
+                            .customerId(cid)
+                            .customerCode(customer == null ? null : customer.code())
+                            .customerName(customer == null ? null : customer.name())
+                            .lastActivityDate(act == null ? null : act.lastActivityDate())
+                            .primaryAssigneeId(primary == null ? null : primary.getEmployeeId())
+                            .primaryAssigneeName(assignee == null ? null : assignee.name())
                             .build();
                 })
                 .toList();

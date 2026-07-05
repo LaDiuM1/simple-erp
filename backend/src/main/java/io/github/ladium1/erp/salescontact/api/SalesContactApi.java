@@ -3,6 +3,7 @@ package io.github.ladium1.erp.salescontact.api;
 import io.github.ladium1.erp.salescontact.api.dto.RecentSalesContactInfo;
 import io.github.ladium1.erp.salescontact.api.dto.SalesContactInfo;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface SalesContactApi {
@@ -26,4 +27,9 @@ public interface SalesContactApi {
      * 최근 등록된 영업 명부 N건 (createdAt 내림차순) — 대시보드 용.
      */
     List<RecentSalesContactInfo> findRecent(int limit);
+
+    /**
+     * 주어진 시점 이후 등록된 영업 명부 수 — 대시보드 기간 증감용.
+     */
+    long countCreatedSince(LocalDateTime since);
 }
