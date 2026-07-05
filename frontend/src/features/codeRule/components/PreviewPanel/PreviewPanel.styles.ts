@@ -7,7 +7,6 @@ export const PanelRoot = styled(Box)(({ theme }) => ({
   borderRadius: 10,
   backgroundColor: theme.palette.background.paper,
   padding: '1.25rem 1.375rem 1.5rem',
-  boxShadow: '0 2px 12px -4px rgba(15, 23, 42, 0.06)',
 }));
 
 export const PanelTitle = styled(Typography)(({ theme }) => ({

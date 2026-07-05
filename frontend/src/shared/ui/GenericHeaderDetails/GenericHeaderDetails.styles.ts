@@ -20,7 +20,6 @@ export const HeaderDetailsRoot = styled(Box)(({ theme }) => ({
     top: '-2rem',
   },
   zIndex: 2,
-  boxShadow: '0 2px 6px -1px rgba(15, 23, 42, 0.05)',
 }));
 
 interface TableProps {

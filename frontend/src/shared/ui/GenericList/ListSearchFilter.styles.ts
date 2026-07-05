@@ -1,4 +1,4 @@
-import { styled } from '@mui/material/styles';
+import { alpha, styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
@@ -32,7 +32,7 @@ export const ResetButton = styled(IconButton)(({ theme }) => ({
   color: theme.palette.text.secondary,
   '&:hover': {
     color: theme.palette.text.primary,
-    backgroundColor: 'rgba(15, 23, 42, 0.05)',
+    backgroundColor: alpha(theme.palette.text.primary, 0.05),
   },
   [theme.breakpoints.up('md')]: {
     alignSelf: 'center',

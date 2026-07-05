@@ -1,4 +1,4 @@
-import { styled } from '@mui/material/styles';
+import { alpha, styled } from '@mui/material/styles';
 import { AppBar, Box } from '@mui/material';
 import { NavLink } from 'react-router-dom';
 
@@ -39,7 +39,7 @@ export const HamburgerButton = styled(Box)(({ theme }) => ({
   cursor: 'pointer',
   transition: 'background-color 0.15s',
   flexShrink: 0,
-  '&:hover': { backgroundColor: 'rgba(15, 23, 42, 0.06)' },
+  '&:hover': { backgroundColor: alpha(theme.palette.text.primary, 0.05) },
   [theme.breakpoints.down('md')]: { display: 'flex' },
 }));
 
