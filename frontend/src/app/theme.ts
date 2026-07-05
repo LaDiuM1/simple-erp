@@ -99,6 +99,8 @@ const theme = createTheme({
   },
   typography: {
     fontFamily: [
+      '"Pretendard Variable"',
+      'Pretendard',
       '-apple-system',
       'BlinkMacSystemFont',
       '"Segoe UI"',
