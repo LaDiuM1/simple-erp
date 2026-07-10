@@ -93,6 +93,13 @@ public class EmployeeService implements EmployeeApi {
     }
 
     @Override
+    public List<EmployeeInfo> findAllActive() {
+        List<Employee> employees = employeeRepository.findByStatusNot(EmployeeStatus.RESIGNED);
+        ReferenceCache refs = loadReferences(employees);
+        return employees.stream().map(e -> toInfo(e, refs)).toList();
+    }
+
+    @Override
     public List<Long> findIdsByDepartmentIds(Collection<Long> departmentIds) {
         if (departmentIds == null || departmentIds.isEmpty()) {
             return List.of();
