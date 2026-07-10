@@ -34,6 +34,23 @@ import SalesContactListPage from '@/pages/salesContact/SalesContactListPage';
 import SalesContactCreatePage from '@/pages/salesContact/SalesContactCreatePage';
 import SalesContactEditPage from '@/pages/salesContact/SalesContactEditPage';
 import SalesContactDetailPage from '@/pages/salesContact/SalesContactDetailPage';
+import ApprovalListPage from '@/pages/approval/ApprovalListPage';
+import ApprovalCreatePage from '@/pages/approval/ApprovalCreatePage';
+import ApprovalDetailPage from '@/pages/approval/ApprovalDetailPage';
+import ExpenseListPage from '@/pages/expense/ExpenseListPage';
+import ExpenseCreatePage from '@/pages/expense/ExpenseCreatePage';
+import ExpenseDetailPage from '@/pages/expense/ExpenseDetailPage';
+import AttendanceMePage from '@/pages/attendance/AttendanceMePage';
+import AttendanceStatusPage from '@/pages/attendance/AttendanceStatusPage';
+import LeaveMePage from '@/pages/attendance/LeaveMePage';
+import LeaveCreatePage from '@/pages/attendance/LeaveCreatePage';
+import LeaveStatusPage from '@/pages/attendance/LeaveStatusPage';
+import LeaveBalancePage from '@/pages/attendance/LeaveBalancePage';
+import BoardListPage from '@/pages/board/BoardListPage';
+import BoardCreatePage from '@/pages/board/BoardCreatePage';
+import BoardEditPage from '@/pages/board/BoardEditPage';
+import BoardDetailPage from '@/pages/board/BoardDetailPage';
+import DrivePage from '@/pages/drive/DrivePage';
 
 export default function AppRoutes() {
   return (
@@ -73,6 +90,23 @@ export default function AppRoutes() {
         <Route path="/sales-contacts/new" element={<SalesContactCreatePage />} />
         <Route path="/sales-contacts/:id/edit" element={<SalesContactEditPage />} />
         <Route path="/sales-contacts/:id" element={<SalesContactDetailPage />} />
+        <Route path="/approvals" element={<ApprovalListPage />} />
+        <Route path="/approvals/new" element={<ApprovalCreatePage />} />
+        <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
+        <Route path="/expenses" element={<ExpenseListPage />} />
+        <Route path="/expenses/new" element={<ExpenseCreatePage />} />
+        <Route path="/expenses/:id" element={<ExpenseDetailPage />} />
+        <Route path="/attendance" element={<AttendanceMePage />} />
+        <Route path="/attendance/status" element={<AttendanceStatusPage />} />
+        <Route path="/leaves" element={<LeaveMePage />} />
+        <Route path="/leaves/new" element={<LeaveCreatePage />} />
+        <Route path="/leaves/status" element={<LeaveStatusPage />} />
+        <Route path="/leaves/balances" element={<LeaveBalancePage />} />
+        <Route path="/boards" element={<BoardListPage />} />
+        <Route path="/boards/new" element={<BoardCreatePage />} />
+        <Route path="/boards/:id/edit" element={<BoardEditPage />} />
+        <Route path="/boards/:id" element={<BoardDetailPage />} />
+        <Route path="/drive" element={<DrivePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
