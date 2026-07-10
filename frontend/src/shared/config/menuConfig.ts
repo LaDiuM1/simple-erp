@@ -11,6 +11,11 @@ export const MENU_CODE = {
   SALES_CUSTOMERS: 'SALES_CUSTOMERS',
   ROLES: 'ROLES',
   CODE_RULES: 'CODE_RULES',
+  APPROVALS: 'APPROVALS',
+  EXPENSES: 'EXPENSES',
+  ATTENDANCE: 'ATTENDANCE',
+  BOARDS: 'BOARDS',
+  DRIVE: 'DRIVE',
 } as const;
 
 export type MenuCode = (typeof MENU_CODE)[keyof typeof MENU_CODE];
@@ -25,6 +30,11 @@ export const MENU_LABEL: Record<MenuCode, string> = {
   [MENU_CODE.SALES_CUSTOMERS]: '고객사 영업 관리',
   [MENU_CODE.ROLES]: '권한 관리',
   [MENU_CODE.CODE_RULES]: '코드 채번 규칙',
+  [MENU_CODE.APPROVALS]: '전자결재',
+  [MENU_CODE.EXPENSES]: '경비 처리',
+  [MENU_CODE.ATTENDANCE]: '근태 관리',
+  [MENU_CODE.BOARDS]: '게시판',
+  [MENU_CODE.DRIVE]: '드라이브',
 };
 
 /** 각 메뉴의 라우트 경로. 페이지 / 권한 게이트가 공통으로 참조. */
@@ -37,6 +47,11 @@ export const MENU_PATH = {
   [MENU_CODE.SALES_CUSTOMERS]: '/sales-customers',
   [MENU_CODE.ROLES]: '/roles',
   [MENU_CODE.CODE_RULES]: '/code-rules',
+  [MENU_CODE.APPROVALS]: '/approvals',
+  [MENU_CODE.EXPENSES]: '/expenses',
+  [MENU_CODE.ATTENDANCE]: '/attendance',
+  [MENU_CODE.BOARDS]: '/boards',
+  [MENU_CODE.DRIVE]: '/drive',
 } as const satisfies Record<MenuCode, string>;
 
 export interface MenuConfig {
@@ -63,6 +78,17 @@ export const MENU_CONFIG: MenuConfig[] = [
     name: '영업 관리',
     children: [
       { code: MENU_CODE.SALES_CUSTOMERS, name: '고객사 영업 관리', to: MENU_PATH.SALES_CUSTOMERS },
+    ],
+  },
+  {
+    code: 'GROUPWARE',
+    name: '그룹웨어',
+    children: [
+      { code: MENU_CODE.APPROVALS, name: '전자결재', to: MENU_PATH.APPROVALS },
+      { code: MENU_CODE.EXPENSES, name: '경비 처리', to: MENU_PATH.EXPENSES },
+      { code: MENU_CODE.ATTENDANCE, name: '근태 관리', to: MENU_PATH.ATTENDANCE },
+      { code: MENU_CODE.BOARDS, name: '게시판', to: MENU_PATH.BOARDS },
+      { code: MENU_CODE.DRIVE, name: '드라이브', to: MENU_PATH.DRIVE },
     ],
   },
   {

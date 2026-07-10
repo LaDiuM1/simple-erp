@@ -80,6 +80,13 @@ export const api = createApi({
     'SalesContact',
     'SalesContactEmployment',
     'AcquisitionSource',
+    'Approval',
+    'Expense',
+    'Attendance',
+    'Leave',
+    'LeaveBalance',
+    'Post',
+    'Drive',
   ],
   endpoints: () => ({}),
 });

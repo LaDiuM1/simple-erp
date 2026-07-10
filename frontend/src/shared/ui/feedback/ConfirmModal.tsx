@@ -13,6 +13,8 @@ interface Props {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  /** 확인 동작 in-flight 중 재클릭 (중복 요청) 방지용 비활성화. */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -24,6 +26,7 @@ export default function ConfirmModal({
   confirmLabel = '확인',
   cancelLabel = '취소',
   danger = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: Props) {
@@ -98,6 +101,7 @@ export default function ConfirmModal({
         <Button
           variant="contained"
           onClick={onConfirm}
+          disabled={confirmDisabled}
           color={danger ? 'error' : 'primary'}
           sx={{
             px: '1rem',

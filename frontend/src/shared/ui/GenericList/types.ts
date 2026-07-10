@@ -78,6 +78,8 @@ export interface SearchFilterItem {
   type: 'search';
   key: string;
   placeholder?: string;
+  /** 초기값 (미지정 시 null). 필터 초기화 시에도 이 값으로 복귀한다. */
+  defaultValue?: string | number | null;
 }
 
 export interface SelectFilterItem {
@@ -88,15 +90,31 @@ export interface SelectFilterItem {
   useOptions?: () => { data?: unknown };
   mapOptions?: (data: unknown) => FilterOption[];
   minWidth?: number;
+  /** 초기값 (미지정 시 null). 필터 초기화 시에도 이 값으로 복귀한다. */
+  defaultValue?: string | number | null;
+  /** null 선택지 표기 (기본 '전체'). null 이 '전체' 가 아닌 의미 (예: 현재 년/월) 일 때 지정. */
+  allLabel?: string;
+}
+
+/** 날짜 필터 — 값은 'YYYY-MM-DD' 문자열 또는 null. 기간 검색은 시작/종료 2개 항목으로 구성. */
+export interface DateFilterItem {
+  type: 'date';
+  key: string;
+  label: string;
+  minWidth?: number;
+  /** 초기값 (미지정 시 null, 'YYYY-MM-DD'). 필터 초기화 시에도 이 값으로 복귀한다. */
+  defaultValue?: string | null;
 }
 
 export interface CustomFilterItem {
   type: 'custom';
   key: string;
   render: (ctx: { value: unknown; onChange: (value: unknown) => void }) => ReactNode;
+  /** 초기값 (미지정 시 null). 필터 초기화 시에도 이 값으로 복귀한다. */
+  defaultValue?: string | number | null;
 }
 
-export type FilterConfig = SearchFilterItem | SelectFilterItem | CustomFilterItem;
+export type FilterConfig = SearchFilterItem | SelectFilterItem | DateFilterItem | CustomFilterItem;
 
 export interface ListQueryParamsBase {
   page: number;

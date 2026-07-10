@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import Box from '@mui/material/Box';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -7,6 +8,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterSelect from '@/shared/ui/atoms/FilterSelect';
 import {
+  DateTextField,
   FilterBarContainer,
   FilterGroup,
   ResetButton,
@@ -14,6 +16,7 @@ import {
 } from './ListSearchFilter.styles';
 import type {
   CustomFilterItem,
+  DateFilterItem,
   FilterConfig,
   FilterOption,
   SearchFilterItem,
@@ -93,6 +96,9 @@ function FilterItemRenderer({
   if (item.type === 'select') {
     return <SelectField item={item} value={value} onChange={onChange} />;
   }
+  if (item.type === 'date') {
+    return <DateField item={item} value={value} onChange={onChange} />;
+  }
   return <CustomField item={item} value={value} onChange={onChange} />;
 }
 
@@ -113,6 +119,7 @@ function SelectField({
         fallbackOptions={item.options ?? []}
         label={item.label}
         minWidth={item.minWidth}
+        allLabel={item.allLabel}
         value={value}
         onChange={onChange}
       />
@@ -125,6 +132,7 @@ function SelectField({
       onChange={(v) => onChange(v)}
       options={item.options ?? []}
       minWidth={item.minWidth}
+      allLabel={item.allLabel}
     />
   );
 }
@@ -135,6 +143,7 @@ function DynamicSelect({
   fallbackOptions,
   label,
   minWidth,
+  allLabel,
   value,
   onChange,
 }: {
@@ -143,6 +152,7 @@ function DynamicSelect({
   fallbackOptions: FilterOption[];
   label: string;
   minWidth?: number;
+  allLabel?: string;
   value: unknown;
   onChange: (value: unknown) => void;
 }) {
@@ -157,6 +167,39 @@ function DynamicSelect({
       onChange={(v) => onChange(v)}
       options={options}
       minWidth={minWidth}
+      allLabel={allLabel}
+    />
+  );
+}
+
+function DateField({
+  item,
+  value,
+  onChange,
+}: {
+  item: DateFilterItem;
+  value: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  return (
+    <DateTextField
+      size="small"
+      variant="outlined"
+      type="date"
+      value={typeof value === 'string' ? value : ''}
+      onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
+      sx={item.minWidth ? { minWidth: item.minWidth } : undefined}
+      slotProps={{
+        input: {
+          startAdornment: (
+            <InputAdornment position="start">
+              <Box component="span" sx={{ fontSize: '0.8125rem', color: 'text.disabled' }}>
+                {item.label}
+              </Box>
+            </InputAdornment>
+          ),
+        },
+      }}
     />
   );
 }
