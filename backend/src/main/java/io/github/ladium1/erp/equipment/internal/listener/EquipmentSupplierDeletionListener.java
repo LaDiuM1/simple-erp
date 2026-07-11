@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class SupplierDeletionListener {
+public class EquipmentSupplierDeletionListener {
 
     private final EquipmentRepository equipmentRepository;
 

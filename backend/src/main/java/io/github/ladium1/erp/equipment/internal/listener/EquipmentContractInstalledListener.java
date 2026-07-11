@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class ContractInstalledListener {
+public class EquipmentContractInstalledListener {
 
     private final EquipmentService equipmentService;
 
