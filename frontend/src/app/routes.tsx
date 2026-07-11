@@ -33,6 +33,7 @@ import SupplierCreatePage from '@/pages/supplier/SupplierCreatePage';
 import SupplierEditPage from '@/pages/supplier/SupplierEditPage';
 import SupplierDetailPage from '@/pages/supplier/SupplierDetailPage';
 import ProductListPage from '@/pages/product/ProductListPage';
+import ProductCategoryPage from '@/pages/product/ProductCategoryPage';
 import ProductCreatePage from '@/pages/product/ProductCreatePage';
 import ProductEditPage from '@/pages/product/ProductEditPage';
 import ProductDetailPage from '@/pages/product/ProductDetailPage';
@@ -97,6 +98,7 @@ export default function AppRoutes() {
         <Route path="/suppliers/:id/edit" element={<SupplierEditPage />} />
         <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
         <Route path="/products" element={<ProductListPage />} />
+        <Route path="/products/categories" element={<ProductCategoryPage />} />
         <Route path="/products/new" element={<ProductCreatePage />} />
         <Route path="/products/:id/edit" element={<ProductEditPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />

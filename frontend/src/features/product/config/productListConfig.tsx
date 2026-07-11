@@ -9,11 +9,8 @@ import Muted from '@/shared/ui/atoms/Muted';
 import { useGetSuppliersQuery } from '@/features/reference/api/referenceApi';
 import type { SupplierInfo } from '@/features/reference/types';
 import { ACTIVE_FILTER_OPTIONS } from '@/features/supplier/types';
-import {
-  PRODUCT_CATEGORY_LABELS,
-  PRODUCT_CATEGORY_OPTIONS,
-  type ProductSummary,
-} from '@/features/product/types';
+import { useGetProductCategoriesQuery } from '@/features/product/api/productApi';
+import type { ProductCategorySummary, ProductSummary } from '@/features/product/types';
 
 /** 공급사 필터 옵션 — 영문 표기 (+ 한글 표기) 함께 노출. */
 function mapSupplierOptions(data: unknown): FilterOption[] {
@@ -21,6 +18,11 @@ function mapSupplierOptions(data: unknown): FilterOption[] {
     value: s.id,
     label: s.nameKo ? `${s.name} (${s.nameKo})` : s.name,
   }));
+}
+
+/** 카테고리 필터 옵션 — 관리 화면의 노출 순서 그대로. */
+function mapCategoryOptions(data: unknown): FilterOption[] {
+  return (data as ProductCategorySummary[]).map((c) => ({ value: c.id, label: c.name }));
 }
 
 export const productListColumns: ColumnConfig<ProductSummary>[] = [
@@ -38,12 +40,10 @@ export const productListColumns: ColumnConfig<ProductSummary>[] = [
     ),
   },
   {
-    key: 'category',
+    key: 'categoryName',
     label: '카테고리',
-    sortable: true,
-    sortDirection: 'asc',
     width: 140,
-    render: (m) => PRODUCT_CATEGORY_LABELS[m.category],
+    render: (m) => m.categoryName ?? <Muted />,
   },
   {
     key: 'supplierName',
@@ -62,7 +62,14 @@ export const productListColumns: ColumnConfig<ProductSummary>[] = [
 
 export const productListFilters: FilterConfig[] = [
   { type: 'search', key: 'modelNameKeyword', placeholder: '모델명 검색' },
-  { type: 'select', key: 'category', label: '카테고리', options: PRODUCT_CATEGORY_OPTIONS, minWidth: 140 },
+  {
+    type: 'select',
+    key: 'categoryId',
+    label: '카테고리',
+    useOptions: useGetProductCategoriesQuery,
+    mapOptions: mapCategoryOptions,
+    minWidth: 140,
+  },
   {
     type: 'select',
     key: 'supplierId',

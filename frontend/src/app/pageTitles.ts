@@ -23,6 +23,7 @@ const STATIC_TITLES: Record<string, string> = {
   '/suppliers/new': '공급사 등록',
   '/products': '제품 모델 목록',
   '/products/new': '제품 모델 등록',
+  '/products/categories': '제품 카테고리 관리',
   '/sales-customers': '고객사 영업 관리',
   '/sales-contacts': '영업 명부 목록',
   '/sales-contacts/new': '영업 명부 등록',

@@ -3,6 +3,7 @@ import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import type { FieldConfig, FieldOption, FormApiConfig } from '@/shared/ui/GenericForm';
 import {
   useCreateProductMutation,
+  useGetProductCategoriesQuery,
   useGetProductQuery,
   useUpdateProductMutation,
 } from '@/features/product/api/productApi';
@@ -11,9 +12,9 @@ import type { SupplierInfo } from '@/features/reference/types';
 import { ACTIVE_FILTER_OPTIONS } from '@/features/supplier/types';
 import {
   EMPTY_PRODUCT_FORM,
-  PRODUCT_CATEGORY_OPTIONS,
   productDetailToFormValues,
   productFormToRequest,
+  type ProductCategorySummary,
   type ProductCreateRequest,
   type ProductDetail,
   type ProductFormValues,
@@ -28,13 +29,20 @@ function mapSupplierOptions(data: unknown): FieldOption[] {
   }));
 }
 
+/** 카테고리 드롭다운 옵션 — 카테고리 관리 화면의 노출 순서 그대로. */
+function mapCategoryOptions(data: unknown): FieldOption[] {
+  return (data as ProductCategorySummary[]).map((c) => ({ value: c.id, label: c.name }));
+}
+
 export const productFormFields: FieldConfig<ProductFormValues>[] = [
   {
-    key: 'category',
+    key: 'categoryId',
     label: '카테고리',
     type: 'select',
     required: true,
-    options: PRODUCT_CATEGORY_OPTIONS,
+    useOptions: useGetProductCategoriesQuery,
+    mapOptions: mapCategoryOptions,
+    helperText: '분류 추가 / 변경은 목록의 카테고리 관리에서 할 수 있습니다.',
   },
   {
     key: 'modelName',

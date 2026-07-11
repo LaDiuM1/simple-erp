@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import type { ListApiConfig } from '@/shared/ui/GenericList';
 import type { PageHeaderAction } from '@/shared/ui/layout/PageHeaderActions';
@@ -32,6 +33,12 @@ export function useProductListPage(): {
   };
 
   const headerActions: PageHeaderAction[] = [
+    {
+      design: 'secondary',
+      label: '카테고리 관리',
+      icon: <CategoryRoundedIcon />,
+      onClick: () => navigate(`${MENU_PATH[MENU_CODE.PRODUCTS]}/categories`),
+    },
     {
       design: 'create',
       label: '제품 모델 등록',
