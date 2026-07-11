@@ -1,5 +1,8 @@
 package io.github.ladium1.erp.afterservice.internal.service;
 
+import io.github.ladium1.erp.afterservice.api.AfterServiceApi;
+import io.github.ladium1.erp.afterservice.api.dto.EngineerExpenseStat;
+import io.github.ladium1.erp.afterservice.api.dto.ServiceTypeStat;
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceCreateRequest;
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceDetailResponse;
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceExcelRow;
@@ -12,6 +15,7 @@ import io.github.ladium1.erp.afterservice.internal.dto.ServiceVisitRequest;
 import io.github.ladium1.erp.afterservice.internal.dto.ServiceVisitResponse;
 import io.github.ladium1.erp.afterservice.internal.entity.AfterService;
 import io.github.ladium1.erp.afterservice.internal.entity.ServiceExpense;
+import io.github.ladium1.erp.afterservice.internal.entity.ServiceType;
 import io.github.ladium1.erp.afterservice.internal.entity.ServiceVisit;
 import io.github.ladium1.erp.afterservice.internal.excel.AfterServiceExcelExporter;
 import io.github.ladium1.erp.afterservice.internal.exception.AfterServiceErrorCode;
@@ -50,7 +54,7 @@ import static java.util.stream.Collectors.toMap;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class AfterServiceService {
+public class AfterServiceService implements AfterServiceApi {
 
     private final AfterServiceRepository afterServiceRepository;
     private final ServiceVisitRepository visitRepository;
@@ -308,6 +312,39 @@ public class AfterServiceService {
             throw new BusinessException(AfterServiceErrorCode.EXPENSE_NOT_FOUND);
         }
         expenseRepository.deleteById(id);
+    }
+
+    @Override
+    public List<ServiceTypeStat> typeStats(int months) {
+        java.time.LocalDate fromDate = java.time.YearMonth.now().minusMonths(months - 1L).atDay(1);
+        Map<ServiceType, Long> counts = afterServiceRepository.countByTypeSince(fromDate);
+        Map<ServiceType, Long> expenseSums = afterServiceRepository.expenseSumByTypeSince(fromDate);
+
+        // 건수 0 유형도 노출 — 위젯에서 유형 축이 고정되도록 enum 순서 그대로.
+        return java.util.Arrays.stream(ServiceType.values())
+                .map(type -> ServiceTypeStat.builder()
+                        .type(type.name())
+                        .typeLabel(type.getDescription())
+                        .count(counts.getOrDefault(type, 0L))
+                        .expenseTotal(expenseSums.getOrDefault(type, 0L))
+                        .build())
+                .toList();
+    }
+
+    @Override
+    public List<EngineerExpenseStat> engineerExpenseStats(int months) {
+        java.time.LocalDate fromDate = java.time.YearMonth.now().minusMonths(months - 1L).atDay(1);
+        Map<Long, Long> sums = afterServiceRepository.expenseSumByEngineerSince(fromDate);
+        Map<Long, String> names = engineerService.findNamesByIds(sums.keySet().stream().toList());
+
+        return sums.entrySet().stream()
+                .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
+                .map(entry -> EngineerExpenseStat.builder()
+                        .engineerId(entry.getKey())
+                        .engineerName(names.get(entry.getKey()))
+                        .expenseTotal(entry.getValue())
+                        .build())
+                .toList();
     }
 
     /**

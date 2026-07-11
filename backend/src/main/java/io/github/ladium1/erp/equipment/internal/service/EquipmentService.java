@@ -8,6 +8,7 @@ import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.equipment.api.EquipmentApi;
 import io.github.ladium1.erp.equipment.api.EquipmentDeletingEvent;
 import io.github.ladium1.erp.equipment.api.dto.EquipmentInfo;
+import io.github.ladium1.erp.equipment.api.dto.ExpiringWarrantyInfo;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentCreateRequest;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentDetailResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentExcelRow;
@@ -71,6 +72,20 @@ public class EquipmentService implements EquipmentApi {
         }
         return equipmentRepository.findAllById(ids).stream()
                 .map(EquipmentService::toEquipmentInfo)
+                .toList();
+    }
+
+    @Override
+    public List<ExpiringWarrantyInfo> findExpiringWarranties(int days, int limit) {
+        return equipmentRepository.findExpiringWarranties(days, limit).stream()
+                .map(e -> ExpiringWarrantyInfo.builder()
+                        .id(e.getId())
+                        .customerId(e.getCustomerId())
+                        .productId(e.getProductId())
+                        .serialNo(e.getSerialNo())
+                        .oscillatorWarrantyEndDate(e.getOscillatorWarrantyEndDate())
+                        .generalWarrantyEndDate(e.getGeneralWarrantyEndDate())
+                        .build())
                 .toList();
     }
 
