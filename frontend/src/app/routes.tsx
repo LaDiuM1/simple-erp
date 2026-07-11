@@ -28,6 +28,14 @@ import CustomerListPage from '@/pages/customer/CustomerListPage';
 import CustomerCreatePage from '@/pages/customer/CustomerCreatePage';
 import CustomerEditPage from '@/pages/customer/CustomerEditPage';
 import CustomerDetailPage from '@/pages/customer/CustomerDetailPage';
+import SupplierListPage from '@/pages/supplier/SupplierListPage';
+import SupplierCreatePage from '@/pages/supplier/SupplierCreatePage';
+import SupplierEditPage from '@/pages/supplier/SupplierEditPage';
+import SupplierDetailPage from '@/pages/supplier/SupplierDetailPage';
+import ProductListPage from '@/pages/product/ProductListPage';
+import ProductCreatePage from '@/pages/product/ProductCreatePage';
+import ProductEditPage from '@/pages/product/ProductEditPage';
+import ProductDetailPage from '@/pages/product/ProductDetailPage';
 import SalesCustomerListPage from '@/pages/salesCustomer/SalesCustomerListPage';
 import SalesCustomerDetailPage from '@/pages/salesCustomer/SalesCustomerDetailPage';
 import SalesContactListPage from '@/pages/salesContact/SalesContactListPage';
@@ -84,6 +92,14 @@ export default function AppRoutes() {
         <Route path="/customers/new" element={<CustomerCreatePage />} />
         <Route path="/customers/:id/edit" element={<CustomerEditPage />} />
         <Route path="/customers/:id" element={<CustomerDetailPage />} />
+        <Route path="/suppliers" element={<SupplierListPage />} />
+        <Route path="/suppliers/new" element={<SupplierCreatePage />} />
+        <Route path="/suppliers/:id/edit" element={<SupplierEditPage />} />
+        <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
+        <Route path="/products" element={<ProductListPage />} />
+        <Route path="/products/new" element={<ProductCreatePage />} />
+        <Route path="/products/:id/edit" element={<ProductEditPage />} />
+        <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/sales-customers" element={<SalesCustomerListPage />} />
         <Route path="/sales-customers/:customerId" element={<SalesCustomerDetailPage />} />
         <Route path="/sales-contacts" element={<SalesContactListPage />} />
