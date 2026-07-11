@@ -5,6 +5,7 @@ import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
 import io.github.ladium1.erp.coderule.api.InputMode;
 import io.github.ladium1.erp.coderule.api.ResetPolicy;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
+import io.github.ladium1.erp.customer.api.CustomerDeletingEvent;
 import io.github.ladium1.erp.customer.api.CustomerVisibilityContributor;
 import io.github.ladium1.erp.customer.internal.dto.CustomerCreateRequest;
 import io.github.ladium1.erp.customer.internal.dto.CustomerDetailResponse;
@@ -29,6 +30,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
@@ -56,6 +58,7 @@ class CustomerServiceTest {
     @Mock private CustomerExcelExporter customerExcelExporter;
     @Mock private DataScopeResolver dataScopeResolver;
     @Mock private DataScopeContextProvider dataScopeContextProvider;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @Spy private List<CustomerVisibilityContributor> visibilityContributors = new ArrayList<>();
 
     @BeforeEach
@@ -275,12 +278,13 @@ class CustomerServiceTest {
     }
 
     @Test
-    @DisplayName("delete 성공")
+    @DisplayName("delete 성공 — 삭제 전 CustomerDeletingEvent 발행")
     void delete_success() {
         given(customerRepository.existsById(1L)).willReturn(true);
 
         customerService.delete(1L);
 
+        verify(eventPublisher).publishEvent(new CustomerDeletingEvent(1L));
         verify(customerRepository).deleteById(1L);
     }
 
@@ -293,6 +297,7 @@ class CustomerServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
         verify(customerRepository, never()).deleteById(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     private Customer mockCustomer(String code, String name) {

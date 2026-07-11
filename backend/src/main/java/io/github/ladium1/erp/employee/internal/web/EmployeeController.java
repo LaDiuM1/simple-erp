@@ -45,6 +45,14 @@ public class EmployeeController {
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
+    /**
+     * 계약 관리의 계약자 (직원) 검색 SelectField 가 직원 목록 검색을 그대로 사용하므로,
+     * 둘 중 한쪽 메뉴 read 권한이 있으면 허용. (Customer 의 reference 권한과 동일 패턴)
+     */
+    private static final String CAN_READ_REFERENCE =
+            "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'CONTRACTS')";
+
     private final EmployeeService employeeService;
 
     @GetMapping("/me")
@@ -59,7 +67,7 @@ public class EmployeeController {
     }
 
     @GetMapping
-    @PreAuthorize(CAN_READ)
+    @PreAuthorize(CAN_READ_REFERENCE)
     public PageResponse<EmployeeSummaryResponse> search(
             @RequestParam(required = false) String loginIdKeyword,
             @RequestParam(required = false) String nameKeyword,

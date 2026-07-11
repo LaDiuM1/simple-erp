@@ -18,6 +18,7 @@ public enum Menu {
     PRODUCTS("제품 모델 관리"),
     SALES_CONTACTS("영업 명부 관리"),
     SALES_CUSTOMERS("고객사 영업 관리"),
+    CONTRACTS("계약 관리"),
     ROLES("권한 관리"),
     CODE_RULES("코드 채번 규칙"),
     APPROVALS("전자결재"),
