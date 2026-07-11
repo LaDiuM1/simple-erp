@@ -12,6 +12,7 @@ export const MENU_CODE = {
   SALES_CONTACTS: 'SALES_CONTACTS',
   SALES_CUSTOMERS: 'SALES_CUSTOMERS',
   CONTRACTS: 'CONTRACTS',
+  EQUIPMENTS: 'EQUIPMENTS',
   ROLES: 'ROLES',
   CODE_RULES: 'CODE_RULES',
   APPROVALS: 'APPROVALS',
@@ -34,6 +35,7 @@ export const MENU_LABEL: Record<MenuCode, string> = {
   [MENU_CODE.SALES_CONTACTS]: '영업 명부 관리',
   [MENU_CODE.SALES_CUSTOMERS]: '고객사 영업 관리',
   [MENU_CODE.CONTRACTS]: '계약 관리',
+  [MENU_CODE.EQUIPMENTS]: '설비 대장',
   [MENU_CODE.ROLES]: '권한 관리',
   [MENU_CODE.CODE_RULES]: '코드 채번 규칙',
   [MENU_CODE.APPROVALS]: '전자결재',
@@ -54,6 +56,7 @@ export const MENU_PATH = {
   [MENU_CODE.SALES_CONTACTS]: '/sales-contacts',
   [MENU_CODE.SALES_CUSTOMERS]: '/sales-customers',
   [MENU_CODE.CONTRACTS]: '/contracts',
+  [MENU_CODE.EQUIPMENTS]: '/equipments',
   [MENU_CODE.ROLES]: '/roles',
   [MENU_CODE.CODE_RULES]: '/code-rules',
   [MENU_CODE.APPROVALS]: '/approvals',
@@ -90,6 +93,13 @@ export const MENU_CONFIG: MenuConfig[] = [
     children: [
       { code: MENU_CODE.SALES_CUSTOMERS, name: '고객사 영업 관리', to: MENU_PATH.SALES_CUSTOMERS },
       { code: MENU_CODE.CONTRACTS, name: '계약 관리', to: MENU_PATH.CONTRACTS },
+    ],
+  },
+  {
+    code: 'SERVICE',
+    name: '설치 / AS 관리',
+    children: [
+      { code: MENU_CODE.EQUIPMENTS, name: '설비 대장', to: MENU_PATH.EQUIPMENTS },
     ],
   },
   {
