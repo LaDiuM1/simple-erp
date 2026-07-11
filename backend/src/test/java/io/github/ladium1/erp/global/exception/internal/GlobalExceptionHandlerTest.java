@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,6 +23,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpMethod;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Set;
 
@@ -107,6 +111,36 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("업로드 한도 초과는 413")
+    void handle_max_upload_size_exceeded() throws Exception {
+        // when & then
+        mockMvc.perform(get("/test/upload-size-exception"))
+                .andExpect(status().isContentTooLarge())
+                .andExpect(jsonPath("$.status").value(413))
+                .andExpect(jsonPath("$.message").value("파일 크기가 업로드 한도를 초과했습니다."));
+    }
+
+    @Test
+    @DisplayName("낙관적 락 충돌은 409")
+    void handle_optimistic_locking_failure() throws Exception {
+        // when & then
+        mockMvc.perform(get("/test/optimistic-lock-exception"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message").value("다른 사용자가 먼저 처리한 요청입니다. 새로고침 후 다시 시도해 주세요."));
+    }
+
+    @Test
+    @DisplayName("매칭되지 않는 경로는 404")
+    void handle_no_resource_found() throws Exception {
+        // when & then
+        mockMvc.perform(get("/test/no-resource-exception"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("요청한 리소스를 찾을 수 없습니다."));
+    }
+
+    @Test
     @DisplayName("허용되지 않은 HTTP 메서드는 405")
     void handle_method_not_supported() throws Exception {
         // when & then
@@ -184,6 +218,19 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/required-param")
         public void requiredParam(@RequestParam String keyword) { /* no-op */ }
+
+        @GetMapping("/test/upload-size-exception")
+        public void throwUploadSize() { throw new MaxUploadSizeExceededException(1024); }
+
+        @GetMapping("/test/optimistic-lock-exception")
+        public void throwOptimisticLock() {
+            throw new ObjectOptimisticLockingFailureException("ApprovalDocument", 1L);
+        }
+
+        @GetMapping("/test/no-resource-exception")
+        public void throwNoResource() throws NoResourceFoundException {
+            throw new NoResourceFoundException(HttpMethod.GET, "/api/v1/unknown", "");
+        }
 
         @GetMapping("/test/auth-exception")
         public void throwAuth() { throw new BadCredentialsException("인증 실패"); }

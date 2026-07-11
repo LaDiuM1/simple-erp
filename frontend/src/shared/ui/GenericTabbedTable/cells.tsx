@@ -20,12 +20,15 @@ export const NowrapText = styled('span')({
   whiteSpace: 'nowrap',
 });
 
-export type StatusTone = 'primary' | 'success' | 'warning' | 'info' | 'disabled' | 'secondary';
+export type StatusTone = 'primary' | 'active' | 'success' | 'warning' | 'info' | 'disabled' | 'secondary';
 
 function statusColor(tone: StatusTone, theme: Theme): string {
   switch (tone) {
     case 'primary':
       return theme.palette.primary.main;
+    // 도메인 StatusIndicator (승인/활성) 와 동일 토큰 — 헤더와 탭 표의 같은 상태가 같은 색으로 보이도록.
+    case 'active':
+      return theme.palette.statusActive;
     case 'success':
       return theme.palette.success.main;
     case 'warning':

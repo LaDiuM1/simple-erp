@@ -1,7 +1,7 @@
 export { default } from './GenericList';
 export type { GenericListProps } from './GenericList';
 
-export { mapIdName } from './utils';
+export { computeColumnWidths, mapIdName } from './utils';
 
 /** 내부 building blocks — CommonSearchModal 등 다른 합성 위젯에서 재사용. */
 export { default as ListSearchFilter } from './ListSearchFilter';

@@ -22,6 +22,19 @@ const STATIC_TITLES: Record<string, string> = {
   '/sales-customers': '고객사 영업 관리',
   '/sales-contacts': '영업 명부 목록',
   '/sales-contacts/new': '영업 명부 등록',
+  '/approvals': '전자결재',
+  '/approvals/new': '기안 작성',
+  '/expenses': '경비 목록',
+  '/expenses/new': '경비 등록',
+  '/attendance': '내 출퇴근',
+  '/attendance/status': '근태 현황',
+  '/leaves': '휴가 관리',
+  '/leaves/new': '휴가 신청',
+  '/leaves/status': '휴가 현황',
+  '/leaves/balances': '연차 잔여 관리',
+  '/boards': '게시판',
+  '/boards/new': '글 작성',
+  '/drive': '드라이브',
 };
 
 interface DynamicRule {
@@ -45,6 +58,10 @@ const DYNAMIC_RULES: DynamicRule[] = [
   { test: (p) => /^\/sales-customers\/\d+$/.test(p), title: '고객사 영업 상세' },
   { test: (p) => /^\/sales-contacts\/\d+\/edit$/.test(p), title: '영업 명부 수정' },
   { test: (p) => /^\/sales-contacts\/\d+$/.test(p), title: '영업 명부 상세' },
+  { test: (p) => /^\/approvals\/\d+$/.test(p), title: '결재 문서' },
+  { test: (p) => /^\/expenses\/\d+$/.test(p), title: '경비 상세' },
+  { test: (p) => /^\/boards\/\d+\/edit$/.test(p), title: '게시글 수정' },
+  { test: (p) => /^\/boards\/\d+$/.test(p), title: '게시글 상세' },
 ];
 
 export function getPageTitle(pathname: string): string {
