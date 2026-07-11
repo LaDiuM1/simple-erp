@@ -1,25 +1,50 @@
 package io.github.ladium1.erp.product.internal.entity;
 
+import io.github.ladium1.erp.global.jpa.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 
 /**
- * 제품 카테고리 — 카탈로그 / 웹사이트의 제품 분류 체계와 동일.
+ * 제품 카테고리 — 카탈로그 개편 때마다 분류가 바뀌므로 enum 이 아닌 사용자 관리 데이터.
+ * 별도 메뉴 없이 제품 모델 관리 (PRODUCTS) 의 서브 기능으로 CRUD / 순서 변경.
  */
+@Entity
 @Getter
-@RequiredArgsConstructor
-public enum ProductCategory {
+@Table(name = "product_categories")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ProductCategory extends BaseEntity {
 
-    FLAT("평판 레이저"),
-    H_BEAM("형강 레이저"),
-    PIPE("파이프 레이저"),
-    PRESS_BRAKE("절곡기"),
-    COMBO("복합기"),
-    DEBURRING("디버링기"),
-    EDGE_MACHINE("엣지머신"),
-    WELDER("용접기"),
-    OSCILLATOR("발진기"),
-    ETC("기타");
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    private final String label;
+    @Column(nullable = false, unique = true,
+            comment = "카테고리명")
+    private String name;
+
+    @Column(nullable = false,
+            comment = "노출 순서 — 카탈로그 분류 순서와 동일하게 유지")
+    private int sortOrder;
+
+    @Builder
+    ProductCategory(String name, int sortOrder) {
+        this.name = name;
+        this.sortOrder = sortOrder;
+    }
+
+    public void update(String name) {
+        this.name = name;
+    }
+
+    public void changeSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
+    }
 }

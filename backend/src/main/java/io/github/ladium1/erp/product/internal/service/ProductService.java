@@ -11,8 +11,10 @@ import io.github.ladium1.erp.product.internal.dto.ProductSearchCondition;
 import io.github.ladium1.erp.product.internal.dto.ProductSummaryResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductUpdateRequest;
 import io.github.ladium1.erp.product.internal.entity.Product;
+import io.github.ladium1.erp.product.internal.entity.ProductCategory;
 import io.github.ladium1.erp.product.internal.exception.ProductErrorCode;
 import io.github.ladium1.erp.product.internal.mapper.ProductMapper;
+import io.github.ladium1.erp.product.internal.repository.ProductCategoryRepository;
 import io.github.ladium1.erp.product.internal.repository.ProductRepository;
 import io.github.ladium1.erp.supplier.api.SupplierApi;
 import io.github.ladium1.erp.supplier.api.dto.SupplierInfo;
@@ -32,6 +34,7 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductCategoryRepository productCategoryRepository;
     private final ProductMapper productMapper;
     private final SupplierApi supplierApi;
 
@@ -55,6 +58,7 @@ public class ProductService {
     public Long create(ProductCreateRequest request) {
         // 공급사 존재 검증 — 없으면 supplier 모듈이 SUPPLIER_NOT_FOUND 를 던진다.
         supplierApi.getById(request.supplierId());
+        ProductCategory category = resolveCategory(request.categoryId());
 
         String modelName = request.modelName().trim();
         if (productRepository.existsBySupplierIdAndModelName(request.supplierId(), modelName)) {
@@ -62,7 +66,7 @@ public class ProductService {
         }
 
         Product product = Product.builder()
-                .category(request.category())
+                .category(category)
                 .modelName(modelName)
                 .supplierId(request.supplierId())
                 .note(request.note())
@@ -78,13 +82,19 @@ public class ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND));
         supplierApi.getById(request.supplierId());
+        ProductCategory category = resolveCategory(request.categoryId());
 
         String modelName = request.modelName().trim();
         if (productRepository.existsBySupplierIdAndModelNameAndIdNot(request.supplierId(), modelName, id)) {
             throw new BusinessException(ProductErrorCode.DUPLICATE_MODEL_NAME);
         }
 
-        product.update(request.category(), modelName, request.supplierId(), request.note(), request.active());
+        product.update(category, modelName, request.supplierId(), request.note(), request.active());
+    }
+
+    private ProductCategory resolveCategory(Long categoryId) {
+        return productCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BusinessException(ProductErrorCode.CATEGORY_NOT_FOUND));
     }
 
     @Auditable(menu = Menu.PRODUCTS, action = AuditAction.DELETE, targetType = "Product", targetIdParam = "id")

@@ -10,4 +10,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, Product
     boolean existsBySupplierIdAndModelNameAndIdNot(Long supplierId, String modelName, Long id);
 
     boolean existsBySupplierId(Long supplierId);
+
+    boolean existsByCategoryId(Long categoryId);
 }

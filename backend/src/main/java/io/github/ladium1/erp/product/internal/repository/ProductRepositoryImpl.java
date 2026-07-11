@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.product.internal.repository;
 
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.ladium1.erp.global.jpa.QuerydslSortUtils;
 import io.github.ladium1.erp.product.internal.dto.ProductSearchCondition;
@@ -12,7 +13,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.util.StringUtils;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 public class ProductRepositoryImpl implements ProductRepositoryCustom {
@@ -26,6 +29,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
 
         List<Product> content = queryFactory
                 .selectFrom(p)
+                .leftJoin(p.category).fetchJoin()
                 .where(where)
                 .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), p, p.modelName.asc()))
                 .offset(pageable.getOffset())
@@ -41,6 +45,24 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         return new PageImpl<>(content, pageable, total != null ? total : 0L);
     }
 
+    @Override
+    public Map<Long, Long> countGroupByCategory() {
+        QProduct p = QProduct.product;
+        List<Tuple> rows = queryFactory
+                .select(p.category.id, p.count())
+                .from(p)
+                .groupBy(p.category.id)
+                .fetch();
+
+        Map<Long, Long> counts = new HashMap<>();
+        for (Tuple row : rows) {
+            Long categoryId = row.get(p.category.id);
+            Long count = row.get(p.count());
+            counts.put(categoryId, count != null ? count : 0L);
+        }
+        return counts;
+    }
+
     private BooleanBuilder buildPredicate(ProductSearchCondition condition, QProduct p) {
         BooleanBuilder where = new BooleanBuilder();
         if (condition == null) {
@@ -49,8 +71,8 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         if (StringUtils.hasText(condition.modelNameKeyword())) {
             where.and(p.modelName.like("%" + condition.modelNameKeyword().trim() + "%"));
         }
-        if (condition.category() != null) {
-            where.and(p.category.eq(condition.category()));
+        if (condition.categoryId() != null) {
+            where.and(p.category.id.eq(condition.categoryId()));
         }
         if (condition.supplierId() != null) {
             where.and(p.supplierId.eq(condition.supplierId()));

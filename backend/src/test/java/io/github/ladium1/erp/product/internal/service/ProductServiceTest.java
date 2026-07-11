@@ -11,6 +11,7 @@ import io.github.ladium1.erp.product.internal.entity.Product;
 import io.github.ladium1.erp.product.internal.entity.ProductCategory;
 import io.github.ladium1.erp.product.internal.exception.ProductErrorCode;
 import io.github.ladium1.erp.product.internal.mapper.ProductMapper;
+import io.github.ladium1.erp.product.internal.repository.ProductCategoryRepository;
 import io.github.ladium1.erp.product.internal.repository.ProductRepository;
 import io.github.ladium1.erp.supplier.api.SupplierApi;
 import io.github.ladium1.erp.supplier.api.dto.SupplierInfo;
@@ -44,6 +45,7 @@ class ProductServiceTest {
     private ProductService productService;
 
     @Mock private ProductRepository productRepository;
+    @Mock private ProductCategoryRepository productCategoryRepository;
     @Mock private ProductMapper productMapper;
     @Mock private SupplierApi supplierApi;
 
@@ -51,14 +53,14 @@ class ProductServiceTest {
     @DisplayName("search 성공 — 공급사명 enrich 된 Summary 페이지 반환")
     void search_success() {
         // given
-        Product product = mockProduct(ProductCategory.FLAT, "HLA-1530", 1L);
+        Product product = mockProduct("HLA-1530", 1L);
         Pageable pageable = PageRequest.of(0, 20);
         given(productRepository.search(any(ProductSearchCondition.class), eq(pageable)))
                 .willReturn(new PageImpl<>(List.of(product), pageable, 1));
         given(supplierApi.findByIds(List.of(1L)))
                 .willReturn(List.of(supplierInfo(1L, "YAWEI")));
         ProductSummaryResponse summary = ProductSummaryResponse.builder()
-                .id(1L).category(ProductCategory.FLAT).modelName("HLA-1530")
+                .id(1L).categoryId(1L).categoryName("평판 레이저").modelName("HLA-1530")
                 .supplierId(1L).supplierName("YAWEI").active(true).build();
         given(productMapper.toSummaryResponse(product, "YAWEI")).willReturn(summary);
 
@@ -74,11 +76,11 @@ class ProductServiceTest {
     @DisplayName("getDetail 성공 — 공급사명 포함")
     void get_detail_success() {
         // given
-        Product product = mockProduct(ProductCategory.FLAT, "HLA-1530", 1L);
+        Product product = mockProduct("HLA-1530", 1L);
         given(productRepository.findById(1L)).willReturn(Optional.of(product));
         given(supplierApi.getById(1L)).willReturn(supplierInfo(1L, "YAWEI"));
         ProductDetailResponse detail = ProductDetailResponse.builder()
-                .id(1L).category(ProductCategory.FLAT).modelName("HLA-1530")
+                .id(1L).categoryId(1L).categoryName("평판 레이저").modelName("HLA-1530")
                 .supplierId(1L).supplierName("YAWEI").active(true).build();
         given(productMapper.toDetailResponse(product, "YAWEI")).willReturn(detail);
 
@@ -102,14 +104,14 @@ class ProductServiceTest {
     }
 
     @Test
-    @DisplayName("create 성공 — 공급사 존재 검증 + 모델명 trim 후 저장")
+    @DisplayName("create 성공 — 공급사 / 카테고리 존재 검증 + 모델명 trim 후 저장")
     void create_success() {
         // given
-        ProductCreateRequest request =
-                new ProductCreateRequest(ProductCategory.FLAT, " HLA-1530 ", 1L, null, true);
+        ProductCreateRequest request = new ProductCreateRequest(1L, " HLA-1530 ", 1L, null, true);
         given(supplierApi.getById(1L)).willReturn(supplierInfo(1L, "YAWEI"));
+        given(productCategoryRepository.findById(1L)).willReturn(Optional.of(mockCategory("평판 레이저", 1)));
         given(productRepository.existsBySupplierIdAndModelName(1L, "HLA-1530")).willReturn(false);
-        Product saved = mockProduct(ProductCategory.FLAT, "HLA-1530", 1L);
+        Product saved = mockProduct("HLA-1530", 1L);
         ReflectionTestUtils.setField(saved, "id", 10L);
         given(productRepository.save(any(Product.class))).willReturn(saved);
 
@@ -124,8 +126,7 @@ class ProductServiceTest {
     @DisplayName("create 실패 — 존재하지 않는 공급사면 supplier 모듈 예외 전파")
     void create_fail_supplier_not_found() {
         // given
-        ProductCreateRequest request =
-                new ProductCreateRequest(ProductCategory.FLAT, "HLA-1530", 99L, null, true);
+        ProductCreateRequest request = new ProductCreateRequest(1L, "HLA-1530", 99L, null, true);
         given(supplierApi.getById(99L))
                 .willThrow(new BusinessException(SupplierErrorCode.SUPPLIER_NOT_FOUND));
 
@@ -137,12 +138,27 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("create 실패 — 존재하지 않는 카테고리 시 CATEGORY_NOT_FOUND")
+    void create_fail_category_not_found() {
+        // given
+        ProductCreateRequest request = new ProductCreateRequest(99L, "HLA-1530", 1L, null, true);
+        given(supplierApi.getById(1L)).willReturn(supplierInfo(1L, "YAWEI"));
+        given(productCategoryRepository.findById(99L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> productService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ProductErrorCode.CATEGORY_NOT_FOUND);
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("create 실패 — 같은 공급사에 중복 모델명 시 DUPLICATE_MODEL_NAME")
     void create_fail_duplicate_model_name() {
         // given
-        ProductCreateRequest request =
-                new ProductCreateRequest(ProductCategory.FLAT, "HLA-1530", 1L, null, true);
+        ProductCreateRequest request = new ProductCreateRequest(1L, "HLA-1530", 1L, null, true);
         given(supplierApi.getById(1L)).willReturn(supplierInfo(1L, "YAWEI"));
+        given(productCategoryRepository.findById(1L)).willReturn(Optional.of(mockCategory("평판 레이저", 1)));
         given(productRepository.existsBySupplierIdAndModelName(1L, "HLA-1530")).willReturn(true);
 
         // when & then
@@ -156,18 +172,19 @@ class ProductServiceTest {
     @DisplayName("update 성공 — 엔티티의 update 호출")
     void update_success() {
         // given
-        Product product = mockProduct(ProductCategory.FLAT, "HLA-1530", 1L);
+        Product product = mockProduct("HLA-1530", 1L);
+        ProductCategory pipeCategory = mockCategory("파이프 레이저", 3);
         given(productRepository.findById(1L)).willReturn(Optional.of(product));
         given(supplierApi.getById(2L)).willReturn(supplierInfo(2L, "ACME"));
+        given(productCategoryRepository.findById(3L)).willReturn(Optional.of(pipeCategory));
         given(productRepository.existsBySupplierIdAndModelNameAndIdNot(2L, "DAP-3S-360", 1L)).willReturn(false);
-        ProductUpdateRequest request =
-                new ProductUpdateRequest(ProductCategory.PIPE, "DAP-3S-360", 2L, "비고", false);
+        ProductUpdateRequest request = new ProductUpdateRequest(3L, "DAP-3S-360", 2L, "비고", false);
 
         // when
         productService.update(1L, request);
 
         // then
-        assertThat(product.getCategory()).isEqualTo(ProductCategory.PIPE);
+        assertThat(product.getCategory()).isEqualTo(pipeCategory);
         assertThat(product.getModelName()).isEqualTo("DAP-3S-360");
         assertThat(product.getSupplierId()).isEqualTo(2L);
         assertThat(product.isActive()).isFalse();
@@ -178,8 +195,7 @@ class ProductServiceTest {
     void update_fail_not_found() {
         // given
         given(productRepository.findById(99L)).willReturn(Optional.empty());
-        ProductUpdateRequest request =
-                new ProductUpdateRequest(ProductCategory.FLAT, "HLA-1530", 1L, null, true);
+        ProductUpdateRequest request = new ProductUpdateRequest(1L, "HLA-1530", 1L, null, true);
 
         // when & then
         assertThatThrownBy(() -> productService.update(99L, request))
@@ -213,12 +229,19 @@ class ProductServiceTest {
         verify(productRepository, never()).deleteById(any());
     }
 
-    private Product mockProduct(ProductCategory category, String modelName, Long supplierId) {
+    private Product mockProduct(String modelName, Long supplierId) {
         return Product.builder()
-                .category(category)
+                .category(mockCategory("평판 레이저", 1))
                 .modelName(modelName)
                 .supplierId(supplierId)
                 .active(true)
+                .build();
+    }
+
+    private ProductCategory mockCategory(String name, int sortOrder) {
+        return ProductCategory.builder()
+                .name(name)
+                .sortOrder(sortOrder)
                 .build();
     }
 

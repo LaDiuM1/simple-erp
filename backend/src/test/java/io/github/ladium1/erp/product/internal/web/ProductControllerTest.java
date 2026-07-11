@@ -7,7 +7,6 @@ import io.github.ladium1.erp.product.internal.dto.ProductCreateRequest;
 import io.github.ladium1.erp.product.internal.dto.ProductDetailResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductSummaryResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductUpdateRequest;
-import io.github.ladium1.erp.product.internal.entity.ProductCategory;
 import io.github.ladium1.erp.product.internal.exception.ProductErrorCode;
 import io.github.ladium1.erp.product.internal.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,7 +61,7 @@ class ProductControllerTest {
     void search_success() throws Exception {
         // given
         ProductSummaryResponse summary = ProductSummaryResponse.builder()
-                .id(1L).category(ProductCategory.FLAT).modelName("HLA-1530")
+                .id(1L).categoryId(1L).categoryName("평판 레이저").modelName("HLA-1530")
                 .supplierId(1L).supplierName("YAWEI").active(true).build();
         PageResponse<ProductSummaryResponse> page = new PageResponse<>(
                 List.of(summary), 0, 20, 1, 1, false
@@ -73,6 +72,7 @@ class ProductControllerTest {
         mockMvc.perform(get("/api/v1/products/summary"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].modelName").value("HLA-1530"))
+                .andExpect(jsonPath("$.data.content[0].categoryName").value("평판 레이저"))
                 .andExpect(jsonPath("$.data.content[0].supplierName").value("YAWEI"))
                 .andExpect(jsonPath("$.data.totalElements").value(1));
     }
@@ -82,7 +82,7 @@ class ProductControllerTest {
     void get_detail_success() throws Exception {
         // given
         ProductDetailResponse detail = ProductDetailResponse.builder()
-                .id(7L).category(ProductCategory.PIPE).modelName("DAP-3S-360")
+                .id(7L).categoryId(3L).categoryName("파이프 레이저").modelName("DAP-3S-360")
                 .supplierId(2L).supplierName("ACME").note("비고").active(true).build();
         given(productService.getDetail(7L)).willReturn(detail);
 
@@ -91,7 +91,7 @@ class ProductControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(7))
                 .andExpect(jsonPath("$.data.modelName").value("DAP-3S-360"))
-                .andExpect(jsonPath("$.data.category").value("PIPE"));
+                .andExpect(jsonPath("$.data.categoryName").value("파이프 레이저"));
     }
 
     @Test
@@ -110,8 +110,7 @@ class ProductControllerTest {
     @DisplayName("제품 모델 등록 성공")
     void create_success() throws Exception {
         // given
-        ProductCreateRequest request =
-                new ProductCreateRequest(ProductCategory.FLAT, "HLA-1530", 1L, null, true);
+        ProductCreateRequest request = new ProductCreateRequest(1L, "HLA-1530", 1L, null, true);
         given(productService.create(any())).willReturn(42L);
 
         // when & then
@@ -126,8 +125,7 @@ class ProductControllerTest {
     @DisplayName("중복 모델명으로 등록 시 409")
     void create_fail_duplicate_model_name() throws Exception {
         // given
-        ProductCreateRequest request =
-                new ProductCreateRequest(ProductCategory.FLAT, "HLA-1530", 1L, null, true);
+        ProductCreateRequest request = new ProductCreateRequest(1L, "HLA-1530", 1L, null, true);
         willThrow(new BusinessException(ProductErrorCode.DUPLICATE_MODEL_NAME))
                 .given(productService).create(any());
 
@@ -155,8 +153,7 @@ class ProductControllerTest {
     @DisplayName("제품 모델 수정 성공")
     void update_success() throws Exception {
         // given
-        ProductUpdateRequest request =
-                new ProductUpdateRequest(ProductCategory.PIPE, "DAP-3S-360", 2L, null, true);
+        ProductUpdateRequest request = new ProductUpdateRequest(3L, "DAP-3S-360", 2L, null, true);
 
         // when & then
         mockMvc.perform(put("/api/v1/products/{id}", 7L)

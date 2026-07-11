@@ -6,7 +6,6 @@ import io.github.ladium1.erp.product.internal.dto.ProductDetailResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductSearchCondition;
 import io.github.ladium1.erp.product.internal.dto.ProductSummaryResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductUpdateRequest;
-import io.github.ladium1.erp.product.internal.entity.ProductCategory;
 import io.github.ladium1.erp.product.internal.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,13 +40,13 @@ public class ProductController {
     @PreAuthorize(CAN_READ)
     public PageResponse<ProductSummaryResponse> search(
             @RequestParam(required = false) String modelNameKeyword,
-            @RequestParam(required = false) ProductCategory category,
+            @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long supplierId,
             @RequestParam(required = false) Boolean active,
             @PageableDefault(sort = "modelName", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         return productService.search(
-                new ProductSearchCondition(modelNameKeyword, category, supplierId, active), pageable);
+                new ProductSearchCondition(modelNameKeyword, categoryId, supplierId, active), pageable);
     }
 
     @GetMapping("/{id}")
