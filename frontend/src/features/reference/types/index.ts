@@ -17,3 +17,11 @@ export interface RoleInfo {
   name: string;
   description: string | null;
 }
+
+export interface SupplierInfo {
+  id: number;
+  name: string;
+  nameKo: string | null;
+  country: string | null;
+  active: boolean;
+}
