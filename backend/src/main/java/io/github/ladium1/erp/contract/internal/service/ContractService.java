@@ -5,6 +5,10 @@ import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
 import io.github.ladium1.erp.coderule.api.InputMode;
 import io.github.ladium1.erp.coderule.api.dto.CodeGenerationContext;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
+import io.github.ladium1.erp.contract.api.ContractApi;
+import io.github.ladium1.erp.contract.api.ContractDeletingEvent;
+import io.github.ladium1.erp.contract.api.ContractInstalledEvent;
+import io.github.ladium1.erp.contract.api.dto.ContractInfo;
 import io.github.ladium1.erp.contract.internal.dto.ContractCreateRequest;
 import io.github.ladium1.erp.contract.internal.dto.ContractDetailResponse;
 import io.github.ladium1.erp.contract.internal.dto.ContractExcelRow;
@@ -17,6 +21,7 @@ import io.github.ladium1.erp.contract.internal.dto.ContractUpdateRequest;
 import io.github.ladium1.erp.contract.internal.entity.Contract;
 import io.github.ladium1.erp.contract.internal.entity.ContractNote;
 import io.github.ladium1.erp.contract.internal.entity.ContractPayment;
+import io.github.ladium1.erp.contract.internal.entity.ContractStatus;
 import io.github.ladium1.erp.contract.internal.excel.ContractExcelExporter;
 import io.github.ladium1.erp.contract.internal.exception.ContractErrorCode;
 import io.github.ladium1.erp.contract.internal.mapper.ContractMapper;
@@ -41,6 +46,7 @@ import io.github.ladium1.erp.product.api.dto.ProductInfo;
 import io.github.ladium1.erp.supplier.api.SupplierApi;
 import io.github.ladium1.erp.supplier.api.dto.SupplierInfo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -59,7 +65,7 @@ import static java.util.stream.Collectors.toMap;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class ContractService {
+public class ContractService implements ContractApi {
 
     private final ContractRepository contractRepository;
     private final ContractPaymentRepository paymentRepository;
@@ -73,6 +79,33 @@ public class ContractService {
     private final ProductApi productApi;
     private final DataScopeResolver dataScopeResolver;
     private final DataScopeContextProvider dataScopeContextProvider;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Override
+    public ContractInfo getById(Long id) {
+        return contractRepository.findById(id)
+                .map(ContractService::toContractInfo)
+                .orElseThrow(() -> new BusinessException(ContractErrorCode.CONTRACT_NOT_FOUND));
+    }
+
+    @Override
+    public List<ContractInfo> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return contractRepository.findAllById(ids).stream()
+                .map(ContractService::toContractInfo)
+                .toList();
+    }
+
+    private static ContractInfo toContractInfo(Contract contract) {
+        return ContractInfo.builder()
+                .id(contract.getId())
+                .contractNo(contract.getContractNo())
+                .customerId(contract.getCustomerId())
+                .contractDate(contract.getContractDate())
+                .build();
+    }
 
     public PageResponse<ContractSummaryResponse> search(ContractSearchCondition condition, Pageable pageable) {
         Optional<Set<Long>> visible = resolveVisibleEmployeeIds();
@@ -235,7 +268,12 @@ public class ContractService {
                 .status(request.status())
                 .build();
 
-        return contractRepository.save(contract).getId();
+        Contract saved = contractRepository.save(contract);
+        // 과거 계약 수기 입력 등 설치완료 상태로 바로 등록되는 케이스도 설비 대장 자동 생성 대상.
+        if (saved.getStatus() == ContractStatus.INSTALLED) {
+            publishInstalledEvent(saved);
+        }
+        return saved.getId();
     }
 
     @Auditable(menu = Menu.CONTRACTS, action = AuditAction.UPDATE, targetType = "Contract", targetIdParam = "id")
@@ -249,6 +287,7 @@ public class ContractService {
         employeeApi.getById(request.employeeId());
         ProductInfo product = productApi.getById(request.productId());
 
+        ContractStatus previousStatus = contract.getStatus();
         contract.update(
                 request.customerId(),
                 request.employeeId(),
@@ -272,6 +311,11 @@ public class ContractService {
                 request.logisticsNote(),
                 request.status()
         );
+
+        // 설치완료로 전이될 때만 설비 대장 자동 생성 이벤트 발행 (재저장 중복 발행 방지).
+        if (previousStatus != ContractStatus.INSTALLED && contract.getStatus() == ContractStatus.INSTALLED) {
+            publishInstalledEvent(contract);
+        }
     }
 
     @Auditable(menu = Menu.CONTRACTS, action = AuditAction.DELETE, targetType = "Contract", targetIdParam = "id")
@@ -280,6 +324,8 @@ public class ContractService {
         Contract contract = contractRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ContractErrorCode.CONTRACT_NOT_FOUND));
         assertVisible(contract);
+        // 다른 모듈 (설비 대장 등) 의 사용 여부는 동기 이벤트로 검사 — 리스너가 throw 하면 트랜잭션 롤백.
+        eventPublisher.publishEvent(new ContractDeletingEvent(id));
         // 대금 스케줄 / 메모도 함께 제거 (물리 삭제 — 계약 자체를 지우는 케이스)
         paymentRepository.deleteByContractId(id);
         noteRepository.deleteByContractId(id);
@@ -417,6 +463,18 @@ public class ContractService {
         String trimmed = requested.trim();
         codeRuleApi.validate(CodeRuleTarget.CONTRACT, trimmed);
         return trimmed;
+    }
+
+    private void publishInstalledEvent(Contract contract) {
+        eventPublisher.publishEvent(new ContractInstalledEvent(
+                contract.getId(),
+                contract.getCustomerId(),
+                contract.getSupplierId(),
+                contract.getProductId(),
+                contract.getOutputValue(),
+                contract.getOutputUnit() == null ? null : contract.getOutputUnit().name(),
+                contract.getInstalledDate()
+        ));
     }
 
     private static Long outstanding(Long finalAmount, Long paidTotal) {
