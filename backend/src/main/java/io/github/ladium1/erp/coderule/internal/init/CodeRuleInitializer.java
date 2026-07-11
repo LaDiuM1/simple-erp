@@ -59,6 +59,13 @@ public class CodeRuleInitializer implements ApplicationRunner {
                 .inputMode(InputMode.AUTO)
                 .description("계약 번호 — 기본: CT2026-001, CT2026-002, ... (매년 초기화)")
                 .build());
+
+        DEFAULTS.put(CodeRuleTarget.AFTER_SERVICE, CodeRule.builder()
+                .target(CodeRuleTarget.AFTER_SERVICE)
+                .pattern("AS{YYYY}-{SEQ:4}")
+                .inputMode(InputMode.AUTO)
+                .description("AS 접수번호 — 기본: AS2026-0001, AS2026-0002, ... (매년 초기화)")
+                .build());
     }
 
     private final CodeRuleRepository codeRuleRepository;

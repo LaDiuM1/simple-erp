@@ -15,7 +15,8 @@ public enum CodeRuleTarget {
     DEPARTMENT("부서 코드", true),
     POSITION("직책 코드", false),
     CUSTOMER("고객사 코드", false),
-    CONTRACT("계약 번호", false);
+    CONTRACT("계약 번호", false),
+    AFTER_SERVICE("AS 접수번호", false);
 
     private final String label;
     /** 도메인이 부모 개념을 갖는지 — 토큰 만들기 UI 에서 부모 토큰 노출 여부 결정 */
