@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
@@ -18,6 +19,8 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -75,6 +78,35 @@ public class GlobalExceptionHandler {
     protected ResponseEntity<ApiResponse<Void>> handleMissingParameter(MissingServletRequestParameterException e) {
         log.warn("Missing parameter: {}", e.getMessage());
         return badRequest("필수 파라미터가 누락되었습니다: " + e.getParameterName());
+    }
+
+    // 업로드 한도 초과 (413)
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    protected ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
+        log.warn("Upload size exceeded: {}", e.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONTENT_TOO_LARGE)
+                .body(ApiResponse.error(HttpStatus.CONTENT_TOO_LARGE.value(),
+                        "파일 크기가 업로드 한도를 초과했습니다."));
+    }
+
+    // 낙관적 락 충돌 — 같은 레코드 동시 수정 (예: 결재 동시 결정) (409)
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    protected ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailure(ObjectOptimisticLockingFailureException e) {
+        log.warn("Optimistic locking failure: {}", e.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(HttpStatus.CONFLICT.value(),
+                        "다른 사용자가 먼저 처리한 요청입니다. 새로고침 후 다시 시도해 주세요."));
+    }
+
+    // 매칭되는 핸들러가 없는 경로 (404) — 기타 500 으로 떨어지지 않게 명시 매핑
+    @ExceptionHandler(NoResourceFoundException.class)
+    protected ResponseEntity<ApiResponse<Void>> handleNoResourceFound(NoResourceFoundException e) {
+        log.warn("No resource found: {}", e.getResourcePath());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), "요청한 리소스를 찾을 수 없습니다."));
     }
 
     // 허용되지 않은 HTTP 메서드 (405)

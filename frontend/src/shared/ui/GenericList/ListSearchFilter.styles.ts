@@ -39,6 +39,24 @@ export const ResetButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
+/** 날짜 필터 TextField — FilterSelect 와 동일한 height 36 / border 톤. */
+export const DateTextField = styled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    height: 36,
+    fontSize: '0.8125rem',
+    backgroundColor: theme.palette.background.paper,
+    paddingLeft: '0.75rem',
+  },
+  '& .MuiOutlinedInput-input': {
+    paddingTop: '0.375rem',
+    paddingBottom: '0.375rem',
+  },
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
+  '&:hover .MuiOutlinedInput-notchedOutline': {
+    borderColor: theme.palette.text.disabled,
+  },
+}));
+
 /** 검색 TextField — height 36 + 내부 placeholder/border 톤 조정. */
 export const SearchTextField = styled(TextField)(({ theme }) => ({
   [theme.breakpoints.up('md')]: {

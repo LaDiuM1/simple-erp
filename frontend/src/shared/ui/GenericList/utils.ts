@@ -1,4 +1,4 @@
-import type { ColumnConfig, FilterOption } from './types';
+import type { FilterOption } from './types';
 
 /**
  * SelectFilterItem.mapOptions 에 그대로 꽂아 쓰는 공용 매퍼.
@@ -20,7 +20,9 @@ export const mapIdName = (data: unknown): FilterOption[] =>
  *
  * table-layout: fixed 와 함께 사용 — colgroup width 가 모든 행의 컬럼 폭을 고정한다.
  */
-export function computeColumnWidths<TRow>(columns: ColumnConfig<TRow>[]): string[] {
+export function computeColumnWidths(
+  columns: ReadonlyArray<{ width?: number; flex?: number }>,
+): string[] {
   const totalFlex = columns.reduce((sum, c) => (c.width != null ? sum : sum + (c.flex ?? 1)), 0);
   return columns.map((col) => {
     if (col.width != null) return `${col.width}px`;

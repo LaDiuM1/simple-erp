@@ -17,7 +17,7 @@ interface Config {
 
 /**
  * GenericList 내부 전용 상태 훅.
- * - searchFilter 로부터 emptyFilters 를 자동 생성 ("없음" = null 통일)
+ * - searchFilter 로부터 emptyFilters 를 자동 생성 ("없음" = null 통일, defaultValue 지정 시 그 값)
  * - column 에서 defaultSort: true 가 표시된 컬럼의 sortDirection 으로 initial sort 결정
  */
 export function useListState<TFilters extends object>({
@@ -71,7 +71,7 @@ export function useListState<TFilters extends object>({
 function deriveEmptyFilters<TFilters>(searchFilter: FilterConfig[]): TFilters {
   const empty: Record<string, unknown> = {};
   for (const item of searchFilter) {
-    empty[item.key] = null;
+    empty[item.key] = item.defaultValue ?? null;
   }
   return empty as TFilters;
 }

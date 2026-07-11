@@ -34,6 +34,11 @@ public interface EmployeeApi {
     long countActive();
 
     /**
+     * 재직 중 직원 전체 (퇴사자 제외) — 관리자 화면의 전 직원 벌크 조회 용.
+     */
+    List<EmployeeInfo> findAllActive();
+
+    /**
      * 주어진 부서들에 속한 직원 식별자 목록 — 데이터 스코프 (DEPARTMENT / DEPARTMENT_TREE) 적용 시 사용.
      * 빈 입력은 빈 리스트 반환.
      */
