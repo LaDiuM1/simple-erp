@@ -11,7 +11,7 @@ import ApprovalLineField from '@/shared/ui/ApprovalLineField';
 import FileAttachField from '@/shared/ui/FileAttachField';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import type { ExpenseCreateFormState } from '@/features/expense/hooks/useExpenseCreateForm';
-import { formatKrw } from '@/features/expense/utils/formatKrw';
+import { formatKrw } from '@/shared/utils/formatKrw';
 import {
   EXPENSE_CATEGORY_OPTIONS,
   type ExpenseCategory,

@@ -5,7 +5,7 @@ import {
   type FilterConfig,
 } from '@/shared/ui/GenericList';
 import { formatDateTime } from '@/shared/ui/GenericTabbedTable';
-import AttendanceEmployeeFilter from '@/features/attendance/components/AttendanceEmployeeFilter';
+import EmployeeSelectFilter from '@/features/employee/components/EmployeeSelectFilter';
 import LeaveStatusIndicator from '@/features/attendance/components/LeaveStatusIndicator';
 import { formatLeavePeriod } from '@/features/attendance/utils/format';
 import {
@@ -80,7 +80,7 @@ export const leaveStatusListFilters: FilterConfig[] = [
     type: 'custom',
     key: 'employeeId',
     render: ({ value, onChange }) => (
-      <AttendanceEmployeeFilter value={value} onChange={onChange} />
+      <EmployeeSelectFilter value={value} onChange={onChange} />
     ),
   },
 ];

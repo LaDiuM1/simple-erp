@@ -60,6 +60,44 @@ export const productListColumns: ColumnConfig<ProductSummary>[] = [
   },
 ];
 
+/**
+ * 검색 모달용 컬럼 — 계약 폼의 제품 모델 SelectField 등 선택용이라 식별 정보만 노출.
+ * 목록 페이지(`productListColumns`)와 의도적으로 분리 (customerSelectColumns 와 동일 정책).
+ */
+export const productSelectColumns: ColumnConfig<ProductSummary>[] = [
+  {
+    key: 'modelName',
+    label: '모델명',
+    sortable: true,
+    sortDirection: 'asc',
+    defaultSort: true,
+    render: (m) => (
+      <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+        {m.modelName}
+      </Typography>
+    ),
+  },
+  {
+    key: 'categoryName',
+    label: '카테고리',
+    width: 140,
+    render: (m) => m.categoryName ?? <Muted />,
+  },
+  {
+    key: 'supplierName',
+    label: '공급사',
+    hideOnMobile: true,
+    render: (m) => m.supplierName ?? <Muted />,
+  },
+  {
+    key: 'active',
+    label: '사용 여부',
+    hideOnMobile: true,
+    width: 100,
+    render: (m) => <ActiveStatusIndicator active={m.active} />,
+  },
+];
+
 export const productListFilters: FilterConfig[] = [
   { type: 'search', key: 'modelNameKeyword', placeholder: '모델명 검색' },
   {

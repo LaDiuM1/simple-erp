@@ -6,7 +6,7 @@ import {
 } from '@/shared/ui/GenericList';
 import { formatDateTime } from '@/shared/ui/GenericTabbedTable';
 import ExpenseStatusIndicator from '@/features/expense/components/ExpenseStatusIndicator';
-import { formatKrw } from '@/features/expense/utils/formatKrw';
+import { formatKrw } from '@/shared/utils/formatKrw';
 import {
   EXPENSE_SCOPE_OPTIONS,
   EXPENSE_STATUS_OPTIONS,

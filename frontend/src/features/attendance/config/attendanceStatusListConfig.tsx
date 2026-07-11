@@ -5,7 +5,7 @@ import {
   type FilterConfig,
 } from '@/shared/ui/GenericList';
 import WithinRangeText from '@/features/attendance/components/WithinRangeText';
-import AttendanceEmployeeFilter from '@/features/attendance/components/AttendanceEmployeeFilter';
+import EmployeeSelectFilter from '@/features/employee/components/EmployeeSelectFilter';
 import { formatDateWithDay, formatTime } from '@/features/attendance/utils/format';
 import { MONTH_FILTER_OPTIONS, yearFilterOptions } from '@/features/attendance/utils/periodOptions';
 import type { Attendance } from '@/features/attendance/types';
@@ -92,7 +92,7 @@ export const attendanceStatusListFilters: FilterConfig[] = [
     type: 'custom',
     key: 'employeeId',
     render: ({ value, onChange }) => (
-      <AttendanceEmployeeFilter value={value} onChange={onChange} />
+      <EmployeeSelectFilter value={value} onChange={onChange} />
     ),
   },
 ];
