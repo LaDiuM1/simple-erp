@@ -1,10 +1,18 @@
 package io.github.ladium1.erp.contract.internal.repository;
 
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.core.types.dsl.StringExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import io.github.ladium1.erp.contract.api.dto.ContractOutstandingSummary;
+import io.github.ladium1.erp.contract.api.dto.MonthlyContractStat;
 import io.github.ladium1.erp.contract.internal.dto.ContractSearchCondition;
 import io.github.ladium1.erp.contract.internal.entity.Contract;
+import io.github.ladium1.erp.contract.internal.entity.ContractStatus;
 import io.github.ladium1.erp.contract.internal.entity.QContract;
+import io.github.ladium1.erp.contract.internal.entity.QContractPayment;
 import io.github.ladium1.erp.global.jpa.QuerydslSortUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,7 +21,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @RequiredArgsConstructor
 public class ContractRepositoryImpl implements ContractRepositoryCustom {
@@ -50,6 +60,75 @@ public class ContractRepositoryImpl implements ContractRepositoryCustom {
                 .where(buildPredicate(condition, c))
                 .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, c, c.id.desc()))
                 .fetch();
+    }
+
+    @Override
+    public List<MonthlyContractStat> monthlyStats(LocalDate fromDate, Set<Long> employeeIdScope) {
+        QContract c = QContract.contract;
+        // 월 버킷 — JPQL 표준 함수가 아니라 DB (MariaDB) 의 DATE_FORMAT 에 위임.
+        StringExpression month = Expressions.stringTemplate("function('date_format', {0}, '%Y-%m')", c.contractDate);
+        NumberExpression<Long> amountSum = c.finalAmount.sumLong();
+
+        BooleanBuilder where = new BooleanBuilder()
+                .and(c.status.ne(ContractStatus.CANCELED))
+                .and(c.contractDate.goe(fromDate));
+        if (employeeIdScope != null) {
+            where.and(c.employeeId.in(employeeIdScope));
+        }
+
+        List<Tuple> rows = queryFactory
+                .select(month, c.count(), amountSum)
+                .from(c)
+                .where(where)
+                .groupBy(month)
+                .orderBy(month.asc())
+                .fetch();
+
+        return rows.stream()
+                .map(row -> {
+                    Long count = row.get(c.count());
+                    Long sum = row.get(amountSum);
+                    return MonthlyContractStat.builder()
+                            .month(row.get(month))
+                            .count(count == null ? 0L : count)
+                            .totalAmount(sum == null ? 0L : sum)
+                            .build();
+                })
+                .toList();
+    }
+
+    @Override
+    public ContractOutstandingSummary outstandingSummary(Set<Long> employeeIdScope) {
+        QContract c = QContract.contract;
+        QContractPayment p = QContractPayment.contractPayment;
+
+        BooleanBuilder where = new BooleanBuilder().and(c.status.ne(ContractStatus.CANCELED));
+        if (employeeIdScope != null) {
+            where.and(c.employeeId.in(employeeIdScope));
+        }
+
+        NumberExpression<Long> finalSum = c.finalAmount.sumLong();
+        Long totalFinal = queryFactory
+                .select(finalSum)
+                .from(c)
+                .where(where)
+                .fetchOne();
+
+        NumberExpression<Long> paidSum = p.paidAmount.sumLong();
+        Long totalPaid = queryFactory
+                .select(paidSum)
+                .from(p)
+                .join(c).on(c.id.eq(p.contractId))
+                .where(where)
+                .fetchOne();
+
+        long finalAmount = totalFinal == null ? 0L : totalFinal;
+        long paidAmount = totalPaid == null ? 0L : totalPaid;
+        return ContractOutstandingSummary.builder()
+                .totalFinalAmount(finalAmount)
+                .totalPaidAmount(paidAmount)
+                .totalOutstandingAmount(finalAmount - paidAmount)
+                .build();
     }
 
     private BooleanBuilder buildPredicate(ContractSearchCondition condition, QContract c) {

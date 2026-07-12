@@ -7,18 +7,24 @@ import HeroBanner from '@/features/dashboard/components/HeroBanner/HeroBanner';
 import KpiCard from '@/features/dashboard/components/KpiCard/KpiCard';
 import RecentCustomers from '@/features/dashboard/components/RecentCustomers/RecentCustomers';
 import RecentActivities from '@/features/dashboard/components/RecentActivities/RecentActivities';
+import SalesOverview from '@/features/dashboard/components/SalesOverview/SalesOverview';
+import ServiceOverview from '@/features/dashboard/components/ServiceOverview/ServiceOverview';
+import WarrantyExpiring from '@/features/dashboard/components/WarrantyExpiring/WarrantyExpiring';
 import { useDashboardPage } from '@/features/dashboard/hooks/useDashboardPage';
-import { DashboardRoot, KpiGrid, RecentGrid } from './DashboardPage.styles';
+import { DashboardRoot, KpiGrid, RecentGrid, WidgetGrid } from './DashboardPage.styles';
 
 export default function DashboardPage() {
   const {
     queries,
+    widgets,
     monthLabel,
     onNavigateCustomers,
     onNavigateSalesContacts,
     onNavigateEmployees,
     onNavigateSalesCustomers,
   } = useDashboardPage();
+
+  const hasWidgets = widgets.sales || widgets.service || widgets.warranty;
 
   return (
     <QueryGate queries={queries}>
@@ -57,6 +63,14 @@ export default function DashboardPage() {
               onClick={onNavigateSalesCustomers}
             />
           </KpiGrid>
+
+          {hasWidgets && (
+            <WidgetGrid>
+              {widgets.sales && <SalesOverview data={widgets.sales} />}
+              {widgets.service && <ServiceOverview data={widgets.service} />}
+              {widgets.warranty && <WarrantyExpiring items={widgets.warranty} />}
+            </WidgetGrid>
+          )}
 
           <RecentGrid>
             <RecentCustomers items={summary.recentCustomers} />

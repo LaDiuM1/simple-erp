@@ -6,6 +6,8 @@ import io.github.ladium1.erp.coderule.api.InputMode;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
 import io.github.ladium1.erp.contract.api.ContractDeletingEvent;
 import io.github.ladium1.erp.contract.api.ContractInstalledEvent;
+import io.github.ladium1.erp.contract.api.dto.ContractOutstandingSummary;
+import io.github.ladium1.erp.contract.api.dto.MonthlyContractStat;
 import io.github.ladium1.erp.contract.internal.dto.ContractCreateRequest;
 import io.github.ladium1.erp.contract.internal.dto.ContractDetailResponse;
 import io.github.ladium1.erp.contract.internal.dto.ContractNoteCreateRequest;
@@ -480,6 +482,58 @@ class ContractServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.AUTHOR_NOT_RESOLVED);
         verify(noteRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("monthlyStats — 데이터 없는 달을 0 으로 채워 요청 개월 수만큼 반환")
+    void monthly_stats_fills_empty_months() {
+        // given
+        java.time.YearMonth current = java.time.YearMonth.now();
+        given(contractRepository.monthlyStats(any(LocalDate.class), eq(null)))
+                .willReturn(List.of(MonthlyContractStat.builder()
+                        .month(current.toString()).count(2).totalAmount(300_000_000L).build()));
+
+        // when
+        List<MonthlyContractStat> stats = contractService.monthlyStats(3);
+
+        // then
+        assertThat(stats).hasSize(3);
+        assertThat(stats.getFirst().month()).isEqualTo(current.minusMonths(2).toString());
+        assertThat(stats.getFirst().count()).isZero();
+        assertThat(stats.getLast().month()).isEqualTo(current.toString());
+        assertThat(stats.getLast().totalAmount()).isEqualTo(300_000_000L);
+    }
+
+    @Test
+    @DisplayName("monthlyStats — 스코프 대상 직원이 없으면 전부 0 (DB 미조회)")
+    void monthly_stats_scope_empty() {
+        // given
+        given(dataScopeResolver.resolve(Menu.CONTRACTS)).willReturn(DataScope.SELF);
+        given(dataScopeContextProvider.current()).willReturn(DataScopeContext.anonymous());
+
+        // when
+        List<MonthlyContractStat> stats = contractService.monthlyStats(3);
+
+        // then
+        assertThat(stats).hasSize(3);
+        assertThat(stats).allMatch(s -> s.count() == 0 && s.totalAmount() == 0);
+        verify(contractRepository, never()).monthlyStats(any(), any());
+    }
+
+    @Test
+    @DisplayName("outstandingSummary — 스코프 대상 직원이 없으면 0 요약 (DB 미조회)")
+    void outstanding_summary_scope_empty() {
+        // given
+        given(dataScopeResolver.resolve(Menu.CONTRACTS)).willReturn(DataScope.SELF);
+        given(dataScopeContextProvider.current()).willReturn(DataScopeContext.anonymous());
+
+        // when
+        ContractOutstandingSummary summary = contractService.outstandingSummary();
+
+        // then
+        assertThat(summary.totalFinalAmount()).isZero();
+        assertThat(summary.totalOutstandingAmount()).isZero();
+        verify(contractRepository, never()).outstandingSummary(any());
     }
 
     private void authenticate() {

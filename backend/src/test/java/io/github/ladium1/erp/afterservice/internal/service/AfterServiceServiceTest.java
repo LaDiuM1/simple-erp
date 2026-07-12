@@ -1,5 +1,7 @@
 package io.github.ladium1.erp.afterservice.internal.service;
 
+import io.github.ladium1.erp.afterservice.api.dto.EngineerExpenseStat;
+import io.github.ladium1.erp.afterservice.api.dto.ServiceTypeStat;
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceCreateRequest;
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceDetailResponse;
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceSearchCondition;
@@ -339,6 +341,45 @@ class AfterServiceServiceTest {
                 ServiceExpenseCategory.MEAL, 30_000L, ExpensePayerType.ENGINEER, null, 5L, null)))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", AfterServiceErrorCode.EXPENSE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("typeStats — 건수 0 유형도 enum 순서 그대로 포함")
+    void type_stats_includes_zero_types() {
+        // given
+        given(afterServiceRepository.countByTypeSince(any(LocalDate.class)))
+                .willReturn(Map.of(ServiceType.REPAIR, 3L));
+        given(afterServiceRepository.expenseSumByTypeSince(any(LocalDate.class)))
+                .willReturn(Map.of(ServiceType.REPAIR, 850_000L));
+
+        // when
+        List<ServiceTypeStat> stats = afterServiceService.typeStats(6);
+
+        // then
+        assertThat(stats).hasSize(ServiceType.values().length);
+        assertThat(stats.getFirst().type()).isEqualTo("REPAIR");
+        assertThat(stats.getFirst().count()).isEqualTo(3);
+        assertThat(stats.getFirst().expenseTotal()).isEqualTo(850_000L);
+        assertThat(stats.getLast().count()).isZero();
+    }
+
+    @Test
+    @DisplayName("engineerExpenseStats — 원가 내림차순 + 이름 enrich")
+    void engineer_expense_stats_sorted_desc() {
+        // given
+        given(afterServiceRepository.expenseSumByEngineerSince(any(LocalDate.class)))
+                .willReturn(Map.of(5L, 850_000L, 6L, 1_500_000L));
+        given(engineerService.findNamesByIds(anyList()))
+                .willReturn(Map.of(5L, "문영테크 김기사", 6L, "박기술"));
+
+        // when
+        List<EngineerExpenseStat> stats = afterServiceService.engineerExpenseStats(6);
+
+        // then
+        assertThat(stats).hasSize(2);
+        assertThat(stats.getFirst().engineerName()).isEqualTo("박기술");
+        assertThat(stats.getFirst().expenseTotal()).isEqualTo(1_500_000L);
+        assertThat(stats.getLast().expenseTotal()).isEqualTo(850_000L);
     }
 
     private void stubRefNames() {

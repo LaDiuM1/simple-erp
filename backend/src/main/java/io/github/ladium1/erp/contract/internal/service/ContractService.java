@@ -9,6 +9,8 @@ import io.github.ladium1.erp.contract.api.ContractApi;
 import io.github.ladium1.erp.contract.api.ContractDeletingEvent;
 import io.github.ladium1.erp.contract.api.ContractInstalledEvent;
 import io.github.ladium1.erp.contract.api.dto.ContractInfo;
+import io.github.ladium1.erp.contract.api.dto.ContractOutstandingSummary;
+import io.github.ladium1.erp.contract.api.dto.MonthlyContractStat;
 import io.github.ladium1.erp.contract.internal.dto.ContractCreateRequest;
 import io.github.ladium1.erp.contract.internal.dto.ContractDetailResponse;
 import io.github.ladium1.erp.contract.internal.dto.ContractExcelRow;
@@ -105,6 +107,40 @@ public class ContractService implements ContractApi {
                 .customerId(contract.getCustomerId())
                 .contractDate(contract.getContractDate())
                 .build();
+    }
+
+    @Override
+    public List<MonthlyContractStat> monthlyStats(int months) {
+        java.time.YearMonth startMonth = java.time.YearMonth.now().minusMonths(months - 1L);
+
+        Optional<Set<Long>> visible = resolveVisibleEmployeeIds();
+        Map<String, MonthlyContractStat> byMonth;
+        if (visible.isPresent() && visible.get().isEmpty()) {
+            byMonth = Map.of();
+        } else {
+            byMonth = contractRepository.monthlyStats(startMonth.atDay(1), visible.orElse(null)).stream()
+                    .collect(toMap(MonthlyContractStat::month, s -> s));
+        }
+
+        // 데이터 없는 달도 0 으로 채워 위젯 축이 끊기지 않게 반환.
+        return java.util.stream.IntStream.range(0, months)
+                .mapToObj(startMonth::plusMonths)
+                .map(ym -> {
+                    String key = ym.toString();
+                    MonthlyContractStat stat = byMonth.get(key);
+                    return stat != null ? stat
+                            : MonthlyContractStat.builder().month(key).count(0).totalAmount(0).build();
+                })
+                .toList();
+    }
+
+    @Override
+    public ContractOutstandingSummary outstandingSummary() {
+        Optional<Set<Long>> visible = resolveVisibleEmployeeIds();
+        if (visible.isPresent() && visible.get().isEmpty()) {
+            return ContractOutstandingSummary.builder().build();
+        }
+        return contractRepository.outstandingSummary(visible.orElse(null));
     }
 
     public PageResponse<ContractSummaryResponse> search(ContractSearchCondition condition, Pageable pageable) {

@@ -56,6 +56,22 @@ public class EquipmentRepositoryImpl implements EquipmentRepositoryCustom {
                 .fetch();
     }
 
+    @Override
+    public List<Equipment> findExpiringWarranties(int days, int limit) {
+        QEquipment e = QEquipment.equipment;
+        LocalDate today = LocalDate.now();
+        LocalDate until = today.plusDays(days);
+        return queryFactory
+                .selectFrom(e)
+                .where(
+                        e.generalWarrantyEndDate.between(today, until)
+                                .or(e.oscillatorWarrantyEndDate.between(today, until))
+                )
+                .orderBy(e.generalWarrantyEndDate.asc().nullsLast(), e.oscillatorWarrantyEndDate.asc())
+                .limit(limit)
+                .fetch();
+    }
+
     private BooleanBuilder buildPredicate(EquipmentSearchCondition condition, QEquipment e) {
         BooleanBuilder where = new BooleanBuilder();
         if (condition == null) {
