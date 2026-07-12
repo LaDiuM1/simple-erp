@@ -17,12 +17,25 @@ export const FilterBarContainer = styled(Box)(({ theme }) => ({
   },
 }));
 
-/** 검색 외 필터 드롭다운들을 감싸는 그룹 — flex wrap. */
-export const FilterGroup = styled(Box)({
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '0.5rem',
-});
+/**
+ * 필터 컨트롤 1개가 md+ 에서 차지하는 고정 폭 (px).
+ * select / date / search / entity 모든 필터가 이 폭으로 통일 — 종류가 달라도 박스 크기가 어긋나지 않는다.
+ */
+export const FILTER_CONTROL_WIDTH = 200;
+
+/**
+ * 필터 컨트롤 1개를 감싸는 폭 슬롯 — 컨트롤 종류(select/date/search/custom)와 무관하게 동일 폭을 강제.
+ * 내부 컨트롤은 폭 100% 로 슬롯을 채우므로, 각 컨트롤이 제각각 들고 있던 width/minWidth 는 슬롯이 덮어쓴다.
+ * 모바일(<md): 컨테이너 폭 전체로 stretch (FilterBarContainer 가 column stretch).
+ */
+export const FilterSlot = styled(Box)(({ theme }) => ({
+  width: '100%',
+  '& > *': { width: '100%' },
+  [theme.breakpoints.up('md')]: {
+    width: FILTER_CONTROL_WIDTH,
+    flexShrink: 0,
+  },
+}));
 
 /** 필터 초기화(🔄) 버튼. */
 export const ResetButton = styled(IconButton)(({ theme }) => ({
@@ -57,12 +70,8 @@ export const DateTextField = styled(TextField)(({ theme }) => ({
   },
 }));
 
-/** 검색 TextField — height 36 + 내부 placeholder/border 톤 조정. */
+/** 검색 TextField — height 36 + 내부 placeholder/border 톤 조정. 폭은 FilterSlot 이 통일. */
 export const SearchTextField = styled(TextField)(({ theme }) => ({
-  [theme.breakpoints.up('md')]: {
-    width: 150,
-    flex: '0 1 auto',
-  },
   '& .MuiOutlinedInput-root': {
     height: 36,
     fontSize: '0.8125rem',

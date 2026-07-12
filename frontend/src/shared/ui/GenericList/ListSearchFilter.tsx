@@ -10,7 +10,7 @@ import FilterSelect from '@/shared/ui/atoms/FilterSelect';
 import {
   DateTextField,
   FilterBarContainer,
-  FilterGroup,
+  FilterSlot,
   ResetButton,
   SearchTextField,
 } from './ListSearchFilter.styles';
@@ -52,27 +52,25 @@ export default function ListSearchFilter({
     <FilterBarContainer>
       {trailing}
 
-      {otherItems.length > 0 && (
-        <FilterGroup>
-          {otherItems.map((item) => (
-            <FilterItemRenderer
-              key={item.key}
-              item={item}
-              value={filters[item.key]}
-              onChange={(v) => onUpdate(item.key, v)}
-            />
-          ))}
-        </FilterGroup>
-      )}
+      {otherItems.map((item) => (
+        <FilterSlot key={item.key}>
+          <FilterItemRenderer
+            item={item}
+            value={filters[item.key]}
+            onChange={(v) => onUpdate(item.key, v)}
+          />
+        </FilterSlot>
+      ))}
 
       {searchItems.map((searchItem) => (
-        <SearchField
-          key={searchItem.key}
-          placeholder={searchItem.placeholder}
-          value={toSearchValue(filters[searchItem.key])}
-          onChange={(v) => onUpdate(searchItem.key, v === '' ? null : v)}
-          debounceMs={debounceMs}
-        />
+        <FilterSlot key={searchItem.key}>
+          <SearchField
+            placeholder={searchItem.placeholder}
+            value={toSearchValue(filters[searchItem.key])}
+            onChange={(v) => onUpdate(searchItem.key, v === '' ? null : v)}
+            debounceMs={debounceMs}
+          />
+        </FilterSlot>
       ))}
 
       <Tooltip title="필터 초기화" arrow>

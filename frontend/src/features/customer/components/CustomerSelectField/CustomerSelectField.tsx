@@ -17,6 +17,8 @@ interface Props {
   helperText?: string;
   disabled?: boolean;
   placeholder?: string;
+  /** 필터바 배치용 dense 톤 (height 36 / floating label 없음). */
+  dense?: boolean;
 }
 
 const customerSelectConfig: EntitySelectConfig<CustomerSummary> = {

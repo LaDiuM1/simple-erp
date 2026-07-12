@@ -142,6 +142,6 @@ export const contractListFilters: FilterConfig[] = [
     minWidth: 160,
   },
   { type: 'select', key: 'status', label: '상태', options: CONTRACT_STATUS_OPTIONS, minWidth: 110 },
-  { type: 'date', key: 'contractDateFrom', label: '계약일 (부터)' },
-  { type: 'date', key: 'contractDateTo', label: '계약일 (까지)' },
+  { type: 'date', key: 'contractDateFrom', label: '계약 시작일' },
+  { type: 'date', key: 'contractDateTo', label: '계약 종료일' },
 ];
