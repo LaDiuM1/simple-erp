@@ -77,6 +77,7 @@ export const api = createApi({
     'Supplier',
     'Product',
     'ProductCategory',
+    'Contract',
     'SalesActivity',
     'SalesAssignment',
     'SalesAggregate',

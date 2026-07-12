@@ -63,6 +63,16 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         return counts;
     }
 
+    @Override
+    public List<Product> findAllWithCategoryByIds(List<Long> ids) {
+        QProduct p = QProduct.product;
+        return queryFactory
+                .selectFrom(p)
+                .leftJoin(p.category).fetchJoin()
+                .where(p.id.in(ids))
+                .fetch();
+    }
+
     private BooleanBuilder buildPredicate(ProductSearchCondition condition, QProduct p) {
         BooleanBuilder where = new BooleanBuilder();
         if (condition == null) {

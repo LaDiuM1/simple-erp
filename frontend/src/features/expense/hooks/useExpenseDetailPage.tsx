@@ -7,7 +7,7 @@ import type { HeaderDetailField } from '@/shared/ui/GenericHeaderDetails';
 import { formatDateTime } from '@/shared/ui/GenericTabbedTable';
 import ExpenseStatusIndicator from '@/features/expense/components/ExpenseStatusIndicator';
 import { useGetExpenseQuery } from '@/features/expense/api/expenseApi';
-import { formatKrw } from '@/features/expense/utils/formatKrw';
+import { formatKrw } from '@/shared/utils/formatKrw';
 import type { ExpenseDetail } from '@/features/expense/types';
 import { useExpenseItemTab } from './useExpenseItemTab';
 

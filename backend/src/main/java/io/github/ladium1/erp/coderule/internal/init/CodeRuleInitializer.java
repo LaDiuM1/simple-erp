@@ -51,6 +51,14 @@ public class CodeRuleInitializer implements ApplicationRunner {
                 .inputMode(InputMode.AUTO_OR_MANUAL)
                 .description("고객사 코드 — 기본: C0001, C0002, ...")
                 .build());
+
+        // 연도 토큰 포함 -> 시퀀스 매년 초기화. 기존 엑셀의 연도별 시트 관리 관행과 동일한 번호 체계.
+        DEFAULTS.put(CodeRuleTarget.CONTRACT, CodeRule.builder()
+                .target(CodeRuleTarget.CONTRACT)
+                .pattern("CT{YYYY}-{SEQ:3}")
+                .inputMode(InputMode.AUTO)
+                .description("계약 번호 — 기본: CT2026-001, CT2026-002, ... (매년 초기화)")
+                .build());
     }
 
     private final CodeRuleRepository codeRuleRepository;
