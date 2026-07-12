@@ -1,10 +1,12 @@
 import { useState, type MouseEvent } from 'react';
+import { styled } from '@mui/material/styles';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import TextField from '@mui/material/TextField';
 import ClearIcon from '@mui/icons-material/Clear';
 import SearchIcon from '@mui/icons-material/Search';
 import CommonSearchModal from '@/shared/ui/CommonSearchModal';
+import { SearchTextField } from '@/shared/ui/GenericList';
 import type {
   ColumnConfig,
   FilterConfig,
@@ -47,6 +49,12 @@ interface Props<TSummary> {
   placeholder?: string;
   /** 결과 목록에서 제외할 id (예: 자기 자신을 상위로 못 고르도록). */
   excludeId?: number;
+  /**
+   * 필터바 배치용 dense 톤 — floating label 없이 height 36 의 SearchTextField 톤으로 렌더.
+   * 다른 필터 컨트롤(FilterSelect / DateTextField / SearchField)과 박스 크기 / 라벨 스타일을 맞춘다.
+   * 미지정(폼) 시 기존 floating-label 폼 필드로 렌더.
+   */
+  dense?: boolean;
 }
 
 /**
@@ -67,61 +75,105 @@ export default function EntitySelectField<TSummary>({
   disabled,
   placeholder,
   excludeId,
+  dense,
 }: Props<TSummary>) {
   const [open, setOpen] = useState(false);
   const openModal = () => {
     if (!disabled) setOpen(true);
   };
 
-  return (
-    <>
-      <TextField
-        fullWidth
-        size="small"
-        label={label}
-        required={required}
-        helperText={helperText}
-        disabled={disabled}
-        placeholder={placeholder}
-        value={valueLabel}
-        onClick={openModal}
-        slotProps={{
-          input: {
-            endAdornment: (
-              <InputAdornment position="end">
-                {!!value && !disabled && (
-                  <IconButton
-                    size="small"
-                    aria-label="선택 해제"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onChange('', '');
-                    }}
-                  >
-                    <ClearIcon fontSize="small" />
-                  </IconButton>
-                )}
+  const trigger = dense ? (
+    <DenseSelectTrigger
+      size="small"
+      variant="outlined"
+      placeholder={placeholder ?? label}
+      value={valueLabel}
+      onClick={openModal}
+      slotProps={{
+        input: {
+          startAdornment: (
+            <InputAdornment position="start" sx={{ ml: '-0.125rem' }}>
+              <SearchIcon sx={{ fontSize: '1rem', color: 'text.disabled' }} />
+            </InputAdornment>
+          ),
+          endAdornment:
+            !!value && !disabled ? (
+              <InputAdornment position="end" sx={{ mr: '-0.375rem' }}>
                 <IconButton
                   size="small"
-                  aria-label={config.searchAriaLabel}
+                  aria-label="선택 해제"
                   onClick={(e) => {
                     e.stopPropagation();
-                    openModal();
+                    onChange('', '');
                   }}
-                  disabled={disabled}
+                  sx={{ p: '2px' }}
                 >
-                  <SearchIcon fontSize="small" />
+                  <ClearIcon sx={{ fontSize: '0.875rem' }} />
                 </IconButton>
               </InputAdornment>
-            ),
-          },
-          htmlInput: {
-            readOnly: true,
-            onMouseDown: (e: MouseEvent<HTMLInputElement>) => e.preventDefault(),
-            style: { cursor: disabled ? 'default' : 'pointer' },
-          },
-        }}
-      />
+            ) : null,
+        },
+        htmlInput: {
+          readOnly: true,
+          'aria-label': config.searchAriaLabel,
+          onMouseDown: (e: MouseEvent<HTMLInputElement>) => e.preventDefault(),
+          style: { cursor: disabled ? 'default' : 'pointer' },
+        },
+      }}
+    />
+  ) : (
+    <TextField
+      fullWidth
+      size="small"
+      label={label}
+      required={required}
+      helperText={helperText}
+      disabled={disabled}
+      placeholder={placeholder}
+      value={valueLabel}
+      onClick={openModal}
+      slotProps={{
+        input: {
+          endAdornment: (
+            <InputAdornment position="end">
+              {!!value && !disabled && (
+                <IconButton
+                  size="small"
+                  aria-label="선택 해제"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange('', '');
+                  }}
+                >
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              )}
+              <IconButton
+                size="small"
+                aria-label={config.searchAriaLabel}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openModal();
+                }}
+                disabled={disabled}
+              >
+                <SearchIcon fontSize="small" />
+              </IconButton>
+            </InputAdornment>
+          ),
+        },
+        htmlInput: {
+          readOnly: true,
+          onMouseDown: (e: MouseEvent<HTMLInputElement>) => e.preventDefault(),
+          style: { cursor: disabled ? 'default' : 'pointer' },
+        },
+      }}
+    />
+  );
+
+  return (
+    <>
+      {trigger}
       <CommonSearchModal<TSummary, never>
         open={open}
         onClose={() => setOpen(false)}
@@ -145,3 +197,20 @@ export default function EntitySelectField<TSummary>({
     </>
   );
 }
+
+/**
+ * dense(필터바) 모드 트리거 — 필터바 검색 input(`SearchTextField`)의 readOnly clickable 변형.
+ * height 36 / border 톤을 다른 필터 컨트롤과 공유하고, cursor pointer + placeholder 톤만 얹는다.
+ */
+const DenseSelectTrigger = styled(SearchTextField)(({ theme }) => ({
+  cursor: 'pointer',
+  '& .MuiOutlinedInput-root': { cursor: 'pointer' },
+  '& .MuiOutlinedInput-input': {
+    cursor: 'pointer',
+    color: theme.palette.text.primary,
+  },
+  '& input::placeholder': {
+    color: theme.palette.text.disabled,
+    opacity: 1,
+  },
+}));

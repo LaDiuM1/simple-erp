@@ -139,6 +139,6 @@ export const afterServiceListFilters: FilterConfig[] = [
     mapOptions: mapEngineerOptions,
     minWidth: 150,
   },
-  { type: 'date', key: 'receivedDateFrom', label: '접수일 (부터)' },
-  { type: 'date', key: 'receivedDateTo', label: '접수일 (까지)' },
+  { type: 'date', key: 'receivedDateFrom', label: '접수 시작일' },
+  { type: 'date', key: 'receivedDateTo', label: '접수 종료일' },
 ];
