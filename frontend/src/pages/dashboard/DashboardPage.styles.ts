@@ -31,3 +31,14 @@ export const RecentGrid = styled(Box)(({ theme }) => ({
     gridTemplateColumns: '1fr',
   },
 }));
+
+/** 권한별 위젯 (계약 실적 / AS 현황 / 보증 임박) — RecentGrid 와 동일 리듬, 섹션 높이 독립. */
+export const WidgetGrid = styled(Box)(({ theme }) => ({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: '1rem',
+  alignItems: 'start',
+  [theme.breakpoints.down('md')]: {
+    gridTemplateColumns: '1fr',
+  },
+}));

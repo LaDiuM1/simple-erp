@@ -1,10 +1,14 @@
 package io.github.ladium1.erp.afterservice.internal.repository;
 
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceSearchCondition;
 import io.github.ladium1.erp.afterservice.internal.entity.AfterService;
 import io.github.ladium1.erp.afterservice.internal.entity.QAfterService;
+import io.github.ladium1.erp.afterservice.internal.entity.QServiceExpense;
+import io.github.ladium1.erp.afterservice.internal.entity.ServiceType;
 import io.github.ladium1.erp.global.jpa.QuerydslSortUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,7 +17,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 public class AfterServiceRepositoryImpl implements AfterServiceRepositoryCustom {
@@ -50,6 +57,66 @@ public class AfterServiceRepositoryImpl implements AfterServiceRepositoryCustom 
                 .where(buildPredicate(condition, a))
                 .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, a, a.id.desc()))
                 .fetch();
+    }
+
+    @Override
+    public Map<ServiceType, Long> countByTypeSince(LocalDate fromDate) {
+        QAfterService a = QAfterService.afterService;
+        List<Tuple> rows = queryFactory
+                .select(a.type, a.count())
+                .from(a)
+                .where(a.receivedDate.goe(fromDate))
+                .groupBy(a.type)
+                .fetch();
+
+        Map<ServiceType, Long> counts = new HashMap<>();
+        for (Tuple row : rows) {
+            Long count = row.get(a.count());
+            counts.put(row.get(a.type), count != null ? count : 0L);
+        }
+        return counts;
+    }
+
+    @Override
+    public Map<ServiceType, Long> expenseSumByTypeSince(LocalDate fromDate) {
+        QAfterService a = QAfterService.afterService;
+        QServiceExpense e = QServiceExpense.serviceExpense;
+        NumberExpression<Long> amountSum = e.amount.sumLong();
+        List<Tuple> rows = queryFactory
+                .select(a.type, amountSum)
+                .from(e)
+                .join(a).on(a.id.eq(e.afterServiceId))
+                .where(a.receivedDate.goe(fromDate))
+                .groupBy(a.type)
+                .fetch();
+
+        Map<ServiceType, Long> sums = new HashMap<>();
+        for (Tuple row : rows) {
+            Long sum = row.get(amountSum);
+            sums.put(row.get(a.type), sum != null ? sum : 0L);
+        }
+        return sums;
+    }
+
+    @Override
+    public Map<Long, Long> expenseSumByEngineerSince(LocalDate fromDate) {
+        QAfterService a = QAfterService.afterService;
+        QServiceExpense e = QServiceExpense.serviceExpense;
+        NumberExpression<Long> amountSum = e.amount.sumLong();
+        List<Tuple> rows = queryFactory
+                .select(e.engineerId, amountSum)
+                .from(e)
+                .join(a).on(a.id.eq(e.afterServiceId))
+                .where(a.receivedDate.goe(fromDate).and(e.engineerId.isNotNull()))
+                .groupBy(e.engineerId)
+                .fetch();
+
+        Map<Long, Long> sums = new HashMap<>();
+        for (Tuple row : rows) {
+            Long sum = row.get(amountSum);
+            sums.put(row.get(e.engineerId), sum != null ? sum : 0L);
+        }
+        return sums;
     }
 
     private BooleanBuilder buildPredicate(AfterServiceSearchCondition condition, QAfterService a) {

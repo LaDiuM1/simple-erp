@@ -13,4 +13,9 @@ public interface EquipmentRepositoryCustom {
     Page<Equipment> search(EquipmentSearchCondition condition, Pageable pageable);
 
     List<Equipment> searchAll(EquipmentSearchCondition condition, Sort sort);
+
+    /**
+     * 발진기 / 무상 AS 중 하나라도 [오늘, 오늘+days] 에 만료되는 설비 — 무상 AS 만료일 오름차순, 최대 limit 건.
+     */
+    List<Equipment> findExpiringWarranties(int days, int limit);
 }
