@@ -6,6 +6,7 @@ import io.github.ladium1.erp.coderule.api.InputMode;
 import io.github.ladium1.erp.coderule.api.dto.CodeGenerationContext;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
 import io.github.ladium1.erp.customer.api.CustomerApi;
+import io.github.ladium1.erp.customer.api.CustomerDeletingEvent;
 import io.github.ladium1.erp.customer.api.CustomerVisibilityContributor;
 import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.customer.api.dto.RecentCustomerInfo;
@@ -40,6 +41,7 @@ import io.github.ladium1.erp.global.web.PageResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -77,6 +79,7 @@ public class CustomerService implements CustomerApi {
     private final DataScopeResolver dataScopeResolver;
     private final DataScopeContextProvider dataScopeContextProvider;
     private final List<CustomerVisibilityContributor> visibilityContributors;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public CustomerInfo getById(Long id) {
@@ -326,6 +329,8 @@ public class CustomerService implements CustomerApi {
         if (!customerRepository.existsById(id)) {
             throw new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND);
         }
+        // 다른 모듈 (계약 등) 의 사용 여부는 동기 이벤트로 검사 — 리스너가 throw 하면 트랜잭션 롤백.
+        eventPublisher.publishEvent(new CustomerDeletingEvent(id));
         customerRepository.deleteById(id);
     }
 

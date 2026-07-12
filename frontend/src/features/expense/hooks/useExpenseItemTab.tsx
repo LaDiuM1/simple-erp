@@ -11,7 +11,7 @@ import {
 import { type DetailModalField } from '@/shared/ui/GenericDetailModal';
 import Muted from '@/shared/ui/atoms/Muted';
 import { useFileDownload } from '@/shared/api/fileDownload';
-import { formatKrw } from '@/features/expense/utils/formatKrw';
+import { formatKrw } from '@/shared/utils/formatKrw';
 import { EXPENSE_CATEGORY_LABELS, type ExpenseItem } from '@/features/expense/types';
 import type { ExpenseItemTabModalProps } from '@/features/expense/components/ExpenseItemTabModals/ExpenseItemTabModals';
 

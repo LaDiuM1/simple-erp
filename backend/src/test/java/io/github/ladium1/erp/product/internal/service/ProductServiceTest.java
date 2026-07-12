@@ -2,6 +2,8 @@ package io.github.ladium1.erp.product.internal.service;
 
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.web.PageResponse;
+import io.github.ladium1.erp.product.api.ProductDeletingEvent;
+import io.github.ladium1.erp.product.api.dto.ProductInfo;
 import io.github.ladium1.erp.product.internal.dto.ProductCreateRequest;
 import io.github.ladium1.erp.product.internal.dto.ProductDetailResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductSearchCondition;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -48,6 +51,7 @@ class ProductServiceTest {
     @Mock private ProductCategoryRepository productCategoryRepository;
     @Mock private ProductMapper productMapper;
     @Mock private SupplierApi supplierApi;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @Test
     @DisplayName("search 성공 — 공급사명 enrich 된 Summary 페이지 반환")
@@ -204,7 +208,7 @@ class ProductServiceTest {
     }
 
     @Test
-    @DisplayName("delete 성공")
+    @DisplayName("delete 성공 — 삭제 전 ProductDeletingEvent 발행")
     void delete_success() {
         // given
         given(productRepository.existsById(1L)).willReturn(true);
@@ -213,6 +217,7 @@ class ProductServiceTest {
         productService.delete(1L);
 
         // then
+        verify(eventPublisher).publishEvent(new ProductDeletingEvent(1L));
         verify(productRepository).deleteById(1L);
     }
 
@@ -227,6 +232,45 @@ class ProductServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ProductErrorCode.PRODUCT_NOT_FOUND);
         verify(productRepository, never()).deleteById(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("getById 성공 — 카테고리명 포함 ProductInfo 반환")
+    void get_by_id_success() {
+        // given
+        Product product = mockProduct("HLA-1530", 1L);
+        ReflectionTestUtils.setField(product, "id", 7L);
+        given(productRepository.findById(7L)).willReturn(Optional.of(product));
+
+        // when
+        ProductInfo info = productService.getById(7L);
+
+        // then
+        assertThat(info.id()).isEqualTo(7L);
+        assertThat(info.modelName()).isEqualTo("HLA-1530");
+        assertThat(info.categoryName()).isEqualTo("평판 레이저");
+        assertThat(info.supplierId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("getById 실패 — PRODUCT_NOT_FOUND")
+    void get_by_id_fail_not_found() {
+        // given
+        given(productRepository.findById(99L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> productService.getById(99L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ProductErrorCode.PRODUCT_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("findByIds — 빈 입력은 빈 리스트 (DB 미조회)")
+    void find_by_ids_empty_input() {
+        assertThat(productService.findByIds(List.of())).isEmpty();
+        assertThat(productService.findByIds(null)).isEmpty();
+        verify(productRepository, never()).findAllWithCategoryByIds(any());
     }
 
     private Product mockProduct(String modelName, Long supplierId) {

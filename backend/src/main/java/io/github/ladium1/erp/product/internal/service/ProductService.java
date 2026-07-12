@@ -5,6 +5,9 @@ import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.web.PageResponse;
+import io.github.ladium1.erp.product.api.ProductApi;
+import io.github.ladium1.erp.product.api.ProductDeletingEvent;
+import io.github.ladium1.erp.product.api.dto.ProductInfo;
 import io.github.ladium1.erp.product.internal.dto.ProductCreateRequest;
 import io.github.ladium1.erp.product.internal.dto.ProductDetailResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductSearchCondition;
@@ -19,6 +22,7 @@ import io.github.ladium1.erp.product.internal.repository.ProductRepository;
 import io.github.ladium1.erp.supplier.api.SupplierApi;
 import io.github.ladium1.erp.supplier.api.dto.SupplierInfo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -31,12 +35,30 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class ProductService {
+public class ProductService implements ProductApi {
 
     private final ProductRepository productRepository;
     private final ProductCategoryRepository productCategoryRepository;
     private final ProductMapper productMapper;
     private final SupplierApi supplierApi;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Override
+    public ProductInfo getById(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND));
+        return toProductInfo(product);
+    }
+
+    @Override
+    public List<ProductInfo> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return productRepository.findAllWithCategoryByIds(ids).stream()
+                .map(this::toProductInfo)
+                .toList();
+    }
 
     public PageResponse<ProductSummaryResponse> search(ProductSearchCondition condition, Pageable pageable) {
         Page<Product> page = productRepository.search(condition, pageable);
@@ -103,6 +125,8 @@ public class ProductService {
         if (!productRepository.existsById(id)) {
             throw new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND);
         }
+        // 다른 모듈 (계약 등) 의 사용 여부는 동기 이벤트로 검사 — 리스너가 throw 하면 트랜잭션 롤백.
+        eventPublisher.publishEvent(new ProductDeletingEvent(id));
         productRepository.deleteById(id);
     }
 
@@ -117,6 +141,17 @@ public class ProductService {
         for (Long id : ids) {
             delete(id);
         }
+    }
+
+    private ProductInfo toProductInfo(Product product) {
+        return ProductInfo.builder()
+                .id(product.getId())
+                .categoryId(product.getCategory().getId())
+                .categoryName(product.getCategory().getName())
+                .modelName(product.getModelName())
+                .supplierId(product.getSupplierId())
+                .active(product.isActive())
+                .build();
     }
 
     private Map<Long, String> loadSupplierNames(List<Product> products) {

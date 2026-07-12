@@ -39,6 +39,10 @@ import ProductEditPage from '@/pages/product/ProductEditPage';
 import ProductDetailPage from '@/pages/product/ProductDetailPage';
 import SalesCustomerListPage from '@/pages/salesCustomer/SalesCustomerListPage';
 import SalesCustomerDetailPage from '@/pages/salesCustomer/SalesCustomerDetailPage';
+import ContractListPage from '@/pages/contract/ContractListPage';
+import ContractCreatePage from '@/pages/contract/ContractCreatePage';
+import ContractEditPage from '@/pages/contract/ContractEditPage';
+import ContractDetailPage from '@/pages/contract/ContractDetailPage';
 import SalesContactListPage from '@/pages/salesContact/SalesContactListPage';
 import SalesContactCreatePage from '@/pages/salesContact/SalesContactCreatePage';
 import SalesContactEditPage from '@/pages/salesContact/SalesContactEditPage';
@@ -108,6 +112,10 @@ export default function AppRoutes() {
         <Route path="/sales-contacts/new" element={<SalesContactCreatePage />} />
         <Route path="/sales-contacts/:id/edit" element={<SalesContactEditPage />} />
         <Route path="/sales-contacts/:id" element={<SalesContactDetailPage />} />
+        <Route path="/contracts" element={<ContractListPage />} />
+        <Route path="/contracts/new" element={<ContractCreatePage />} />
+        <Route path="/contracts/:id/edit" element={<ContractEditPage />} />
+        <Route path="/contracts/:id" element={<ContractDetailPage />} />
         <Route path="/approvals" element={<ApprovalListPage />} />
         <Route path="/approvals/new" element={<ApprovalCreatePage />} />
         <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
