@@ -36,12 +36,13 @@ public class SupplierController {
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
     /**
-     * 드롭다운 / 필터로 소비되는 reference 목록 — 제품 모델 관리 / 계약 관리 / 공급사 관리에서 사용.
-     * 셋 중 하나라도 read 권한이 있으면 허용.
+     * 드롭다운 / 필터로 소비되는 reference 목록 — 제품 모델 관리 / 계약 관리 / 설비 대장 / 공급사 관리에서 사용.
+     * 이 중 하나라도 read 권한이 있으면 허용.
      */
     private static final String CAN_READ_REFERENCE =
             "@menuPermissionEvaluator.canRead(authentication, 'PRODUCTS') "
             + "or @menuPermissionEvaluator.canRead(authentication, 'CONTRACTS') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'EQUIPMENTS') "
             + "or @menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
 
     private final SupplierService supplierService;

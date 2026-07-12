@@ -4,6 +4,8 @@ import io.github.ladium1.erp.coderule.api.CodeRuleApi;
 import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
 import io.github.ladium1.erp.coderule.api.InputMode;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
+import io.github.ladium1.erp.contract.api.ContractDeletingEvent;
+import io.github.ladium1.erp.contract.api.ContractInstalledEvent;
 import io.github.ladium1.erp.contract.internal.dto.ContractCreateRequest;
 import io.github.ladium1.erp.contract.internal.dto.ContractDetailResponse;
 import io.github.ladium1.erp.contract.internal.dto.ContractNoteCreateRequest;
@@ -48,6 +50,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -91,6 +94,7 @@ class ContractServiceTest {
     @Mock private ProductApi productApi;
     @Mock private DataScopeResolver dataScopeResolver;
     @Mock private DataScopeContextProvider dataScopeContextProvider;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
     void setupVisibility() {
@@ -318,7 +322,53 @@ class ContractServiceTest {
     }
 
     @Test
-    @DisplayName("delete 성공 — 대금 / 메모도 함께 삭제")
+    @DisplayName("update — INSTALLED 로 전이 시 ContractInstalledEvent 발행")
+    void update_transition_to_installed_publishes_event() {
+        // given
+        Contract contract = mockContract(2L);
+        ReflectionTestUtils.setField(contract, "id", 1L);
+        given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.getById(2L)).willReturn(employeeInfo(2L, "김영업"));
+        given(productApi.getById(3L)).willReturn(productInfo());
+
+        // when
+        contractService.update(1L, installedUpdateRequest());
+
+        // then
+        ArgumentCaptor<ContractInstalledEvent> captor = ArgumentCaptor.forClass(ContractInstalledEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().contractId()).isEqualTo(1L);
+        assertThat(captor.getValue().customerId()).isEqualTo(1L);
+        assertThat(captor.getValue().supplierId()).isEqualTo(7L);
+    }
+
+    @Test
+    @DisplayName("update — 이미 INSTALLED 인 계약 재저장은 이벤트 미발행")
+    void update_already_installed_no_event() {
+        // given
+        Contract contract = Contract.builder()
+                .contractNo("CT2026-001")
+                .customerId(1L).employeeId(2L).supplierId(7L).productId(3L)
+                .finalAmount(100_000_000L)
+                .supportProgramStatus(SupportProgramStatus.NONE)
+                .contractDate(LocalDate.of(2026, 1, 10))
+                .status(ContractStatus.INSTALLED)
+                .build();
+        given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.getById(2L)).willReturn(employeeInfo(2L, "김영업"));
+        given(productApi.getById(3L)).willReturn(productInfo());
+
+        // when
+        contractService.update(1L, installedUpdateRequest());
+
+        // then
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("delete 성공 — ContractDeletingEvent 발행 + 대금 / 메모도 함께 삭제")
     void delete_success() {
         // given
         Contract contract = mockContract(2L);
@@ -329,6 +379,7 @@ class ContractServiceTest {
         contractService.delete(1L);
 
         // then
+        verify(eventPublisher).publishEvent(new ContractDeletingEvent(1L));
         verify(paymentRepository).deleteByContractId(1L);
         verify(noteRepository).deleteByContractId(1L);
         verify(contractRepository).delete(contract);
@@ -482,6 +533,17 @@ class ContractServiceTest {
                 null, finalAmount, null, null, SupportProgramStatus.NONE,
                 LocalDate.of(2026, 1, 10), null, null, null, null, null, null,
                 null, ContractStatus.CONTRACTED
+        );
+    }
+
+    private ContractUpdateRequest installedUpdateRequest() {
+        return new ContractUpdateRequest(
+                1L, 2L, 3L,
+                null, null, null,
+                null, 100_000_000L, null, null, SupportProgramStatus.NONE,
+                LocalDate.of(2026, 1, 10), null, null, null, null,
+                LocalDate.of(2026, 3, 2), null,
+                null, ContractStatus.INSTALLED
         );
     }
 
