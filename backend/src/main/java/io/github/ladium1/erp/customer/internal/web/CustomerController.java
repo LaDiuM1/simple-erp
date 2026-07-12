@@ -47,14 +47,15 @@ public class CustomerController {
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
     /**
-     * 영업 관리 / 계약 관리 / 설비 대장 페이지가 고객사 검색 / 상세 조회를 그대로 사용하므로,
+     * 영업 관리 / 계약 관리 / 설비 대장 / AS 관리 페이지가 고객사 검색 / 상세 조회를 그대로 사용하므로,
      * 이 중 한쪽 메뉴 read 권한이 있으면 허용. (Department 의 reference 권한과 동일 패턴)
      */
     private static final String CAN_READ_REFERENCE =
             "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
             + "or @menuPermissionEvaluator.canRead(authentication, 'SALES_CUSTOMERS') "
             + "or @menuPermissionEvaluator.canRead(authentication, 'CONTRACTS') "
-            + "or @menuPermissionEvaluator.canRead(authentication, 'EQUIPMENTS')";
+            + "or @menuPermissionEvaluator.canRead(authentication, 'EQUIPMENTS') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'AFTER_SERVICES')";
 
     private final CustomerService customerService;
 

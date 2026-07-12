@@ -41,10 +41,18 @@ public class EquipmentController {
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
+    /**
+     * AS 접수 폼의 설비 검색 SelectField / 보증 판정 제안이 설비 검색 / 상세를 그대로 사용하므로,
+     * 둘 중 한쪽 메뉴 read 권한이 있으면 허용. (Customer 의 reference 권한과 동일 패턴)
+     */
+    private static final String CAN_READ_REFERENCE =
+            "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'AFTER_SERVICES')";
+
     private final EquipmentService equipmentService;
 
     @GetMapping
-    @PreAuthorize(CAN_READ)
+    @PreAuthorize(CAN_READ_REFERENCE)
     public PageResponse<EquipmentSummaryResponse> search(
             @RequestParam(required = false) Long customerId,
             @RequestParam(required = false) Long supplierId,
@@ -60,7 +68,7 @@ public class EquipmentController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize(CAN_READ)
+    @PreAuthorize(CAN_READ_REFERENCE)
     public EquipmentDetailResponse getDetail(@PathVariable Long id) {
         return equipmentService.getDetail(id);
     }

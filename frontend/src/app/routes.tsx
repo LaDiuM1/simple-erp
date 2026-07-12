@@ -47,6 +47,11 @@ import EquipmentListPage from '@/pages/equipment/EquipmentListPage';
 import EquipmentCreatePage from '@/pages/equipment/EquipmentCreatePage';
 import EquipmentEditPage from '@/pages/equipment/EquipmentEditPage';
 import EquipmentDetailPage from '@/pages/equipment/EquipmentDetailPage';
+import AfterServiceListPage from '@/pages/afterService/AfterServiceListPage';
+import AfterServiceCreatePage from '@/pages/afterService/AfterServiceCreatePage';
+import AfterServiceEditPage from '@/pages/afterService/AfterServiceEditPage';
+import AfterServiceDetailPage from '@/pages/afterService/AfterServiceDetailPage';
+import EngineerPage from '@/pages/afterService/EngineerPage';
 import SalesContactListPage from '@/pages/salesContact/SalesContactListPage';
 import SalesContactCreatePage from '@/pages/salesContact/SalesContactCreatePage';
 import SalesContactEditPage from '@/pages/salesContact/SalesContactEditPage';
@@ -124,6 +129,11 @@ export default function AppRoutes() {
         <Route path="/equipments/new" element={<EquipmentCreatePage />} />
         <Route path="/equipments/:id/edit" element={<EquipmentEditPage />} />
         <Route path="/equipments/:id" element={<EquipmentDetailPage />} />
+        <Route path="/after-services" element={<AfterServiceListPage />} />
+        <Route path="/after-services/engineers" element={<EngineerPage />} />
+        <Route path="/after-services/new" element={<AfterServiceCreatePage />} />
+        <Route path="/after-services/:id/edit" element={<AfterServiceEditPage />} />
+        <Route path="/after-services/:id" element={<AfterServiceDetailPage />} />
         <Route path="/approvals" element={<ApprovalListPage />} />
         <Route path="/approvals/new" element={<ApprovalCreatePage />} />
         <Route path="/approvals/:id" element={<ApprovalDetailPage />} />

@@ -8,6 +8,7 @@ export const CODE_RULE_TARGET = {
   POSITION: 'POSITION',
   CUSTOMER: 'CUSTOMER',
   CONTRACT: 'CONTRACT',
+  AFTER_SERVICE: 'AFTER_SERVICE',
 } as const;
 
 export type CodeRuleTarget = (typeof CODE_RULE_TARGET)[keyof typeof CODE_RULE_TARGET];
@@ -17,6 +18,7 @@ export const CODE_RULE_TARGET_LABEL: Record<CodeRuleTarget, string> = {
   POSITION: '직책 코드',
   CUSTOMER: '고객사 코드',
   CONTRACT: '계약 번호',
+  AFTER_SERVICE: 'AS 접수번호',
 };
 
 export const INPUT_MODE = {
