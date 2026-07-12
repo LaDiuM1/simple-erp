@@ -5,6 +5,9 @@ import io.github.ladium1.erp.contract.api.ContractInstalledEvent;
 import io.github.ladium1.erp.contract.api.dto.ContractInfo;
 import io.github.ladium1.erp.customer.api.CustomerApi;
 import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
+import io.github.ladium1.erp.equipment.api.EquipmentApi;
+import io.github.ladium1.erp.equipment.api.EquipmentDeletingEvent;
+import io.github.ladium1.erp.equipment.api.dto.EquipmentInfo;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentCreateRequest;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentDetailResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentExcelRow;
@@ -27,6 +30,7 @@ import io.github.ladium1.erp.supplier.api.SupplierApi;
 import io.github.ladium1.erp.supplier.api.dto.SupplierInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -43,7 +47,7 @@ import static java.util.stream.Collectors.toMap;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class EquipmentService {
+public class EquipmentService implements EquipmentApi {
 
     private final EquipmentRepository equipmentRepository;
     private final EquipmentExcelExporter excelExporter;
@@ -51,6 +55,35 @@ public class EquipmentService {
     private final SupplierApi supplierApi;
     private final ProductApi productApi;
     private final ContractApi contractApi;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Override
+    public EquipmentInfo getById(Long id) {
+        return equipmentRepository.findById(id)
+                .map(EquipmentService::toEquipmentInfo)
+                .orElseThrow(() -> new BusinessException(EquipmentErrorCode.EQUIPMENT_NOT_FOUND));
+    }
+
+    @Override
+    public List<EquipmentInfo> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return equipmentRepository.findAllById(ids).stream()
+                .map(EquipmentService::toEquipmentInfo)
+                .toList();
+    }
+
+    private static EquipmentInfo toEquipmentInfo(Equipment equipment) {
+        return EquipmentInfo.builder()
+                .id(equipment.getId())
+                .customerId(equipment.getCustomerId())
+                .productId(equipment.getProductId())
+                .serialNo(equipment.getSerialNo())
+                .oscillatorWarrantyEndDate(equipment.getOscillatorWarrantyEndDate())
+                .generalWarrantyEndDate(equipment.getGeneralWarrantyEndDate())
+                .build();
+    }
 
     public PageResponse<EquipmentSummaryResponse> search(EquipmentSearchCondition condition, Pageable pageable) {
         Page<Equipment> page = equipmentRepository.search(condition, pageable);
@@ -210,6 +243,8 @@ public class EquipmentService {
         if (!equipmentRepository.existsById(id)) {
             throw new BusinessException(EquipmentErrorCode.EQUIPMENT_NOT_FOUND);
         }
+        // 다른 모듈 (AS 등) 의 사용 여부는 동기 이벤트로 검사 — 리스너가 throw 하면 트랜잭션 롤백.
+        eventPublisher.publishEvent(new EquipmentDeletingEvent(id));
         equipmentRepository.deleteById(id);
     }
 

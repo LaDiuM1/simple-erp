@@ -5,6 +5,7 @@ import io.github.ladium1.erp.contract.api.ContractInstalledEvent;
 import io.github.ladium1.erp.contract.api.dto.ContractInfo;
 import io.github.ladium1.erp.customer.api.CustomerApi;
 import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
+import io.github.ladium1.erp.equipment.api.EquipmentDeletingEvent;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentCreateRequest;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentDetailResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentSearchCondition;
@@ -28,6 +29,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -59,6 +61,7 @@ class EquipmentServiceTest {
     @Mock private SupplierApi supplierApi;
     @Mock private ProductApi productApi;
     @Mock private ContractApi contractApi;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @Test
     @DisplayName("search 성공 — 참조 이름 + 계약번호 enrich 된 Summary 페이지 반환")
@@ -206,12 +209,13 @@ class EquipmentServiceTest {
     }
 
     @Test
-    @DisplayName("delete 성공")
+    @DisplayName("delete 성공 — 삭제 전 EquipmentDeletingEvent 발행")
     void delete_success() {
         given(equipmentRepository.existsById(1L)).willReturn(true);
 
         equipmentService.delete(1L);
 
+        verify(eventPublisher).publishEvent(new EquipmentDeletingEvent(1L));
         verify(equipmentRepository).deleteById(1L);
     }
 
