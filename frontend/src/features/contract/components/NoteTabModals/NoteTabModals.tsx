@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -10,6 +9,10 @@ import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import GenericDetailModal from '@/shared/ui/GenericDetailModal';
 import { formatDateTime } from '@/shared/ui/GenericTabbedTable';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCreateContractNoteMutation,
@@ -81,11 +84,10 @@ function NoteCreateModal({
   const snackbar = useSnackbar();
   const submit = useApiSubmit();
   const [createNote, { isLoading: isSaving }] = useCreateContractNoteMutation();
-  const [content, setContent] = useState('');
-
-  React.useEffect(() => {
-    if (open) setContent('');
-  }, [open]);
+  const [content, setContent] = useResettableState(
+    modalStateResetKey(open, contractId),
+    () => '',
+  );
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();

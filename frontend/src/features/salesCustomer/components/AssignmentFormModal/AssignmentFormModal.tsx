@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -11,6 +10,10 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import EmployeeSelectField from '@/features/employee/components/EmployeeSelectField';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCreateSalesAssignmentMutation,
@@ -52,14 +55,10 @@ export default function AssignmentFormModal({ open, onClose, customerId, assignm
   const [createMut, { isLoading: isCreating }] = useCreateSalesAssignmentMutation();
   const [updateMut, { isLoading: isUpdating }] = useUpdateSalesAssignmentMutation();
 
-  const [values, setValues] = useState<FormValues>(() =>
-    assignment ? toFormValues(assignment) : { ...EMPTY, startDate: todayIsoDate() },
+  const [values, setValues] = useResettableState<FormValues>(
+    modalStateResetKey(open, assignment?.id ?? `new:${customerId}`),
+    () => (assignment ? toFormValues(assignment) : { ...EMPTY, startDate: todayIsoDate() }),
   );
-
-  React.useEffect(() => {
-    if (!open) return;
-    setValues(assignment ? toFormValues(assignment) : { ...EMPTY, startDate: todayIsoDate() });
-  }, [open, assignment]);
 
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));

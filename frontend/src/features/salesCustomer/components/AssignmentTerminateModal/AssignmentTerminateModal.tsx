@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -8,6 +7,10 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import { useTerminateSalesAssignmentMutation } from '@/features/salesCustomer/api/salesCustomerApi';
 import {
   todayIsoDate,
@@ -26,14 +29,9 @@ export default function AssignmentTerminateModal({ open, onClose, customerId, as
   const snackbar = useSnackbar();
   const [terminateMut, { isLoading: isSaving }] = useTerminateSalesAssignmentMutation();
 
-  const [endDate, setEndDate] = useState(todayIsoDate());
-  const [reason, setReason] = useState('');
-
-  React.useEffect(() => {
-    if (!open) return;
-    setEndDate(todayIsoDate());
-    setReason('');
-  }, [open]);
+  const resetKey = modalStateResetKey(open, assignment.id);
+  const [endDate, setEndDate] = useResettableState(resetKey, todayIsoDate);
+  const [reason, setReason] = useResettableState(resetKey, () => '');
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();

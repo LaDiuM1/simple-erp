@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -7,6 +6,10 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import TextField from '@mui/material/TextField';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCreateDriveFolderMutation,
@@ -31,12 +34,10 @@ export default function FolderNameModal({ open, onClose, parentId, folder }: Pro
   const [createMut, { isLoading: isCreating }] = useCreateDriveFolderMutation();
   const [renameMut, { isLoading: isRenaming }] = useRenameDriveFolderMutation();
 
-  const [name, setName] = useState(() => folder?.name ?? '');
-
-  React.useEffect(() => {
-    if (!open) return;
-    setName(folder?.name ?? '');
-  }, [open, folder]);
+  const [name, setName] = useResettableState(
+    modalStateResetKey(open, folder?.id ?? `new:${parentId ?? 'root'}`),
+    () => folder?.name ?? '',
+  );
 
   const isSaving = isCreating || isRenaming;
 

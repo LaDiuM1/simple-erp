@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -9,6 +8,10 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCreateContractPaymentMutation,
@@ -56,16 +59,15 @@ export default function PaymentFormModal({ open, onClose, contractId, payment }:
   const [updateMut, { isLoading: isUpdating }] = useUpdateContractPaymentMutation();
   const [deleteMut, { isLoading: isDeleting }] = useDeleteContractPaymentMutation();
 
-  const [values, setValues] = useState<FormValues>(() =>
-    payment ? toFormValues(payment) : EMPTY,
+  const resetKey = modalStateResetKey(open, payment?.id ?? `new:${contractId}`);
+  const [values, setValues] = useResettableState<FormValues>(
+    resetKey,
+    () => (payment ? toFormValues(payment) : EMPTY),
   );
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-
-  React.useEffect(() => {
-    if (!open) return;
-    setValues(payment ? toFormValues(payment) : EMPTY);
-    setDeleteConfirmOpen(false);
-  }, [open, payment]);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useResettableState(
+    resetKey,
+    () => false,
+  );
 
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));

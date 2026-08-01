@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -10,6 +9,10 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCreateServiceVisitMutation,
@@ -54,14 +57,15 @@ export default function VisitFormModal({ open, onClose, afterServiceId, visit }:
     (e) => e.active || (visit != null && e.id === visit.engineerId),
   );
 
-  const [values, setValues] = useState<FormValues>(() => (visit ? toFormValues(visit) : EMPTY));
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-
-  React.useEffect(() => {
-    if (!open) return;
-    setValues(visit ? toFormValues(visit) : EMPTY);
-    setDeleteConfirmOpen(false);
-  }, [open, visit]);
+  const resetKey = modalStateResetKey(open, visit?.id ?? `new:${afterServiceId}`);
+  const [values, setValues] = useResettableState<FormValues>(
+    resetKey,
+    () => (visit ? toFormValues(visit) : EMPTY),
+  );
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useResettableState(
+    resetKey,
+    () => false,
+  );
 
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));

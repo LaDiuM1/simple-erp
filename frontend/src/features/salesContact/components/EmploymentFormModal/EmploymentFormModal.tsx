@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -10,6 +9,10 @@ import TextField from '@mui/material/TextField';
 import CustomerSelectField from '@/features/customer/components/CustomerSelectField';
 import ModeChoiceSection from '@/shared/ui/ModeChoiceSection';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import {
   useCreateSalesContactEmploymentMutation,
@@ -54,14 +57,10 @@ export default function EmploymentFormModal({ open, onClose, contactId, employme
   const [createMut, { isLoading: isCreating }] = useCreateSalesContactEmploymentMutation();
   const [updateMut, { isLoading: isUpdating }] = useUpdateSalesContactEmploymentMutation();
 
-  const [values, setValues] = useState<FormValues>(() =>
-    employment ? toFormValues(employment) : { ...EMPTY, startDate: todayIsoDate() },
+  const [values, setValues] = useResettableState<FormValues>(
+    modalStateResetKey(open, employment?.id ?? `new:${contactId}`),
+    () => (employment ? toFormValues(employment) : { ...EMPTY, startDate: todayIsoDate() }),
   );
-
-  React.useEffect(() => {
-    if (!open) return;
-    setValues(employment ? toFormValues(employment) : { ...EMPTY, startDate: todayIsoDate() });
-  }, [open, employment]);
 
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));

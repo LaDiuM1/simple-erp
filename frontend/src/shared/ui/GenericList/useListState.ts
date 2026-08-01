@@ -1,4 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import {
+  useResettableState,
+  type StateResetKey,
+} from '@/shared/hooks/useResettableState';
 import type { FilterConfig, ListState, SortState } from './types';
 
 /** useListState 가 defaultSort 도출에 쓰는 column 의 최소 shape (ColumnConfig 자동 호환) */
@@ -13,6 +17,8 @@ interface Config {
   searchFilter: FilterConfig[];
   column: readonly ColumnSortView[];
   pageSize?: number;
+  /** 검색 문맥이 바뀌면 필터/페이지/정렬을 함께 초기화한다. */
+  resetKey?: StateResetKey;
 }
 
 /**
@@ -24,6 +30,7 @@ export function useListState<TFilters extends object>({
   searchFilter,
   column,
   pageSize = 10,
+  resetKey,
 }: Config): ListState<TFilters> {
   const emptyFilters = useMemo(
     () => deriveEmptyFilters<TFilters>(searchFilter),
@@ -31,18 +38,31 @@ export function useListState<TFilters extends object>({
   );
   const defaultSort = useMemo(() => deriveDefaultSort(column), [column]);
 
-  const [filters, setFilters] = useState<TFilters>(emptyFilters);
-  const [page, setPage] = useState(0);
-  const [sort, setSort] = useState<SortState>(defaultSort);
+  const [state, setState] = useResettableState(resetKey, () => ({
+    filters: emptyFilters,
+    page: 0,
+    sort: defaultSort,
+  }));
+  const { filters, page, sort } = state;
 
   const updateFilter = <K extends keyof TFilters>(key: K, value: TFilters[K]) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setPage(0);
+    setState((prev) => ({
+      ...prev,
+      filters: { ...prev.filters, [key]: value },
+      page: 0,
+    }));
   };
 
   const resetFilters = () => {
-    setFilters(emptyFilters);
-    setPage(0);
+    setState((prev) => ({ ...prev, filters: emptyFilters, page: 0 }));
+  };
+
+  const setPage = (nextPage: number) => {
+    setState((prev) => ({ ...prev, page: nextPage }));
+  };
+
+  const setSort = (nextSort: SortState) => {
+    setState((prev) => ({ ...prev, sort: nextSort }));
   };
 
   const queryParams = useMemo(

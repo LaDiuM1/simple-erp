@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Button from '@mui/material/Button';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import { ListPagination, ListSearchFilter } from '@/shared/ui/GenericList';
 import { getErrorMessage } from '@/shared/api/error';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import ModalShell from './ModalShell';
 import SearchTable from './SearchTable';
 import SelectionTray from './SelectionTray';
 import { ModalFilterArea, ModalFixedRow } from './CommonSearchModal.styles';
 import { useSearchModalQueryState } from './useSearchModalQueryState';
-import type { CommonSearchModalProps, CommonSearchSelectedItem } from './types';
+import type { CommonSearchModalProps } from './types';
 
 /**
  * 행을 선택해 부모로 반환하는 검색 모달.
@@ -41,16 +45,10 @@ export default function CommonSearchModal<TRow, TFilters extends object>({
   const { data, isFetching, isError, error, refetch } = query;
 
   const isTray = selectionStyle === 'tray';
-  const [selectedMap, setSelectedMap] = useState<Map<number, CommonSearchSelectedItem>>(
-    () => new Map(),
+  const [selectedMap, setSelectedMap] = useResettableState(
+    modalStateResetKey(open, undefined),
+    () => new Map(initialSelected.map((item) => [item.id, item])),
   );
-
-  // 모달이 열릴 때마다 initialSelected 로 선택 상태 리셋.
-  // initialSelected 는 호출자가 매번 새 array 를 만들 수 있어 effect 의존성에서 제외.
-  useEffect(() => {
-    if (open) setSelectedMap(new Map(initialSelected.map((x) => [x.id, x])));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   const isSelected = (id: number) => selectedMap.has(id);
 

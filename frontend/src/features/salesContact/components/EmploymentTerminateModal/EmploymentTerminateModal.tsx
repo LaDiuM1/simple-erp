@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -9,6 +8,10 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useTerminateSalesContactEmploymentMutation } from '@/features/salesContact/api/salesContactApi';
 import {
@@ -29,16 +32,13 @@ export default function EmploymentTerminateModal({ open, onClose, contactId, emp
   const submit = useApiSubmit();
   const [terminateMut, { isLoading: isSaving }] = useTerminateSalesContactEmploymentMutation();
 
-  const [endDate, setEndDate] = useState(todayIsoDate());
-  const [departureType, setDepartureType] = useState<DepartureType>('JOB_CHANGE');
-  const [departureNote, setDepartureNote] = useState('');
-
-  React.useEffect(() => {
-    if (!open) return;
-    setEndDate(todayIsoDate());
-    setDepartureType('JOB_CHANGE');
-    setDepartureNote('');
-  }, [open]);
+  const resetKey = modalStateResetKey(open, employment.id);
+  const [endDate, setEndDate] = useResettableState(resetKey, todayIsoDate);
+  const [departureType, setDepartureType] = useResettableState<DepartureType>(
+    resetKey,
+    () => 'JOB_CHANGE',
+  );
+  const [departureNote, setDepartureNote] = useResettableState(resetKey, () => '');
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
