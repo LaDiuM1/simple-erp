@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.global.security.internal;
 
+import io.github.ladium1.erp.employee.api.LoginAccountApi;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +18,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final LoginAccountApi loginAccountApi;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -26,10 +28,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
 
-        // 인증 성공 시 컨텍스트 저장
+        // 서명과 만료뿐 아니라 계정의 현재 로그인 가능 상태까지 매 요청 확인한다.
         if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
             Authentication authentication = jwtTokenProvider.getAuthentication(token);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            if (loginAccountApi.isLoginAllowed(authentication.getName())) {
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
         }
 
         filterChain.doFilter(request, response);

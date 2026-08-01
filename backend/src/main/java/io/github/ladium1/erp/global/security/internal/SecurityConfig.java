@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.global.security.internal;
 
+import io.github.ladium1.erp.employee.api.LoginAccountApi;
 import io.github.ladium1.erp.global.logging.LoggingMdcFilter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,8 +11,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -27,6 +26,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final LoginAccountApi loginAccountApi;
     private final HandlerExceptionResolver exceptionResolver;
 
     @Value("${cors.allowed-origins}")
@@ -34,14 +34,11 @@ public class SecurityConfig {
 
     public SecurityConfig(
             JwtTokenProvider jwtTokenProvider,
+            LoginAccountApi loginAccountApi,
             @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.loginAccountApi = loginAccountApi;
         this.exceptionResolver = exceptionResolver;
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -68,7 +65,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(
+                        new JwtAuthenticationFilter(jwtTokenProvider, loginAccountApi),
+                        UsernamePasswordAuthenticationFilter.class)
 
                 // 인증 직후에 MDC 부착 -> 컨트롤러 / 서비스 로그 라인에 traceId / userId 가 따라가도록
                 .addFilterAfter(new LoggingMdcFilter(), JwtAuthenticationFilter.class);

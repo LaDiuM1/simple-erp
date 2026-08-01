@@ -6,6 +6,7 @@ import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeProfileResponse;
 import io.github.ladium1.erp.employee.internal.entity.Employee;
+import io.github.ladium1.erp.employee.internal.entity.EmployeeStatus;
 import io.github.ladium1.erp.employee.internal.exception.EmployeeErrorCode;
 import io.github.ladium1.erp.employee.internal.mapper.EmployeeMapper;
 import io.github.ladium1.erp.employee.internal.repository.EmployeeRepository;
@@ -127,5 +128,23 @@ class EmployeeServiceTest {
         assertThatThrownBy(() -> employeeService.getMyInfo(TEST_ID))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", EmployeeErrorCode.EMPLOYEE_NOT_FOUND);
+    }
+    @Test
+    @DisplayName("로그인 가능 상태 확인은 퇴사 여부만 조회")
+    void login_allowed_checks_non_resigned_account() {
+        given(employeeRepository.existsByLoginIdAndStatusNot(TEST_ID, EmployeeStatus.RESIGNED))
+                .willReturn(true);
+
+        assertThat(employeeService.isLoginAllowed(TEST_ID)).isTrue();
+        verify(employeeRepository).existsByLoginIdAndStatusNot(TEST_ID, EmployeeStatus.RESIGNED);
+    }
+
+    @Test
+    @DisplayName("존재하지 않거나 퇴사한 계정은 로그인 불가")
+    void login_not_allowed_for_missing_or_resigned_account() {
+        given(employeeRepository.existsByLoginIdAndStatusNot(TEST_ID, EmployeeStatus.RESIGNED))
+                .willReturn(false);
+
+        assertThat(employeeService.isLoginAllowed(TEST_ID)).isFalse();
     }
 }

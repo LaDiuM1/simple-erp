@@ -9,6 +9,7 @@ import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
+import io.github.ladium1.erp.employee.api.LoginAccountApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeCreateRequest;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeDetailResponse;
@@ -47,7 +48,7 @@ import static java.util.stream.Collectors.toMap;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class EmployeeService implements EmployeeApi {
+public class EmployeeService implements EmployeeApi, LoginAccountApi {
 
     private final EmployeeRepository employeeRepository;
     private final EmployeeMapper employeeMapper;
@@ -76,6 +77,12 @@ public class EmployeeService implements EmployeeApi {
     public Optional<EmployeeInfo> findByLoginId(String loginId) {
         return employeeRepository.findByLoginId(loginId)
                 .map(employee -> toInfo(employee, loadReferences(List.of(employee))));
+    }
+
+    @Override
+    public boolean isLoginAllowed(String loginId) {
+        return loginId != null
+                && employeeRepository.existsByLoginIdAndStatusNot(loginId, EmployeeStatus.RESIGNED);
     }
 
     @Override
