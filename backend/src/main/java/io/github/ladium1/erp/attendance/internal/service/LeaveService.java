@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ import java.util.stream.Collectors;
 public class LeaveService {
 
     private static final BigDecimal HALF_DAY = new BigDecimal("0.5");
+    private static final long MAX_PERIOD_SPAN_DAYS = 365;
 
     /** 잔여 차감 대상 유형 — IN_PROGRESS 선반영 합산 쿼리 조건으로 사용. */
     private static final List<LeaveType> DEDUCTIBLE_TYPES =
@@ -152,7 +154,9 @@ public class LeaveService {
     }
 
     private void validatePeriod(LeaveType leaveType, LocalDate startDate, LocalDate endDate) {
-        if (startDate.isAfter(endDate)) {
+        if (startDate.isAfter(endDate)
+                || startDate.getYear() != endDate.getYear()
+                || ChronoUnit.DAYS.between(startDate, endDate) >= MAX_PERIOD_SPAN_DAYS) {
             throw new BusinessException(AttendanceErrorCode.INVALID_LEAVE_PERIOD);
         }
         if (leaveType.isHalfDay() && !startDate.equals(endDate)) {
@@ -174,9 +178,12 @@ public class LeaveService {
         if (leaveType.isHalfDay()) {
             return HALF_DAY;
         }
-        long weekdays = startDate.datesUntil(endDate.plusDays(1))
+        long weekdays = startDate.datesUntil(endDate)
                 .filter(date -> date.getDayOfWeek() != DayOfWeek.SATURDAY && date.getDayOfWeek() != DayOfWeek.SUNDAY)
                 .count();
+        if (endDate.getDayOfWeek() != DayOfWeek.SATURDAY && endDate.getDayOfWeek() != DayOfWeek.SUNDAY) {
+            weekdays++;
+        }
         return BigDecimal.valueOf(weekdays);
     }
 

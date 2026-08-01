@@ -26,6 +26,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -203,6 +204,101 @@ class LeaveServiceTest {
         assertThatThrownBy(() -> leaveService.create(LOGIN_ID, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", AttendanceErrorCode.INVALID_LEAVE_PERIOD);
+    }
+
+    @Test
+    @DisplayName("연도를 넘는 휴가 신청은 연차 잔여 귀속이 모호하므로 거절한다")
+    void create_fail_cross_year_period() {
+        LeaveCreateRequest request = new LeaveCreateRequest(
+                LeaveType.ANNUAL,
+                LocalDate.of(2026, 12, 31),
+                LocalDate.of(2027, 1, 1),
+                "연말 휴가",
+                APPROVER_IDS);
+        givenEmployee();
+
+        assertThatThrownBy(() -> leaveService.create(LOGIN_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", AttendanceErrorCode.INVALID_LEAVE_PERIOD);
+        verify(leaveRequestRepository, never()).existsOverlappingPeriod(anyLong(), any(), any());
+        verify(leaveRequestRepository, never()).save(any(LeaveRequest.class));
+    }
+
+    @Test
+    @DisplayName("윤년 전체 366일은 최대 365일 계약을 넘어 거절한다")
+    void create_rejects_366_inclusive_days_in_leap_year() {
+        LeaveCreateRequest request = new LeaveCreateRequest(
+                LeaveType.SICK,
+                LocalDate.of(2028, 1, 1),
+                LocalDate.of(2028, 12, 31),
+                "윤년 전체",
+                APPROVER_IDS);
+        givenEmployee();
+
+        assertThatThrownBy(() -> leaveService.create(LOGIN_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", AttendanceErrorCode.INVALID_LEAVE_PERIOD);
+        verify(leaveRequestRepository, never()).existsOverlappingPeriod(anyLong(), any(), any());
+    }
+
+    @Test
+    @DisplayName("시작·종료일을 포함한 365일은 허용한다")
+    void create_accepts_365_inclusive_days() {
+        LeaveCreateRequest request = new LeaveCreateRequest(
+                LeaveType.SICK,
+                LocalDate.of(2028, 1, 1),
+                LocalDate.of(2028, 12, 30),
+                "365일",
+                APPROVER_IDS);
+        givenEmployee();
+        given(leaveRequestRepository.existsOverlappingPeriod(
+                EMPLOYEE_ID, request.startDate(), request.endDate())).willReturn(false);
+        given(leaveRequestRepository.save(any(LeaveRequest.class))).willAnswer(invocation -> {
+            LeaveRequest saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 10L);
+            return saved;
+        });
+        given(approvalApi.submit(any(ApprovalSubmitCommand.class))).willReturn(20L);
+
+        assertThat(leaveService.create(LOGIN_ID, request)).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("극단적으로 긴 휴가 기간은 날짜 순회 전에 거절한다")
+    void create_fail_extreme_period_without_iteration() {
+        LeaveCreateRequest request = new LeaveCreateRequest(
+                LeaveType.SICK,
+                LocalDate.MIN,
+                LocalDate.MAX,
+                "잘못된 기간",
+                APPROVER_IDS);
+        givenEmployee();
+
+        assertThatThrownBy(() -> leaveService.create(LOGIN_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", AttendanceErrorCode.INVALID_LEAVE_PERIOD);
+        verify(leaveRequestRepository, never()).existsOverlappingPeriod(anyLong(), any(), any());
+        verify(leaveRequestRepository, never()).save(any(LeaveRequest.class));
+    }
+
+    @Test
+    @DisplayName("지원 가능한 마지막 날짜를 포함한 휴가도 오버플로 없이 계산한다")
+    void create_period_ending_at_local_date_max() {
+        LeaveCreateRequest request = new LeaveCreateRequest(
+                LeaveType.SICK,
+                LocalDate.MAX.minusDays(2),
+                LocalDate.MAX,
+                "경계 날짜",
+                APPROVER_IDS);
+        givenEmployee();
+        givenSaveEchoes();
+        given(approvalApi.submit(any(ApprovalSubmitCommand.class))).willReturn(100L);
+
+        leaveService.create(LOGIN_ID, request);
+
+        ArgumentCaptor<LeaveRequest> captor = ArgumentCaptor.forClass(LeaveRequest.class);
+        verify(leaveRequestRepository).save(captor.capture());
+        assertThat(captor.getValue().getDays()).isPositive();
     }
 
     @Test
