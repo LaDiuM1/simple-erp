@@ -12,7 +12,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -46,8 +45,7 @@ public class Post extends BaseEntity {
             comment = "제목")
     private String title;
 
-    @Lob
-    @Column(nullable = false,
+    @Column(nullable = false, columnDefinition = "TEXT",
             comment = "본문")
     private String content;
 

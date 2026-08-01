@@ -1,6 +1,8 @@
 package io.github.ladium1.erp.approval.api.dto;
 
 import io.github.ladium1.erp.approval.api.ApprovalDocType;
+import io.github.ladium1.erp.global.validation.RequestTextPolicy;
+import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.List;
 public record ApprovalSubmitCommand(
         ApprovalDocType docType,
         String title,
+        @Size(max = RequestTextPolicy.MAX_LONG_TEXT_LENGTH)
         String content,
         Long drafterId,
         Long refId,

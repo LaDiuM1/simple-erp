@@ -4,6 +4,7 @@ import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import FileAttachField from '@/shared/ui/FileAttachField';
+import ContentTextField from '@/shared/ui/ContentTextField';
 import { FormSection } from '@/shared/ui/GenericForm';
 import type { BoardCategory } from '@/features/board/types';
 import type { BoardFormState } from '@/features/board/hooks/boardFormState';
@@ -69,14 +70,12 @@ export default function BoardForm({ form, mode }: Props) {
                   helperText={validation.errorMessage('title')}
                 />
               </CategoryTitleGrid>
-              <TextField
-                size="small"
+              <ContentTextField
                 label="내용"
                 required
-                multiline
                 minRows={12}
                 value={values.content}
-                onChange={(e) => update('content', e.target.value)}
+                onChange={(value) => update('content', value)}
                 onBlur={validation.onBlur('content')}
                 error={validation.isInvalid('content')}
                 helperText={validation.errorMessage('content')}

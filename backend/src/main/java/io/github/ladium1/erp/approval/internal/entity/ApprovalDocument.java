@@ -14,7 +14,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.OrderColumn;
@@ -52,8 +51,7 @@ public class ApprovalDocument extends BaseEntity {
     @Column(nullable = false, comment = "제목")
     private String title;
 
-    @Lob
-    @Column(comment = "본문")
+    @Column(columnDefinition = "TEXT", comment = "본문")
     private String content;
 
     @Column(name = "drafter_id", nullable = false, comment = "기안자 직원 식별자")

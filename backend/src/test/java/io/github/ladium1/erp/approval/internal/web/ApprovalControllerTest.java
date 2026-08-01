@@ -11,6 +11,7 @@ import io.github.ladium1.erp.approval.internal.exception.ApprovalErrorCode;
 import io.github.ladium1.erp.approval.internal.service.ApprovalService;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
+import io.github.ladium1.erp.global.validation.RequestTextPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -102,6 +103,40 @@ class ApprovalControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(42));
         verify(approvalService).createGeneral(eq(LOGIN_ID), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("한글 본문은 4,000자까지 기안 허용")
+    void create_accepts_max_korean_content() throws Exception {
+        // given
+        ApprovalCreateRequest request = new ApprovalCreateRequest(
+                "비품 구매 기안", "가".repeat(RequestTextPolicy.MAX_LONG_TEXT_LENGTH), List.of(2L), null
+        );
+        given(approvalService.createGeneral(any(), any())).willReturn(43L);
+
+        // when & then
+        mockMvc.perform(post("/api/v1/approvals")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(43));
+        verify(approvalService).createGeneral(eq(LOGIN_ID), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("한글 본문이 4,000자를 넘으면 기안 서비스 호출 전에 400")
+    void create_rejects_korean_content_over_limit() throws Exception {
+        ApprovalCreateRequest request = new ApprovalCreateRequest(
+                "비품 구매 기안", "가".repeat(RequestTextPolicy.MAX_LONG_TEXT_LENGTH + 1), List.of(2L), null
+        );
+
+        mockMvc.perform(post("/api/v1/approvals")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(approvalService, never()).createGeneral(any(), any());
     }
 
     @Test

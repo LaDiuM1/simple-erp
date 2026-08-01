@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.approval.api;
 
 import io.github.ladium1.erp.approval.api.dto.ApprovalSubmitCommand;
+import jakarta.validation.Valid;
 
 /**
  * 전자결재 공개 API — 타 모듈이 자기 문서 (경비 / 휴가 등) 를 결재에 태울 때 사용.
@@ -12,7 +13,7 @@ public interface ApprovalApi {
      *
      * @return 생성된 approvalDocumentId
      */
-    Long submit(ApprovalSubmitCommand command);
+    Long submit(@Valid ApprovalSubmitCommand command);
 
     /**
      * 해당 문서의 관련자 (기안자 또는 결재선 포함) 여부 — 소비 도메인이 원본 / 첨부 접근 통제에 사용.

@@ -11,6 +11,7 @@ import io.github.ladium1.erp.board.internal.exception.BoardErrorCode;
 import io.github.ladium1.erp.board.internal.service.BoardService;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
+import io.github.ladium1.erp.global.validation.RequestTextPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -156,6 +157,36 @@ class BoardControllerTest {
     }
 
     @Test
+    @DisplayName("한글 본문은 4,000자까지 등록 허용")
+    void create_accepts_max_korean_content() throws Exception {
+        // given
+        PostCreateRequest request = new PostCreateRequest(
+                BoardCategory.FREE, "제목", "가".repeat(RequestTextPolicy.MAX_LONG_TEXT_LENGTH), null);
+        given(boardService.create(any())).willReturn(43L);
+
+        // when & then
+        mockMvc.perform(post("/api/v1/boards")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(43));
+        verify(boardService).create(any());
+    }
+
+    @Test
+    @DisplayName("한글 본문이 4,000자를 넘으면 등록 서비스 호출 전에 400")
+    void create_rejects_korean_content_over_limit() throws Exception {
+        PostCreateRequest request = new PostCreateRequest(
+                BoardCategory.FREE, "제목", "가".repeat(RequestTextPolicy.MAX_LONG_TEXT_LENGTH + 1), null);
+
+        mockMvc.perform(post("/api/v1/boards")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(boardService, never()).create(any());
+    }
+
+    @Test
     @DisplayName("제목 없는 등록 시 400")
     void create_fail_blank_title() throws Exception {
         // given
@@ -196,6 +227,19 @@ class BoardControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isNoContent());
         verify(boardService).update(eq(7L), any());
+    }
+
+    @Test
+    @DisplayName("한글 본문이 4,000자를 넘으면 수정 서비스 호출 전에 400")
+    void update_rejects_korean_content_over_limit() throws Exception {
+        PostUpdateRequest request = new PostUpdateRequest(
+                BoardCategory.FREE, "수정 제목", "가".repeat(RequestTextPolicy.MAX_LONG_TEXT_LENGTH + 1), null);
+
+        mockMvc.perform(put("/api/v1/boards/{id}", 7L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(boardService, never()).update(any(), any());
     }
 
     @Test

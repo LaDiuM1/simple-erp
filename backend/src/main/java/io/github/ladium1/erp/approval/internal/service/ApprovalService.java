@@ -33,6 +33,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.HashSet;
 import java.util.List;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
+@Validated
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ApprovalService implements ApprovalApi {

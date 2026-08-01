@@ -6,6 +6,7 @@ import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import { FormSection } from '@/shared/ui/GenericForm';
 import ApprovalLineField from '@/shared/ui/ApprovalLineField';
 import FileAttachField from '@/shared/ui/FileAttachField';
+import ContentTextField from '@/shared/ui/ContentTextField';
 import { useApprovalCreateForm } from '@/features/approval/hooks/useApprovalCreateForm';
 import { CreateForm, CreateRoot, FieldStack } from './ApprovalCreateForm.styles';
 
@@ -47,13 +48,14 @@ export default function ApprovalCreateForm() {
                 error={form.validation.isInvalid('title')}
                 helperText={form.validation.errorMessage('title')}
               />
-              <TextField
-                size="small"
+              <ContentTextField
                 label="본문"
-                multiline
                 minRows={8}
                 value={form.values.content}
-                onChange={(e) => form.update('content', e.target.value)}
+                onChange={(value) => form.update('content', value)}
+                onBlur={form.validation.onBlur('content')}
+                error={form.validation.isInvalid('content')}
+                helperText={form.validation.errorMessage('content')}
               />
             </FieldStack>
           </FormSection>

@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.approval.internal.dto;
 
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
+import io.github.ladium1.erp.global.validation.RequestTextPolicy;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +14,7 @@ import java.util.List;
  */
 public record ApprovalCreateRequest(
         @NotBlank String title,
+        @Size(max = RequestTextPolicy.MAX_LONG_TEXT_LENGTH)
         String content,
         @NotEmpty @Size(max = RequestCollectionPolicy.MAX_MUTATION_BATCH_SIZE)
         List<@NotNull Long> approverIds,
