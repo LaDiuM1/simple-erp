@@ -1,7 +1,9 @@
 package io.github.ladium1.erp.role.internal.dto;
 
+import io.github.ladium1.erp.global.menu.Menu;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -16,7 +18,7 @@ public record RoleUpdateRequest(
         /**
          * 매트릭스 전체. 시스템 권한(system=true) 의 경우 service 가 무시한다.
          */
-        @Valid
-        List<MenuPermissionRequest> menuPermissions
+        @Size(max = Menu.MAX_PERMISSION_COUNT)
+        List<@NotNull @Valid MenuPermissionRequest> menuPermissions
 ) {
 }

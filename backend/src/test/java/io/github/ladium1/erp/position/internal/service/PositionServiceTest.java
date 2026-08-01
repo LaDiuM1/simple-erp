@@ -6,6 +6,7 @@ import io.github.ladium1.erp.coderule.api.InputMode;
 import io.github.ladium1.erp.coderule.api.ResetPolicy;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.validation.RequestValidationErrorCode;
 import io.github.ladium1.erp.position.api.PositionDeletingEvent;
 import io.github.ladium1.erp.position.api.dto.PositionInfo;
 import io.github.ladium1.erp.position.internal.dto.PositionCreateRequest;
@@ -29,6 +30,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.LongStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -290,6 +292,19 @@ class PositionServiceTest {
     }
 
     @Test
+    @DisplayName("deleteAll 실패 — 일괄 상한 초과는 도메인 조회 전에 거절")
+    void delete_all_fail_batch_limit_before_domain_calls() {
+        List<Long> ids = LongStream.rangeClosed(1, 21).boxed().toList();
+
+        assertThatThrownBy(() -> positionService.deleteAll(ids))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", RequestValidationErrorCode.INVALID_MUTATION_BATCH);
+        verify(positionRepository, never()).existsById(any());
+        verify(eventPublisher, never()).publishEvent(any());
+        verify(positionRepository, never()).deleteById(any());
+    }
+
+    @Test
     @DisplayName("reorder 성공 — 요청 순서대로 1, 2, 3 재부여")
     void reorder_success() {
         // given
@@ -299,6 +314,7 @@ class PositionServiceTest {
         ReflectionTestUtils.setField(p1, "id", 1L);
         ReflectionTestUtils.setField(p2, "id", 2L);
         ReflectionTestUtils.setField(p3, "id", 3L);
+        given(positionRepository.count()).willReturn(3L);
         given(positionRepository.findAll()).willReturn(List.of(p1, p2, p3));
 
         // 부장 → 이사 → 과장 순으로 재배치
@@ -337,13 +353,7 @@ class PositionServiceTest {
     @DisplayName("reorder 실패 — DB 의 직책 수와 요청 ID 수 불일치")
     void reorder_fail_size_mismatch() {
         // given — DB 에는 3건, 요청에는 2건
-        Position p1 = mockPosition("P001", "이사", 1);
-        Position p2 = mockPosition("P002", "부장", 2);
-        Position p3 = mockPosition("P003", "과장", 3);
-        ReflectionTestUtils.setField(p1, "id", 1L);
-        ReflectionTestUtils.setField(p2, "id", 2L);
-        ReflectionTestUtils.setField(p3, "id", 3L);
-        given(positionRepository.findAll()).willReturn(List.of(p1, p2, p3));
+        given(positionRepository.count()).willReturn(3L);
         PositionRankingRequest request = new PositionRankingRequest(List.of(1L, 2L));
 
         // when & then
@@ -362,6 +372,7 @@ class PositionServiceTest {
         ReflectionTestUtils.setField(p1, "id", 1L);
         ReflectionTestUtils.setField(p2, "id", 2L);
         ReflectionTestUtils.setField(p3, "id", 3L);
+        given(positionRepository.count()).willReturn(3L);
         given(positionRepository.findAll()).willReturn(List.of(p1, p2, p3));
         PositionRankingRequest request = new PositionRankingRequest(List.of(1L, 2L, 999L));
 
@@ -369,6 +380,31 @@ class PositionServiceTest {
         assertThatThrownBy(() -> positionService.reorder(request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", PositionErrorCode.INVALID_RANKING_PAYLOAD);
+    }
+
+    @Test
+    @DisplayName("reorder 실패 — 요청 상한 초과는 DB 조회 전에 거절")
+    void reorder_fail_request_limit_exceeded() {
+        PositionRankingRequest request = new PositionRankingRequest(
+                LongStream.rangeClosed(0, 50).boxed().toList());
+
+        assertThatThrownBy(() -> positionService.reorder(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", PositionErrorCode.INVALID_RANKING_PAYLOAD);
+        verify(positionRepository, never()).count();
+        verify(positionRepository, never()).findAll();
+    }
+
+    @Test
+    @DisplayName("reorder 실패 — 도메인 총량이 상한을 넘으면 전체 조회를 실행하지 않음")
+    void reorder_fail_domain_limit_exceeded() {
+        given(positionRepository.count()).willReturn(51L);
+        PositionRankingRequest request = new PositionRankingRequest(List.of(1L));
+
+        assertThatThrownBy(() -> positionService.reorder(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", PositionErrorCode.RANKING_LIMIT_EXCEEDED);
+        verify(positionRepository, never()).findAll();
     }
 
     @Test

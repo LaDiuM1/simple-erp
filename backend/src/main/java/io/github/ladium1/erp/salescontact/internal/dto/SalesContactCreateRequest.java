@@ -2,6 +2,7 @@ package io.github.ladium1.erp.salescontact.internal.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -29,7 +30,8 @@ public record SalesContactCreateRequest(
         LocalDate metAt,
 
         /** 컨택 경로 (acquisition_sources) 식별자 목록 — 한 명함을 여러 경로로 받은 경우 다중 지정. */
-        List<Long> sourceIds,
+        @Size(max = 20)
+        List<@NotNull Long> sourceIds,
 
         String note
 ) {

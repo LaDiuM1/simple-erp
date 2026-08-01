@@ -28,6 +28,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRow;
 import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRows;
 import io.github.ladium1.erp.global.excel.ExcelRowError;
@@ -341,6 +342,7 @@ public class CustomerService implements CustomerApi {
     @Auditable(menu = Menu.CUSTOMERS, action = AuditAction.DELETE, targetType = "Customer")
     @Transactional
     public void deleteAll(List<Long> ids) {
+        RequestCollectionPolicy.requireBoundedMutationBatch(ids);
         if (ids == null || ids.isEmpty()) return;
         for (Long id : ids) {
             delete(id);

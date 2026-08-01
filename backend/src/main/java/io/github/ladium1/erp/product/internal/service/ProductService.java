@@ -4,6 +4,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.product.api.ProductApi;
 import io.github.ladium1.erp.product.api.ProductDeletingEvent;
@@ -137,6 +138,7 @@ public class ProductService implements ProductApi {
     @Auditable(menu = Menu.PRODUCTS, action = AuditAction.DELETE, targetType = "Product")
     @Transactional
     public void deleteAll(List<Long> ids) {
+        RequestCollectionPolicy.requireBoundedMutationBatch(ids);
         if (ids == null || ids.isEmpty()) return;
         for (Long id : ids) {
             delete(id);

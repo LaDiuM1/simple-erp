@@ -30,7 +30,9 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.LongStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -100,6 +102,53 @@ class ApprovalControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(42));
         verify(approvalService).createGeneral(eq(LOGIN_ID), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("결재선은 요청 상한인 20명까지 허용")
+    void create_accepts_max_approver_ids() throws Exception {
+        ApprovalCreateRequest request = new ApprovalCreateRequest(
+                "월간 구매 기안", "본문", LongStream.rangeClosed(2, 21).boxed().toList(), null
+        );
+        given(approvalService.createGeneral(any(), any())).willReturn(43L);
+
+        mockMvc.perform(post("/api/v1/approvals")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(43));
+        verify(approvalService).createGeneral(eq(LOGIN_ID), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("결재선이 20명을 넘으면 서비스 호출 전에 400")
+    void create_rejects_approver_ids_over_limit() throws Exception {
+        ApprovalCreateRequest request = new ApprovalCreateRequest(
+                "월간 구매 기안", "본문", LongStream.rangeClosed(2, 22).boxed().toList(), null
+        );
+
+        mockMvc.perform(post("/api/v1/approvals")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(approvalService, never()).createGeneral(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("결재선에 null 직원이 있으면 서비스 호출 전에 400")
+    void create_rejects_null_approver_id() throws Exception {
+        ApprovalCreateRequest request = new ApprovalCreateRequest(
+                "월간 구매 기안", "본문", Arrays.asList(2L, null), null
+        );
+
+        mockMvc.perform(post("/api/v1/approvals")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(approvalService, never()).createGeneral(any(), any());
     }
 
     @Test

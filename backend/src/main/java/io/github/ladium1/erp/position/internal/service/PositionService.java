@@ -9,6 +9,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.position.api.PositionApi;
 import io.github.ladium1.erp.position.api.PositionDeletingEvent;
@@ -167,6 +168,7 @@ public class PositionService implements PositionApi {
     @Auditable(menu = Menu.POSITIONS, action = AuditAction.DELETE, targetType = "Position")
     @Transactional
     public void deleteAll(List<Long> ids) {
+        RequestCollectionPolicy.requireBoundedMutationBatch(ids);
         if (ids == null || ids.isEmpty()) return;
         for (Long id : ids) {
             delete(id);
@@ -182,7 +184,7 @@ public class PositionService implements PositionApi {
     @Transactional
     public void reorder(PositionRankingRequest request) {
         List<Long> orderedIds = request.orderedIds();
-        if (orderedIds == null || orderedIds.isEmpty()) {
+        if (!RequestCollectionPolicy.isBoundedFullReorder(orderedIds)) {
             throw new BusinessException(PositionErrorCode.INVALID_RANKING_PAYLOAD);
         }
         Set<Long> uniqueIds = new HashSet<>(orderedIds);
@@ -190,10 +192,14 @@ public class PositionService implements PositionApi {
             throw new BusinessException(PositionErrorCode.INVALID_RANKING_PAYLOAD);
         }
 
-        List<Position> all = positionRepository.findAll();
-        if (all.size() != orderedIds.size()) {
+        long total = positionRepository.count();
+        if (total > RequestCollectionPolicy.MAX_FULL_REORDER_SIZE) {
+            throw new BusinessException(PositionErrorCode.RANKING_LIMIT_EXCEEDED);
+        }
+        if (total != orderedIds.size()) {
             throw new BusinessException(PositionErrorCode.INVALID_RANKING_PAYLOAD);
         }
+        List<Position> all = positionRepository.findAll();
         Map<Long, Position> byId = all.stream()
                 .collect(Collectors.toMap(Position::getId, Function.identity()));
         if (!byId.keySet().equals(uniqueIds)) {

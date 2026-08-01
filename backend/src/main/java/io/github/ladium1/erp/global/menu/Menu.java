@@ -29,5 +29,8 @@ public enum Menu {
     BOARDS("게시판"),
     DRIVE("드라이브");
 
+    /** 역할 요청에 포함할 수 있는 메뉴 권한의 최대 개수. values().length와 회귀 테스트로 동기화한다. */
+    public static final int MAX_PERMISSION_COUNT = 18;
+
     private final String label;
 }

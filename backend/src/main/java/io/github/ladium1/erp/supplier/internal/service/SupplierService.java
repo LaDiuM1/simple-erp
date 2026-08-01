@@ -4,6 +4,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.supplier.api.SupplierApi;
 import io.github.ladium1.erp.supplier.api.SupplierDeletingEvent;
@@ -120,6 +121,7 @@ public class SupplierService implements SupplierApi {
     @Auditable(menu = Menu.SUPPLIERS, action = AuditAction.DELETE, targetType = "Supplier")
     @Transactional
     public void deleteAll(List<Long> ids) {
+        RequestCollectionPolicy.requireBoundedMutationBatch(ids);
         if (ids == null || ids.isEmpty()) return;
         for (Long id : ids) {
             delete(id);

@@ -4,6 +4,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.security.DataScope;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.role.api.RoleApi;
@@ -197,6 +198,7 @@ public class RoleService implements RoleApi {
     @Auditable(menu = Menu.ROLES, action = AuditAction.DELETE, targetType = "Role")
     @Transactional
     public void deleteAll(List<Long> ids) {
+        RequestCollectionPolicy.requireBoundedMutationBatch(ids);
         if (ids == null || ids.isEmpty()) return;
         for (Long id : ids) {
             delete(id);

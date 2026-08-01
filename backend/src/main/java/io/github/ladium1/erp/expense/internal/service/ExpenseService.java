@@ -46,6 +46,8 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class ExpenseService {
 
+    private static final BigDecimal MAX_TOTAL_AMOUNT = new BigDecimal("9999999999999.99");
+
     private final ExpenseClaimRepository expenseClaimRepository;
     private final ApprovalApi approvalApi;
     private final EmployeeApi employeeApi;
@@ -68,6 +70,9 @@ public class ExpenseService {
         BigDecimal totalAmount = items.stream()
                 .map(ExpenseCreateRequest.ItemRequest::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (totalAmount.compareTo(MAX_TOTAL_AMOUNT) > 0) {
+            throw new BusinessException(ExpenseErrorCode.TOTAL_AMOUNT_EXCEEDED);
+        }
 
         ExpenseClaim claim = ExpenseClaim.builder()
                 .claimantId(claimantId)

@@ -2,6 +2,7 @@ package io.github.ladium1.erp.salescontact.internal.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -28,7 +29,8 @@ public record SalesContactUpdateRequest(
 
         LocalDate metAt,
 
-        List<Long> sourceIds,
+        @Size(max = 20)
+        List<@NotNull Long> sourceIds,
 
         String note
 ) {

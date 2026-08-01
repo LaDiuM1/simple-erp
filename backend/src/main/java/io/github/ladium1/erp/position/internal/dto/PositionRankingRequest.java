@@ -1,6 +1,9 @@
 package io.github.ladium1.erp.position.internal.dto;
 
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -11,7 +14,7 @@ import java.util.List;
  * 누락된 직책이 있거나 알 수 없는 ID 가 섞여 있으면 BusinessException 으로 거부.
  */
 public record PositionRankingRequest(
-        @NotEmpty
-        List<Long> orderedIds
+        @NotEmpty @Size(max = RequestCollectionPolicy.MAX_FULL_REORDER_SIZE)
+        List<@NotNull Long> orderedIds
 ) {
 }

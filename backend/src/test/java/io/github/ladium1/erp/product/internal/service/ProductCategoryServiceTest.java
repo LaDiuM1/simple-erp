@@ -20,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.LongStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -195,6 +196,7 @@ class ProductCategoryServiceTest {
         ProductCategory c1 = mockCategory(1L, "평판 레이저", 1);
         ProductCategory c2 = mockCategory(2L, "파이프 레이저", 2);
         ProductCategory c3 = mockCategory(3L, "절곡기", 3);
+        given(productCategoryRepository.count()).willReturn(3L);
         given(productCategoryRepository.findAll()).willReturn(List.of(c1, c2, c3));
 
         // 파이프 → 평판 → 절곡기 순으로 재배치
@@ -223,10 +225,7 @@ class ProductCategoryServiceTest {
     @DisplayName("reorder 실패 — DB 의 카테고리 수와 요청 ID 수 불일치")
     void reorder_fail_size_mismatch() {
         // given — DB 에는 2건, 요청에는 1건
-        given(productCategoryRepository.findAll()).willReturn(List.of(
-                mockCategory(1L, "평판 레이저", 1),
-                mockCategory(2L, "파이프 레이저", 2)
-        ));
+        given(productCategoryRepository.count()).willReturn(2L);
         ProductCategoryReorderRequest request = new ProductCategoryReorderRequest(List.of(1L));
 
         // when & then
@@ -239,6 +238,7 @@ class ProductCategoryServiceTest {
     @DisplayName("reorder 실패 — DB 에 없는 ID 가 섞여 있음")
     void reorder_fail_unknown_id() {
         // given — DB 에는 1, 2 인데 요청에는 1, 999
+        given(productCategoryRepository.count()).willReturn(2L);
         given(productCategoryRepository.findAll()).willReturn(List.of(
                 mockCategory(1L, "평판 레이저", 1),
                 mockCategory(2L, "파이프 레이저", 2)
@@ -249,6 +249,31 @@ class ProductCategoryServiceTest {
         assertThatThrownBy(() -> productCategoryService.reorder(request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ProductErrorCode.INVALID_REORDER_PAYLOAD);
+    }
+
+    @Test
+    @DisplayName("reorder 실패 — 요청 상한 초과는 DB 조회 전에 거절")
+    void reorder_fail_request_limit_exceeded() {
+        ProductCategoryReorderRequest request = new ProductCategoryReorderRequest(
+                LongStream.rangeClosed(0, 50).boxed().toList());
+
+        assertThatThrownBy(() -> productCategoryService.reorder(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ProductErrorCode.INVALID_REORDER_PAYLOAD);
+        verify(productCategoryRepository, never()).count();
+        verify(productCategoryRepository, never()).findAll();
+    }
+
+    @Test
+    @DisplayName("reorder 실패 — 도메인 총량이 상한을 넘으면 전체 조회를 실행하지 않음")
+    void reorder_fail_domain_limit_exceeded() {
+        given(productCategoryRepository.count()).willReturn(51L);
+        ProductCategoryReorderRequest request = new ProductCategoryReorderRequest(List.of(1L));
+
+        assertThatThrownBy(() -> productCategoryService.reorder(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ProductErrorCode.REORDER_LIMIT_EXCEEDED);
+        verify(productCategoryRepository, never()).findAll();
     }
 
     private ProductCategory mockCategory(Long id, String name, int sortOrder) {

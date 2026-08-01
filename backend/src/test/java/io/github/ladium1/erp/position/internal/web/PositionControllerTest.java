@@ -23,12 +23,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.stream.LongStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -233,6 +235,19 @@ class PositionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("서열 재배치는 50개를 넘으면 서비스 호출 전에 400")
+    void reorder_fail_request_limit_exceeded() throws Exception {
+        PositionRankingRequest request = new PositionRankingRequest(
+                LongStream.rangeClosed(0, 50).boxed().toList());
+
+        mockMvc.perform(put("/api/v1/positions/ranking")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(positionService, never()).reorder(any());
     }
 
     @Test

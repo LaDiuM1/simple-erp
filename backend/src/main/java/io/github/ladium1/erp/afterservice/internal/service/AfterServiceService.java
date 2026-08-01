@@ -35,6 +35,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.product.api.ProductApi;
 import io.github.ladium1.erp.product.api.dto.ProductInfo;
@@ -227,6 +228,7 @@ public class AfterServiceService implements AfterServiceApi {
     @Auditable(menu = Menu.AFTER_SERVICES, action = AuditAction.DELETE, targetType = "AfterService")
     @Transactional
     public void deleteAll(List<Long> ids) {
+        RequestCollectionPolicy.requireBoundedMutationBatch(ids);
         if (ids == null || ids.isEmpty()) return;
         for (Long id : ids) {
             delete(id);

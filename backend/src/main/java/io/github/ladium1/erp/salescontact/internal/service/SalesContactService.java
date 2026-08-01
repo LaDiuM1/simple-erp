@@ -6,6 +6,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.salescontact.api.SalesContactApi;
 import io.github.ladium1.erp.salescontact.api.dto.RecentSalesContactInfo;
@@ -53,6 +54,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -67,6 +69,8 @@ import static java.util.stream.Collectors.toMap;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class SalesContactService implements SalesContactApi {
+
+    private static final int MAX_SOURCE_COUNT = 20;
 
     private final SalesContactRepository contactRepository;
     private final SalesContactEmploymentRepository employmentRepository;
@@ -376,7 +380,7 @@ public class SalesContactService implements SalesContactApi {
     @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.CREATE, targetType = "SalesContact", targetIdFromReturn = true)
     @Transactional
     public Long create(SalesContactCreateRequest request) {
-        List<Long> sourceIds = distinctOrEmpty(request.sourceIds());
+        List<Long> sourceIds = normalizeSourceIds(request.sourceIds());
         acquisitionSourceService.validateIds(sourceIds);
 
         String mobilePhone = trimToNull(request.mobilePhone());
@@ -405,7 +409,7 @@ public class SalesContactService implements SalesContactApi {
         SalesContact contact = contactRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(SalesContactErrorCode.CONTACT_NOT_FOUND));
 
-        List<Long> sourceIds = distinctOrEmpty(request.sourceIds());
+        List<Long> sourceIds = normalizeSourceIds(request.sourceIds());
         acquisitionSourceService.validateIds(sourceIds);
 
         String mobilePhone = trimToNull(request.mobilePhone());
@@ -447,6 +451,7 @@ public class SalesContactService implements SalesContactApi {
     @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.DELETE, targetType = "SalesContact")
     @Transactional
     public void deleteAll(List<Long> ids) {
+        RequestCollectionPolicy.requireBoundedMutationBatch(ids);
         if (ids == null || ids.isEmpty()) return;
         for (Long id : ids) {
             delete(id);
@@ -609,11 +614,14 @@ public class SalesContactService implements SalesContactApi {
                 .collect(toMap(CustomerInfo::id, CustomerInfo::name));
     }
 
-    private static List<Long> distinctOrEmpty(List<Long> ids) {
+    private static List<Long> normalizeSourceIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
-        Set<Long> distinct = new HashSet<>(ids);
+        if (ids.size() > MAX_SOURCE_COUNT || ids.stream().anyMatch(java.util.Objects::isNull)) {
+            throw new BusinessException(SalesContactErrorCode.INVALID_SOURCE_SELECTION);
+        }
+        Set<Long> distinct = new LinkedHashSet<>(ids);
         return distinct.stream().toList();
     }
 

@@ -3,6 +3,8 @@ package io.github.ladium1.erp.contract.internal.dto;
 import io.github.ladium1.erp.contract.internal.entity.ContractStatus;
 import io.github.ladium1.erp.contract.internal.entity.OutputUnit;
 import io.github.ladium1.erp.contract.internal.entity.SupportProgramStatus;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -24,6 +26,8 @@ public record ContractUpdateRequest(
         Long productId,
 
         @PositiveOrZero
+        @Digits(integer = 8, fraction = 2)
+        @DecimalMax("99999999.99")
         BigDecimal outputValue,
 
         OutputUnit outputUnit,

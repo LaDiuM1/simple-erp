@@ -155,6 +155,30 @@ class ExpenseServiceTest {
     }
 
     @Test
+    @DisplayName("경비 항목 합계가 DB 정밀도를 초과하면 저장 전 400")
+    void create_fail_total_amount_exceeds_precision() {
+        ExpenseCreateRequest request = new ExpenseCreateRequest(
+                "총액 초과",
+                List.of(
+                        new ExpenseCreateRequest.ItemRequest(
+                                LocalDate.of(2026, 6, 1), ExpenseCategory.TRANSPORT,
+                                new BigDecimal("9999999999999.99"), null, null),
+                        new ExpenseCreateRequest.ItemRequest(
+                                LocalDate.of(2026, 6, 2), ExpenseCategory.MEAL,
+                                new BigDecimal("0.01"), null, null)
+                ),
+                List.of(5L)
+        );
+        given(employeeApi.findByLoginId(TEST_LOGIN_ID)).willReturn(Optional.of(employeeInfo()));
+
+        assertThatThrownBy(() -> expenseService.create(TEST_LOGIN_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ExpenseErrorCode.TOTAL_AMOUNT_EXCEEDED);
+        verify(expenseClaimRepository, never()).save(any());
+        verify(approvalApi, never()).submit(any());
+    }
+
+    @Test
     @DisplayName("승인 콜백 — APPROVED 전이")
     void on_approved_transitions_to_approved() {
         // given

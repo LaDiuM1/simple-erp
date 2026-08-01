@@ -1,6 +1,8 @@
 package io.github.ladium1.erp.equipment.internal.dto;
 
 import io.github.ladium1.erp.equipment.internal.entity.OutputUnit;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -23,6 +25,8 @@ public record EquipmentCreateRequest(
         Long productId,
 
         @PositiveOrZero
+        @Digits(integer = 8, fraction = 2)
+        @DecimalMax("99999999.99")
         BigDecimal outputValue,
 
         OutputUnit outputUnit,

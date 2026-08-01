@@ -33,6 +33,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -142,6 +143,54 @@ class ExpenseControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("경비 항목 50개 초과 등록 시 400")
+    void create_fail_too_many_items() throws Exception {
+        ExpenseCreateRequest request = createRequest(
+                "과도한 항목",
+                IntStream.range(0, 51).mapToObj(ignored -> item()).toList()
+        );
+
+        mockMvc.perform(post("/api/v1/expenses")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(expenseService, never()).create(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("DB 정밀도를 벗어난 경비 금액 등록 시 400")
+    void create_fail_amount_exceeds_precision() throws Exception {
+        ExpenseCreateRequest.ItemRequest oversized = new ExpenseCreateRequest.ItemRequest(
+                LocalDate.of(2026, 6, 1), ExpenseCategory.TRANSPORT,
+                new BigDecimal("1E+13"), "정밀도 초과", null
+        );
+
+        mockMvc.perform(post("/api/v1/expenses")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest("금액 초과", List.of(oversized)))))
+                .andExpect(status().isBadRequest());
+        verify(expenseService, never()).create(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("경비 항목 설명 255자 초과 등록 시 400")
+    void create_fail_description_too_long() throws Exception {
+        ExpenseCreateRequest.ItemRequest oversized = new ExpenseCreateRequest.ItemRequest(
+                LocalDate.of(2026, 6, 1), ExpenseCategory.TRANSPORT,
+                new BigDecimal("12000"), "가".repeat(256), null
+        );
+
+        mockMvc.perform(post("/api/v1/expenses")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest("설명 초과", List.of(oversized)))))
+                .andExpect(status().isBadRequest());
+        verify(expenseService, never()).create(any(), any());
     }
 
     @Test

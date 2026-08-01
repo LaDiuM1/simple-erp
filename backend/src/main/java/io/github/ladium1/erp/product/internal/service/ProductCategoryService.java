@@ -4,6 +4,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.product.internal.dto.ProductCategoryCreateRequest;
 import io.github.ladium1.erp.product.internal.dto.ProductCategoryReorderRequest;
 import io.github.ladium1.erp.product.internal.dto.ProductCategoryResponse;
@@ -97,7 +98,7 @@ public class ProductCategoryService {
     @Transactional
     public void reorder(ProductCategoryReorderRequest request) {
         List<Long> orderedIds = request.orderedIds();
-        if (orderedIds == null || orderedIds.isEmpty()) {
+        if (!RequestCollectionPolicy.isBoundedFullReorder(orderedIds)) {
             throw new BusinessException(ProductErrorCode.INVALID_REORDER_PAYLOAD);
         }
         Set<Long> uniqueIds = new HashSet<>(orderedIds);
@@ -105,10 +106,14 @@ public class ProductCategoryService {
             throw new BusinessException(ProductErrorCode.INVALID_REORDER_PAYLOAD);
         }
 
-        List<ProductCategory> all = productCategoryRepository.findAll();
-        if (all.size() != orderedIds.size()) {
+        long total = productCategoryRepository.count();
+        if (total > RequestCollectionPolicy.MAX_FULL_REORDER_SIZE) {
+            throw new BusinessException(ProductErrorCode.REORDER_LIMIT_EXCEEDED);
+        }
+        if (total != orderedIds.size()) {
             throw new BusinessException(ProductErrorCode.INVALID_REORDER_PAYLOAD);
         }
+        List<ProductCategory> all = productCategoryRepository.findAll();
         Map<Long, ProductCategory> byId = all.stream()
                 .collect(Collectors.toMap(ProductCategory::getId, Function.identity()));
         if (!byId.keySet().equals(uniqueIds)) {

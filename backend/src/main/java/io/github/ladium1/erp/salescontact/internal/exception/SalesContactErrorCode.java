@@ -14,7 +14,8 @@ public enum SalesContactErrorCode implements ErrorCode {
     EMPLOYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 재직 이력입니다."),
     EMPLOYMENT_ALREADY_TERMINATED(HttpStatus.BAD_REQUEST, "이미 종료된 재직 이력입니다."),
     INVALID_END_DATE(HttpStatus.BAD_REQUEST, "종료일은 시작일보다 빠를 수 없습니다."),
-    COMPANY_REQUIRED(HttpStatus.BAD_REQUEST, "고객사 또는 외부 회사명 둘 중 하나는 입력해야 합니다.");
+    COMPANY_REQUIRED(HttpStatus.BAD_REQUEST, "고객사 또는 외부 회사명 둘 중 하나는 입력해야 합니다."),
+    INVALID_SOURCE_SELECTION(HttpStatus.BAD_REQUEST, "컨택 경로는 최대 20개의 유효한 항목을 선택할 수 있습니다.");
 
     private final HttpStatus status;
     private final String message;

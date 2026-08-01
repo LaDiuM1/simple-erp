@@ -170,6 +170,35 @@ class RoleControllerTest {
     }
 
     @Test
+    @DisplayName("메뉴 권한에 null 항목이 있으면 등록 요청을 거부한다")
+    void create_rejects_null_menu_permission() throws Exception {
+        mockMvc.perform(post("/api/v1/roles")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "STAFF",
+                                  "name": "사원",
+                                  "menuPermissions": [null]
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("전체 메뉴 수보다 많은 권한 항목은 등록 요청을 거부한다")
+    void create_rejects_too_many_menu_permissions() throws Exception {
+        String permissions = java.util.stream.IntStream.range(0, Menu.MAX_PERMISSION_COUNT + 1)
+                .mapToObj(i -> "{\"menuCode\":\"EMPLOYEES\",\"canRead\":true,\"canWrite\":false}")
+                .collect(java.util.stream.Collectors.joining(","));
+
+        mockMvc.perform(post("/api/v1/roles")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"STAFF\",\"name\":\"사원\",\"menuPermissions\":["
+                                + permissions + "]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("권한 수정 성공")
     void update_success() throws Exception {
         // given

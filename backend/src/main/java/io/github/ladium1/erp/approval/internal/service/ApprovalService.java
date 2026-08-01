@@ -25,6 +25,7 @@ import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -197,6 +198,7 @@ public class ApprovalService implements ApprovalApi {
     }
 
     private void validateApprovalLine(Long drafterId, List<Long> approverIds) {
+        RequestCollectionPolicy.requireBoundedMutationBatch(approverIds);
         if (approverIds == null || approverIds.isEmpty()) {
             throw new BusinessException(ApprovalErrorCode.INVALID_APPROVAL_LINE);
         }

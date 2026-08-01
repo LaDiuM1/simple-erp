@@ -1,5 +1,7 @@
 package io.github.ladium1.erp.attendance.internal.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
@@ -10,6 +12,9 @@ import java.math.BigDecimal;
  */
 public record LeaveBalanceUpdateRequest(
         @NotNull Integer year,
-        @NotNull @PositiveOrZero BigDecimal grantedDays
+        @NotNull @PositiveOrZero
+        @Digits(integer = 4, fraction = 1)
+        @DecimalMax("9999.9")
+        BigDecimal grantedDays
 ) {
 }
