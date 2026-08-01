@@ -32,7 +32,7 @@ public class EquipmentRepositoryImpl implements EquipmentRepositoryCustom {
         List<Equipment> content = queryFactory
                 .selectFrom(e)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), e, e.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), sortProperties(e), e.id.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -52,7 +52,7 @@ public class EquipmentRepositoryImpl implements EquipmentRepositoryCustom {
         return queryFactory
                 .selectFrom(e)
                 .where(buildPredicate(condition, e))
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, e, e.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, sortProperties(e), e.id.desc()))
                 .fetch();
     }
 
@@ -104,5 +104,15 @@ public class EquipmentRepositoryImpl implements EquipmentRepositoryCustom {
             }
         }
         return where;
+    }
+
+    private static java.util.Map<String, ? extends com.querydsl.core.types.Expression<? extends Comparable<?>>> sortProperties(QEquipment e) {
+        return java.util.Map.of(
+                "id", e.id,
+                "serialNo", e.serialNo,
+                "installedDate", e.installedDate,
+                "oscillatorWarrantyEndDate", e.oscillatorWarrantyEndDate,
+                "generalWarrantyEndDate", e.generalWarrantyEndDate
+        );
     }
 }

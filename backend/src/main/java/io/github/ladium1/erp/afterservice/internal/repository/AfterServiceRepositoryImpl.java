@@ -35,7 +35,7 @@ public class AfterServiceRepositoryImpl implements AfterServiceRepositoryCustom 
         List<AfterService> content = queryFactory
                 .selectFrom(a)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), a, a.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), sortProperties(a), a.id.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -55,7 +55,7 @@ public class AfterServiceRepositoryImpl implements AfterServiceRepositoryCustom 
         return queryFactory
                 .selectFrom(a)
                 .where(buildPredicate(condition, a))
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, a, a.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, sortProperties(a), a.id.desc()))
                 .fetch();
     }
 
@@ -149,5 +149,14 @@ public class AfterServiceRepositoryImpl implements AfterServiceRepositoryCustom 
             where.and(a.receivedDate.loe(condition.receivedDateTo()));
         }
         return where;
+    }
+
+    private static java.util.Map<String, ? extends com.querydsl.core.types.Expression<? extends Comparable<?>>> sortProperties(QAfterService a) {
+        return java.util.Map.of(
+                "id", a.id,
+                "receiptNo", a.receiptNo,
+                "receivedDate", a.receivedDate,
+                "status", a.status
+        );
     }
 }

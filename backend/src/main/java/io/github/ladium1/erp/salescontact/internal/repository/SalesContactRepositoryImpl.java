@@ -30,7 +30,7 @@ public class SalesContactRepositoryImpl implements SalesContactRepositoryCustom 
         List<SalesContact> content = queryFactory
                 .selectFrom(c)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), c, c.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), sortProperties(c), c.id.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -50,7 +50,7 @@ public class SalesContactRepositoryImpl implements SalesContactRepositoryCustom 
         return queryFactory
                 .selectFrom(c)
                 .where(buildPredicate(condition, c))
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, c, c.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, sortProperties(c), c.id.desc()))
                 .fetch();
     }
 
@@ -79,5 +79,9 @@ public class SalesContactRepositoryImpl implements SalesContactRepositoryCustom 
             ));
         }
         return where;
+    }
+
+    private static java.util.Map<String, ? extends com.querydsl.core.types.Expression<? extends Comparable<?>>> sortProperties(QSalesContact c) {
+        return java.util.Map.of("id", c.id, "name", c.name, "metAt", c.metAt);
     }
 }

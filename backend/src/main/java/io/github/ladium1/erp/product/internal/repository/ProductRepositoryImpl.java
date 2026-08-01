@@ -31,7 +31,8 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 .selectFrom(p)
                 .leftJoin(p.category).fetchJoin()
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), p, p.modelName.asc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), java.util.Map.of(
+                        "id", p.id, "modelName", p.modelName, "active", p.active), p.modelName.asc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

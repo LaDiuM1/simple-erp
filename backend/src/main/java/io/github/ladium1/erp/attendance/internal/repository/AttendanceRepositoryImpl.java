@@ -27,7 +27,8 @@ public class AttendanceRepositoryImpl implements AttendanceRepositoryCustom {
         List<Attendance> content = queryFactory
                 .selectFrom(a)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), a, a.workDate.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), java.util.Map.of(
+                        "id", a.id, "workDate", a.workDate), a.workDate.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

@@ -33,7 +33,8 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
         List<ApprovalDocument> content = queryFactory
                 .selectFrom(d)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), d, d.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), java.util.Map.of(
+                        "id", d.id, "title", d.title, "createdAt", d.createdAt), d.id.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

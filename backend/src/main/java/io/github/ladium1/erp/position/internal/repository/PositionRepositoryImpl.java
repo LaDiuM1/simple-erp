@@ -27,7 +27,8 @@ public class PositionRepositoryImpl implements PositionRepositoryCustom {
         List<Position> content = queryFactory
                 .selectFrom(p)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), p, p.rankLevel.asc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), java.util.Map.of(
+                        "id", p.id, "rankLevel", p.rankLevel, "code", p.code, "name", p.name), p.rankLevel.asc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

@@ -27,7 +27,8 @@ public class ExpenseClaimRepositoryImpl implements ExpenseClaimRepositoryCustom 
         List<ExpenseClaim> content = queryFactory
                 .selectFrom(e)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), e, e.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), java.util.Map.of(
+                        "id", e.id, "title", e.title, "totalAmount", e.totalAmount, "createdAt", e.createdAt), e.id.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

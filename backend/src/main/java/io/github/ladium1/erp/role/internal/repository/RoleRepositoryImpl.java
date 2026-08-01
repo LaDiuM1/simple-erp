@@ -27,7 +27,8 @@ public class RoleRepositoryImpl implements RoleRepositoryCustom {
         List<Role> content = queryFactory
                 .selectFrom(r)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), r, r.code.asc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), java.util.Map.of(
+                        "id", r.id, "code", r.code, "name", r.name), r.code.asc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

@@ -28,7 +28,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         List<Employee> content = queryFactory
                 .selectFrom(m)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), m, m.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), sortProperties(m), m.id.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -48,7 +48,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         return queryFactory
                 .selectFrom(m)
                 .where(buildPredicate(condition, m))
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, m, m.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, sortProperties(m), m.id.desc()))
                 .fetch();
     }
 
@@ -76,5 +76,15 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             where.and(m.status.eq(condition.status()));
         }
         return where;
+    }
+
+    private static java.util.Map<String, ? extends com.querydsl.core.types.Expression<? extends Comparable<?>>> sortProperties(QEmployee m) {
+        return java.util.Map.of(
+                "id", m.id,
+                "name", m.name,
+                "loginId", m.loginId,
+                "joinDate", m.joinDate,
+                "status", m.status
+        );
     }
 }

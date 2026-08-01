@@ -27,7 +27,8 @@ public class SupplierRepositoryImpl implements SupplierRepositoryCustom {
         List<Supplier> content = queryFactory
                 .selectFrom(s)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), s, s.name.asc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), java.util.Map.of(
+                        "id", s.id, "name", s.name, "nameKo", s.nameKo, "active", s.active), s.name.asc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

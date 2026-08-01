@@ -26,7 +26,8 @@ public class LeaveRequestRepositoryImpl implements LeaveRequestRepositoryCustom 
         List<LeaveRequest> content = queryFactory
                 .selectFrom(l)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), l, l.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), java.util.Map.of(
+                        "id", l.id, "startDate", l.startDate, "createdAt", l.createdAt), l.id.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

@@ -27,7 +27,8 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
         List<Post> content = queryFactory
                 .selectFrom(p)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), p, p.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), java.util.Map.of(
+                        "id", p.id, "category", p.category, "title", p.title, "createdAt", p.createdAt), p.id.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

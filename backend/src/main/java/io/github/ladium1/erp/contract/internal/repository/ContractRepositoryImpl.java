@@ -38,7 +38,7 @@ public class ContractRepositoryImpl implements ContractRepositoryCustom {
         List<Contract> content = queryFactory
                 .selectFrom(c)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), c, c.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), sortProperties(c), c.id.desc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -58,7 +58,7 @@ public class ContractRepositoryImpl implements ContractRepositoryCustom {
         return queryFactory
                 .selectFrom(c)
                 .where(buildPredicate(condition, c))
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, c, c.id.desc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(sort, sortProperties(c), c.id.desc()))
                 .fetch();
     }
 
@@ -162,5 +162,15 @@ public class ContractRepositoryImpl implements ContractRepositoryCustom {
             where.and(c.employeeId.in(condition.employeeIdScope()));
         }
         return where;
+    }
+
+    private static java.util.Map<String, ? extends com.querydsl.core.types.Expression<? extends Comparable<?>>> sortProperties(QContract c) {
+        return java.util.Map.of(
+                "id", c.id,
+                "contractNo", c.contractNo,
+                "contractDate", c.contractDate,
+                "finalAmount", c.finalAmount,
+                "status", c.status
+        );
     }
 }

@@ -27,7 +27,8 @@ public class DepartmentRepositoryImpl implements DepartmentRepositoryCustom {
         List<Department> content = queryFactory
                 .selectFrom(d)
                 .where(where)
-                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), d, d.code.asc()))
+                .orderBy(QuerydslSortUtils.toOrderSpecifiers(pageable.getSort(), java.util.Map.of(
+                        "id", d.id, "code", d.code, "name", d.name), d.code.asc()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
