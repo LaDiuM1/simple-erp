@@ -1,4 +1,4 @@
-import { type DragEvent, useEffect, useState } from 'react';
+import { type DragEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import { usePermission } from '@/shared/hooks/usePermission';
@@ -14,6 +14,8 @@ import {
 } from '@/features/product/api/productApi';
 import type { ProductCategorySummary } from '@/features/product/types';
 
+const EMPTY_CATEGORIES: ProductCategorySummary[] = [];
+
 /**
  * 제품 카테고리 관리 page hook — server list 동기화 + DnD 순서 변경 + 추가 / 이름 변경 / 삭제.
  * 직책 서열 관리 (usePositionRankingPage) 의 DnD 패턴을 따르고, CRUD 는 인라인 편집으로 처리.
@@ -28,10 +30,13 @@ export function useProductCategoryPage() {
   const [deleteCategory, { isLoading: isDeleting }] = useDeleteProductCategoryMutation();
   const [reorderCategories] = useReorderProductCategoriesMutation();
 
-  const [items, setItems] = useState<ProductCategorySummary[]>([]);
-  useEffect(() => {
-    setItems(listQuery.data ?? []);
-  }, [listQuery.data]);
+  const serverItems = listQuery.data ?? EMPTY_CATEGORIES;
+  const [items, setItems] = useState<ProductCategorySummary[]>(serverItems);
+  const [itemsSource, setItemsSource] = useState(serverItems);
+  if (itemsSource !== serverItems) {
+    setItemsSource(serverItems);
+    setItems(serverItems);
+  }
 
   // --- 추가 ---
   const [newName, setNewName] = useState('');

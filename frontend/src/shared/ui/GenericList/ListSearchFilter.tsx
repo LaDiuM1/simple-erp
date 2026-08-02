@@ -225,11 +225,11 @@ function SearchField({
   placeholder?: string;
   debounceMs: number;
 }) {
-  const [input, setInput] = useState(value);
-
-  useEffect(() => {
-    setInput(value);
-  }, [value]);
+  const [searchState, setSearchState] = useState({ input: value, externalValue: value });
+  if (searchState.externalValue !== value) {
+    setSearchState({ input: value, externalValue: value });
+  }
+  const input = searchState.input;
 
   useEffect(() => {
     if (input === value) return;
@@ -242,7 +242,7 @@ function SearchField({
       size="small"
       variant="outlined"
       value={input}
-      onChange={(e) => setInput(e.target.value)}
+      onChange={(e) => setSearchState((state) => ({ ...state, input: e.target.value }))}
       placeholder={placeholder ?? '검색어를 입력하세요'}
       slotProps={{
         input: {
@@ -255,7 +255,7 @@ function SearchField({
             <InputAdornment position="end" sx={{ mr: '-0.375rem' }}>
               <IconButton
                 size="small"
-                onClick={() => setInput('')}
+                onClick={() => setSearchState((state) => ({ ...state, input: '' }))}
                 aria-label="검색어 지우기"
                 sx={{ p: '2px' }}
               >

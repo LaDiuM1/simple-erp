@@ -6,8 +6,10 @@ import { useAfterServiceEditPage } from '@/features/afterService/hooks/useAfterS
 export default function AfterServiceEditPage() {
   const { id } = useParams<{ id: string }>();
   const afterServiceId = Number(id);
-  if (!afterServiceId) return null;
+  return afterServiceId ? <AfterServiceEditContent afterServiceId={afterServiceId} /> : null;
+}
 
+function AfterServiceEditContent({ afterServiceId }: { afterServiceId: number }) {
   const { queries } = useAfterServiceEditPage(afterServiceId);
 
   return (

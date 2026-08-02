@@ -8,11 +8,15 @@ import { useUpdateDepartmentMutation } from '@/features/department/api/departmen
 import { useGetDepartmentsQuery } from '@/features/reference/api/referenceApi';
 import {
   ROOT_KEY,
-  buildChildrenMap,
-  isDescendant,
   type DragOverKey,
 } from '@/features/department/components/HierarchyTree/HierarchyTree';
+import {
+  buildChildrenMap,
+  isDescendant,
+} from '@/features/department/components/HierarchyTree/hierarchyUtils';
 import { getErrorMessage } from '@/shared/api/error';
+
+const EMPTY_DEPARTMENTS: import('@/features/reference/types').DepartmentInfo[] = [];
 
 /**
  * 부서 계층 page hook — query + DnD state + reparent mutation + headerActions.
@@ -28,7 +32,7 @@ export function useDepartmentHierarchyPage() {
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverKey, setDragOverKey] = useState<DragOverKey>(null);
 
-  const depts = listQuery.data ?? [];
+  const depts = listQuery.data ?? EMPTY_DEPARTMENTS;
   const childrenByParent = useMemo(() => buildChildrenMap(depts), [depts]);
   const rootDepts = childrenByParent.get(null) ?? [];
 

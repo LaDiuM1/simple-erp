@@ -6,8 +6,10 @@ import { useCustomerEditPage } from '@/features/customer/hooks/useCustomerEditPa
 export default function CustomerEditPage() {
   const { id } = useParams<{ id: string }>();
   const customerId = Number(id);
-  if (!customerId) return null;
+  return customerId ? <CustomerEditContent customerId={customerId} /> : null;
+}
 
+function CustomerEditContent({ customerId }: { customerId: number }) {
   const { queries } = useCustomerEditPage(customerId);
 
   return (

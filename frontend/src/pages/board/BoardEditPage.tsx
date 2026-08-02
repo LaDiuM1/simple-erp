@@ -6,8 +6,10 @@ import { useBoardEditPage } from '@/features/board/hooks/useBoardEditPage';
 export default function BoardEditPage() {
   const { id } = useParams<{ id: string }>();
   const postId = Number(id);
-  if (!postId) return null;
+  return postId ? <BoardEditContent postId={postId} /> : null;
+}
 
+function BoardEditContent({ postId }: { postId: number }) {
   const { queries } = useBoardEditPage(postId);
 
   return (

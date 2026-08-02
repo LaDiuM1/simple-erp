@@ -14,8 +14,10 @@ import { DetailRoot } from '@/features/contract/components/contractDetail.styles
 export default function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
   const contractId = Number(id);
-  if (!contractId) return null;
+  return contractId ? <ContractDetailContent contractId={contractId} /> : null;
+}
 
+function ContractDetailContent({ contractId }: { contractId: number }) {
   const { queries, headerActions, tabsList, tabs } = useContractDetailPage(contractId);
 
   return (

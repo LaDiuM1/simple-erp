@@ -52,8 +52,39 @@ interface Props {
  * 코드 채번 규칙 수정 폼 Body — outer (page) 가 rule 보장한 뒤 위임. form-state hook 의 invariant 충족.
  */
 export default function CodeRuleEditForm({ target, rule }: Props) {
-  const form = useCodeRuleEditForm(target, rule);
-  const { values, update, validation } = form;
+  const {
+    values,
+    update,
+    validation,
+    isSaving,
+    confirmOpen,
+    preview,
+    isPreviewing,
+    previewError,
+    needsParentInput,
+    showAutoOptions,
+    patternInputRef,
+    tokenModalOpen,
+    openTokenModal,
+    closeTokenModal,
+    addCustomLiteral,
+    removeCustomLiteral,
+    customLiterals,
+    insertTokenAtCursor,
+    attributeDialogOpen,
+    openAttributeDialog,
+    closeAttributeDialog,
+    onAttributeMappingConfirm,
+    removeMapping,
+    attributes,
+    setPreviewAttribute,
+    needsAttributeInput,
+    usedAttributeKeys,
+    handleSubmit,
+    handleConfirmedSubmit,
+    closeConfirm,
+    handleCancel,
+  } = useCodeRuleEditForm(target, rule);
 
   const targetLabel = CODE_RULE_TARGET_LABEL[target];
   const inputModeKey = (Object.keys(INPUT_MODE) as Array<keyof typeof INPUT_MODE>)
@@ -64,18 +95,18 @@ export default function CodeRuleEditForm({ target, rule }: Props) {
       <PageHeaderTitle>{`${targetLabel} 수정`}</PageHeaderTitle>
       <PageHeaderActions
         actions={[
-          { design: 'cancel', onClick: form.handleCancel, disabled: form.isSaving },
+          { design: 'cancel', onClick: handleCancel, disabled: isSaving },
           {
             design: 'save',
             formId: FORM_ID,
-            loading: form.isSaving,
+            loading: isSaving,
             menuCode: MENU_CODE.CODE_RULES,
           },
         ]}
       />
 
       <FormRoot>
-        <FormGrid id={FORM_ID} onSubmit={form.handleSubmit} noValidate>
+        <FormGrid id={FORM_ID} onSubmit={handleSubmit} noValidate>
           <FieldsColumn>
             {/* 1. 입력 방식 — 가로 3분할 */}
             <Field>
@@ -103,12 +134,12 @@ export default function CodeRuleEditForm({ target, rule }: Props) {
             </Field>
 
             {/* 2. 자동 채번 옵션 — AUTO / AUTO_OR_MANUAL 일 때만 */}
-            {form.showAutoOptions && (
+            {showAutoOptions && (
               <>
                 <Field>
                   <SectionTitle>패턴</SectionTitle>
                   <PatternBuilder
-                    ref={form.patternInputRef}
+                    ref={patternInputRef}
                     value={values.pattern}
                     onChange={(v) => update('pattern', v)}
                     onBlur={validation.onBlur('pattern')}
@@ -119,13 +150,13 @@ export default function CodeRuleEditForm({ target, rule }: Props) {
 
                 <TokenChipsCard
                   hasParent={rule.hasParent}
-                  attributes={form.attributes}
-                  customLiterals={form.customLiterals}
+                  attributes={attributes}
+                  customLiterals={customLiterals}
                   mappings={values.attributeMappings}
-                  onSelectToken={form.insertTokenAtCursor}
-                  onRemoveLiteral={form.removeCustomLiteral}
-                  onRemoveMapping={form.removeMapping}
-                  onOpenTokenBuilder={form.openTokenModal}
+                  onSelectToken={insertTokenAtCursor}
+                  onRemoveLiteral={removeCustomLiteral}
+                  onRemoveMapping={removeMapping}
+                  onOpenTokenBuilder={openTokenModal}
                 />
               </>
             )}
@@ -158,9 +189,9 @@ export default function CodeRuleEditForm({ target, rule }: Props) {
                 {INPUT_MODE_HINTS[inputModeKey]}
               </InputModeHintBox>
 
-              {form.showAutoOptions && (
+              {showAutoOptions && (
                 <>
-                  {form.needsParentInput && (
+                  {needsParentInput && (
                     <Field>
                       <FieldLabel>미리보기용 부모 코드</FieldLabel>
                       <TextField
@@ -177,8 +208,8 @@ export default function CodeRuleEditForm({ target, rule }: Props) {
                       />
                     </Field>
                   )}
-                  {form.needsAttributeInput && form.usedAttributeKeys.map((key) => {
-                    const desc = form.attributes.find((a) => a.key === key);
+                  {needsAttributeInput && usedAttributeKeys.map((key) => {
+                    const desc = attributes.find((a) => a.key === key);
                     if (!desc) return null;
                     return (
                       <Field key={key}>
@@ -189,7 +220,7 @@ export default function CodeRuleEditForm({ target, rule }: Props) {
                           size="small"
                           fullWidth
                           value={values.previewAttributes[key] ?? ''}
-                          onChange={(e) => form.setPreviewAttribute(key, e.target.value)}
+                          onChange={(e) => setPreviewAttribute(key, e.target.value)}
                           helperText="저장 값에는 영향 없음. 미리보기 시뮬레이션 용."
                         >
                           <MenuItem value="">선택 안 함</MenuItem>
@@ -203,10 +234,10 @@ export default function CodeRuleEditForm({ target, rule }: Props) {
                     );
                   })}
                   <PreviewPanel
-                    preview={form.preview}
-                    isLoading={form.isPreviewing}
-                    errorMessage={form.previewError}
-                    needsParentInput={form.needsParentInput}
+                    preview={preview}
+                    isLoading={isPreviewing}
+                    errorMessage={previewError}
+                    needsParentInput={needsParentInput}
                     parentCode={values.previewParentCode}
                   />
                 </>
@@ -217,31 +248,31 @@ export default function CodeRuleEditForm({ target, rule }: Props) {
       </FormRoot>
 
       <TokenBuilderModal
-        open={form.tokenModalOpen}
-        attributes={form.attributes}
-        onClose={form.closeTokenModal}
-        onAddLiteral={form.addCustomLiteral}
+        open={tokenModalOpen}
+        attributes={attributes}
+        onClose={closeTokenModal}
+        onAddLiteral={addCustomLiteral}
         onSelectAttribute={() => {
-          form.closeTokenModal();
-          form.openAttributeDialog();
+          closeTokenModal();
+          openAttributeDialog();
         }}
       />
 
       <AttributeMappingDialog
-        open={form.attributeDialogOpen}
-        attributes={form.attributes}
+        open={attributeDialogOpen}
+        attributes={attributes}
         existingMappings={values.attributeMappings}
-        onClose={form.closeAttributeDialog}
-        onConfirm={form.onAttributeMappingConfirm}
+        onClose={closeAttributeDialog}
+        onConfirm={onAttributeMappingConfirm}
       />
 
       <ConfirmModal
-        isOpen={form.confirmOpen}
+        isOpen={confirmOpen}
         title="채번 규칙 저장"
         message={`${targetLabel} 규칙을 저장하시겠습니까?\n저장 즉시 새 규칙으로 채번이 시작됩니다.`}
-        confirmLabel={form.isSaving ? '저장 중...' : '저장'}
-        onConfirm={form.handleConfirmedSubmit}
-        onCancel={form.closeConfirm}
+        confirmLabel={isSaving ? '저장 중...' : '저장'}
+        onConfirm={handleConfirmedSubmit}
+        onCancel={closeConfirm}
       />
     </>
   );

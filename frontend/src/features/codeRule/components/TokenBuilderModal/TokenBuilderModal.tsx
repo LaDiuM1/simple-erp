@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -45,18 +45,24 @@ export default function TokenBuilderModal({
   const [kind, setKind] = useState<TokenKind>('userInput');
   const [literal, setLiteral] = useState('');
 
-  useEffect(() => {
-    if (!open) return;
+  const reset = () => {
     setKind('userInput');
     setLiteral('');
-  }, [open]);
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
 
   const handleConfirm = () => {
     if (kind === 'userInput') {
       const trimmed = literal.trim();
       if (!trimmed) return;
+      reset();
       onAddLiteral(trimmed);
     } else if (kind === 'attribute') {
+      reset();
       onSelectAttribute();
     }
   };
@@ -72,7 +78,7 @@ export default function TokenBuilderModal({
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="xs"
       fullWidth
       slotProps={{ paper: { sx: { borderRadius: 0 } } }}
@@ -130,7 +136,7 @@ export default function TokenBuilderModal({
         )}
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.5 }}>
-        <Button onClick={onClose} size="small" sx={{ textTransform: 'none' }}>
+        <Button onClick={handleClose} size="small" sx={{ textTransform: 'none' }}>
           취소
         </Button>
         <Button

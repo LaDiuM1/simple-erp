@@ -6,8 +6,10 @@ import { useCustomerDetailPage } from '@/features/customer/hooks/useCustomerDeta
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const customerId = Number(id);
-  if (!customerId) return null;
+  return customerId ? <CustomerDetailContent customerId={customerId} /> : null;
+}
 
+function CustomerDetailContent({ customerId }: { customerId: number }) {
   const { queries } = useCustomerDetailPage(customerId);
 
   return (

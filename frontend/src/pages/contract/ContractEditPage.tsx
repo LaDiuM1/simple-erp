@@ -6,8 +6,10 @@ import { useContractEditPage } from '@/features/contract/hooks/useContractEditPa
 export default function ContractEditPage() {
   const { id } = useParams<{ id: string }>();
   const contractId = Number(id);
-  if (!contractId) return null;
+  return contractId ? <ContractEditContent contractId={contractId} /> : null;
+}
 
+function ContractEditContent({ contractId }: { contractId: number }) {
   const { queries } = useContractEditPage(contractId);
 
   return (

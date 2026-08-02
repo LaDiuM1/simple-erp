@@ -13,8 +13,10 @@ import { DetailRoot } from '@/features/expense/components/expenseDetail.styles';
 export default function ExpenseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const expenseId = Number(id);
-  if (!expenseId) return null;
+  return expenseId ? <ExpenseDetailContent expenseId={expenseId} /> : null;
+}
 
+function ExpenseDetailContent({ expenseId }: { expenseId: number }) {
   const { queries, headerActions, tabsList, tabs } = useExpenseDetailPage(expenseId);
 
   return (

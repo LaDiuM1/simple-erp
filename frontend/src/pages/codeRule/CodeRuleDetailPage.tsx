@@ -18,8 +18,11 @@ const VALID_TARGETS = new Set<string>(Object.values(CODE_RULE_TARGET));
 export default function CodeRuleDetailPage() {
   const { target } = useParams<{ target: string }>();
   if (!target || !VALID_TARGETS.has(target)) return null;
+  return <CodeRuleDetailContent target={target as CodeRuleTarget} />;
+}
 
-  const { queries, headerActions, pageTitle } = useCodeRuleDetailPage(target as CodeRuleTarget);
+function CodeRuleDetailContent({ target }: { target: CodeRuleTarget }) {
+  const { queries, headerActions, pageTitle } = useCodeRuleDetailPage(target);
 
   return (
     <>

@@ -11,11 +11,15 @@ export default function CodeRuleEditPage() {
   if (!target || !VALID_TARGETS.has(target)) return null;
 
   const codeRuleTarget = target as CodeRuleTarget;
-  const { queries } = useCodeRuleEditPage(codeRuleTarget);
+  return <CodeRuleEditContent target={codeRuleTarget} />;
+}
+
+function CodeRuleEditContent({ target }: { target: CodeRuleTarget }) {
+  const { queries } = useCodeRuleEditPage(target);
 
   return (
     <QueryGate queries={queries}>
-      {({ detail }) => <CodeRuleEditForm target={codeRuleTarget} rule={detail} />}
+      {({ detail }) => <CodeRuleEditForm target={target} rule={detail} />}
     </QueryGate>
   );
 }

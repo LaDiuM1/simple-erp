@@ -11,8 +11,10 @@ import { DetailRoot } from '@/features/board/components/boardDetail.styles';
 export default function BoardDetailPage() {
   const { id } = useParams<{ id: string }>();
   const postId = Number(id);
-  if (!postId) return null;
+  return postId ? <BoardDetailContent postId={postId} /> : null;
+}
 
+function BoardDetailContent({ postId }: { postId: number }) {
   const { queries, headerActions, commentSection, modal } = useBoardDetailPage(postId);
 
   return (

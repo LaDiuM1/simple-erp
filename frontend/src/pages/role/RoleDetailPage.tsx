@@ -17,8 +17,10 @@ import { DetailRoot, MatrixSection } from './RoleDetailPage.styles';
 export default function RoleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const roleId = Number(id);
-  if (!roleId) return null;
+  return roleId ? <RoleDetailContent roleId={roleId} /> : null;
+}
 
+function RoleDetailContent({ roleId }: { roleId: number }) {
   const { queries, headerActions } = useRoleDetailPage(roleId);
 
   return (

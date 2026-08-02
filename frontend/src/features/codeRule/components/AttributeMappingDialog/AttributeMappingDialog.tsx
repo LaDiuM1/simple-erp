@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -39,32 +39,46 @@ export default function AttributeMappingDialog({
   const [sourceValue, setSourceValue] = useState<string>('');
   const [codeValue, setCodeValue] = useState<string>('');
 
-  useEffect(() => {
-    if (!open) return;
-    setAttrKey(attributes[0]?.key ?? '');
-    setSourceValue('');
-    setCodeValue('');
-  }, [open, attributes]);
+  const selectedAttrKey = attributes.some((attribute) => attribute.key === attrKey)
+    ? attrKey
+    : (attributes[0]?.key ?? '');
 
   const descriptor = useMemo(
-    () => attributes.find((a) => a.key === attrKey),
-    [attributes, attrKey],
+    () => attributes.find((a) => a.key === selectedAttrKey),
+    [attributes, selectedAttrKey],
   );
 
   const canConfirm =
-    attrKey !== ''
+    selectedAttrKey !== ''
     && sourceValue !== ''
     && codeValue.trim() !== '';
 
+  const reset = () => {
+    setAttrKey('');
+    setSourceValue('');
+    setCodeValue('');
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
+
   const handleConfirm = () => {
     if (!canConfirm) return;
-    onConfirm({ attributeKey: attrKey, sourceValue, codeValue: codeValue.trim() });
+    const mapping = {
+      attributeKey: selectedAttrKey,
+      sourceValue,
+      codeValue: codeValue.trim(),
+    };
+    reset();
+    onConfirm(mapping);
   };
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="xs"
       fullWidth
       slotProps={{ paper: { sx: { borderRadius: 0 } } }}
@@ -81,7 +95,7 @@ export default function AttributeMappingDialog({
               variant="outlined"
               size="small"
               fullWidth
-              value={attrKey}
+              value={selectedAttrKey}
               onChange={(e) => {
                 setAttrKey(e.target.value);
                 setSourceValue('');
@@ -112,7 +126,7 @@ export default function AttributeMappingDialog({
               <MenuItem value="">선택</MenuItem>
               {descriptor?.values.map((v) => {
                 const isAlreadyMapped = existingMappings.some(
-                  (m) => m.attributeKey === attrKey && m.sourceValue === v.value && m.codeValue.trim() !== '',
+                  (m) => m.attributeKey === selectedAttrKey && m.sourceValue === v.value && m.codeValue.trim() !== '',
                 );
                 return (
                   <MenuItem key={v.value} value={v.value}>
@@ -147,7 +161,7 @@ export default function AttributeMappingDialog({
         </Section>
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.5 }}>
-        <Button onClick={onClose} size="small" sx={{ textTransform: 'none' }}>
+        <Button onClick={handleClose} size="small" sx={{ textTransform: 'none' }}>
           취소
         </Button>
         <Button

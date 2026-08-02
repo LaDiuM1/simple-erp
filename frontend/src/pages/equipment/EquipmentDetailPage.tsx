@@ -11,8 +11,10 @@ import { DetailRoot } from '@/features/equipment/components/equipmentDetail.styl
 export default function EquipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const equipmentId = Number(id);
-  if (!equipmentId) return null;
+  return equipmentId ? <EquipmentDetailContent equipmentId={equipmentId} /> : null;
+}
 
+function EquipmentDetailContent({ equipmentId }: { equipmentId: number }) {
   const { queries, headerActions } = useEquipmentDetailPage(equipmentId);
 
   return (

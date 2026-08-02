@@ -14,8 +14,10 @@ import { DetailRoot } from '@/features/salesCustomer/components/salesCustomerDet
 export default function SalesCustomerDetailPage() {
   const { customerId: param } = useParams<{ customerId: string }>();
   const customerId = Number(param);
-  if (!customerId) return null;
+  return customerId ? <SalesCustomerDetailContent customerId={customerId} /> : null;
+}
 
+function SalesCustomerDetailContent({ customerId }: { customerId: number }) {
   const { queries, headerActions, tabsList, tabs } = useSalesCustomerDetailPage(customerId);
 
   return (

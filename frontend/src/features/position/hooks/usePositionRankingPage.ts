@@ -1,4 +1,4 @@
-import { type DragEvent, useEffect, useState } from 'react';
+import { type DragEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import { usePermission } from '@/shared/hooks/usePermission';
@@ -10,6 +10,8 @@ import {
 } from '@/features/position/api/positionApi';
 import type { PositionSummary } from '@/features/position/types';
 import { getErrorMessage } from '@/shared/api/error';
+
+const EMPTY_POSITIONS: PositionSummary[] = [];
 
 /**
  * 직책 서열 page hook — server list 동기화 + DnD state + reorder mutation + headerActions.
@@ -24,10 +26,13 @@ export function usePositionRankingPage() {
   const listQuery = useGetPositionsRankingQuery();
   const [reorderPositions] = useReorderPositionsMutation();
 
-  const [items, setItems] = useState<PositionSummary[]>([]);
-  useEffect(() => {
-    setItems(listQuery.data ?? []);
-  }, [listQuery.data]);
+  const serverItems = listQuery.data ?? EMPTY_POSITIONS;
+  const [items, setItems] = useState<PositionSummary[]>(serverItems);
+  const [itemsSource, setItemsSource] = useState(serverItems);
+  if (itemsSource !== serverItems) {
+    setItemsSource(serverItems);
+    setItems(serverItems);
+  }
 
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);

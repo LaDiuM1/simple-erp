@@ -6,8 +6,10 @@ import { useRoleEditPage } from '@/features/role/hooks/useRoleEditPage';
 export default function RoleEditPage() {
   const { id } = useParams<{ id: string }>();
   const roleId = Number(id);
-  if (!roleId) return null;
+  return roleId ? <RoleEditContent roleId={roleId} /> : null;
+}
 
+function RoleEditContent({ roleId }: { roleId: number }) {
   const { queries } = useRoleEditPage(roleId);
 
   return (

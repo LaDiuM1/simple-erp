@@ -1,1 +1,2 @@
-export { default, MATRIX_MENUS } from './MenuPermissionMatrix';
+export { default } from './MenuPermissionMatrix';
+export { DATA_SCOPED_MENUS, MATRIX_MENUS, supportsDataScope } from './menuPermissionMatrixConfig';

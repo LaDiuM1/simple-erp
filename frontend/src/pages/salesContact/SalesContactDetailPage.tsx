@@ -14,8 +14,10 @@ import { DetailRoot } from '@/features/salesContact/components/salesContactDetai
 export default function SalesContactDetailPage() {
   const { id } = useParams<{ id: string }>();
   const contactId = Number(id);
-  if (!contactId) return null;
+  return contactId ? <SalesContactDetailContent contactId={contactId} /> : null;
+}
 
+function SalesContactDetailContent({ contactId }: { contactId: number }) {
   const { queries, headerActions, tabsList, tabs } = useSalesContactDetailPage(contactId);
 
   return (

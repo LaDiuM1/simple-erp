@@ -6,8 +6,10 @@ import { useEmployeeEditPage } from '@/features/employee/hooks/useEmployeeEditPa
 export default function EmployeeEditPage() {
   const { id } = useParams<{ id: string }>();
   const employeeId = Number(id);
-  if (!employeeId) return null;
+  return employeeId ? <EmployeeEditContent employeeId={employeeId} /> : null;
+}
 
+function EmployeeEditContent({ employeeId }: { employeeId: number }) {
   const { queries } = useEmployeeEditPage(employeeId);
 
   return (

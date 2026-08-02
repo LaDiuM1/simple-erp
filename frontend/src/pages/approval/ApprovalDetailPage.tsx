@@ -13,8 +13,10 @@ import { DetailRoot } from '@/features/approval/components/approvalDetail.styles
 export default function ApprovalDetailPage() {
   const { id } = useParams<{ id: string }>();
   const approvalId = Number(id);
-  if (!approvalId) return null;
+  return approvalId ? <ApprovalDetailContent approvalId={approvalId} /> : null;
+}
 
+function ApprovalDetailContent({ approvalId }: { approvalId: number }) {
   const { queries, headerActions, tabsList, modal } = useApprovalDetailPage(approvalId);
 
   return (

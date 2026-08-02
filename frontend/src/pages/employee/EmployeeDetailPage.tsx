@@ -6,8 +6,10 @@ import { useEmployeeDetailPage } from '@/features/employee/hooks/useEmployeeDeta
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const employeeId = Number(id);
-  if (!employeeId) return null;
+  return employeeId ? <EmployeeDetailContent employeeId={employeeId} /> : null;
+}
 
+function EmployeeDetailContent({ employeeId }: { employeeId: number }) {
   const { queries } = useEmployeeDetailPage(employeeId);
 
   return (

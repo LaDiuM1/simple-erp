@@ -14,8 +14,10 @@ import { DetailRoot } from '@/features/afterService/components/afterServiceDetai
 export default function AfterServiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const afterServiceId = Number(id);
-  if (!afterServiceId) return null;
+  return afterServiceId ? <AfterServiceDetailContent afterServiceId={afterServiceId} /> : null;
+}
 
+function AfterServiceDetailContent({ afterServiceId }: { afterServiceId: number }) {
   const { queries, headerActions, tabsList, tabs } = useAfterServiceDetailPage(afterServiceId);
 
   return (

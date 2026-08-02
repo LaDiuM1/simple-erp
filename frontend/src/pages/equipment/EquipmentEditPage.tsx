@@ -6,8 +6,10 @@ import { useEquipmentEditPage } from '@/features/equipment/hooks/useEquipmentEdi
 export default function EquipmentEditPage() {
   const { id } = useParams<{ id: string }>();
   const equipmentId = Number(id);
-  if (!equipmentId) return null;
+  return equipmentId ? <EquipmentEditContent equipmentId={equipmentId} /> : null;
+}
 
+function EquipmentEditContent({ equipmentId }: { equipmentId: number }) {
   const { queries } = useEquipmentEditPage(equipmentId);
 
   return (

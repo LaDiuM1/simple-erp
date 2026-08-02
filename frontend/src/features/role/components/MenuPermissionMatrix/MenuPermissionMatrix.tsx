@@ -1,6 +1,6 @@
 import Checkbox from '@mui/material/Checkbox';
 import MenuItem from '@mui/material/MenuItem';
-import { MENU_CODE, MENU_LABEL, type MenuCode } from '@/shared/config/menuConfig';
+import { MENU_LABEL, type MenuCode } from '@/shared/config/menuConfig';
 import {
   ColumnCenter,
   HeaderColumnCenter,
@@ -18,9 +18,7 @@ import {
   type MenuPermissionFormValue,
   type RoleFormValues,
 } from '@/features/role/types';
-
-/** 매트릭스 행 순서 — MENU_CODE 선언 순서를 따른다. */
-export const MATRIX_MENUS: MenuCode[] = Object.values(MENU_CODE);
+import { MATRIX_MENUS, supportsDataScope } from './menuPermissionMatrixConfig';
 
 const EMPTY_PERMISSION: MenuPermissionFormValue = { canRead: false, canWrite: false, dataScope: 'ALL' };
 
@@ -129,7 +127,8 @@ export default function MenuPermissionMatrix({
 
       {MATRIX_MENUS.map((menu) => {
         const p = permissions[menu] ?? EMPTY_PERMISSION;
-        const scopeDisabled = readOnly || !p.canRead;
+        const scopeSupported = supportsDataScope(menu);
+        const scopeDisabled = readOnly || !p.canRead || !scopeSupported;
         return (
           <MatrixRow key={menu} readOnly={readOnly}>
             <MenuLabel>{MENU_LABEL[menu]}</MenuLabel>
@@ -153,7 +152,8 @@ export default function MenuPermissionMatrix({
               <ScopeSelect
                 size="small"
                 fullWidth
-                value={p.dataScope}
+                inputProps={{ 'aria-label': `${MENU_LABEL[menu]} 데이터 범위` }}
+                value={scopeSupported ? p.dataScope : 'ALL'}
                 disabled={scopeDisabled}
                 onChange={(e) => setScope(menu, e.target.value as DataScope)}
               >
