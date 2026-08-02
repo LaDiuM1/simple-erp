@@ -3,12 +3,14 @@ package io.github.ladium1.erp.afterservice.internal.service;
 import io.github.ladium1.erp.afterservice.internal.dto.EngineerRequest;
 import io.github.ladium1.erp.afterservice.internal.dto.EngineerResponse;
 import io.github.ladium1.erp.afterservice.internal.entity.Engineer;
+import io.github.ladium1.erp.afterservice.internal.entity.EngineerType;
 import io.github.ladium1.erp.afterservice.internal.exception.AfterServiceErrorCode;
 import io.github.ladium1.erp.afterservice.internal.repository.AfterServiceRepository;
 import io.github.ladium1.erp.afterservice.internal.repository.EngineerRepository;
 import io.github.ladium1.erp.afterservice.internal.repository.ServiceExpenseRepository;
 import io.github.ladium1.erp.afterservice.internal.repository.ServiceVisitRepository;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
+import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
@@ -37,8 +39,18 @@ public class EngineerService {
     private final EmployeeApi employeeApi;
 
     public List<EngineerResponse> findAll() {
-        return engineerRepository.findAllByOrderByTypeAscNameAsc().stream()
-                .map(EngineerService::toResponse)
+        List<Engineer> engineers = engineerRepository.findAllByOrderByTypeAscNameAsc();
+        List<Long> employeeIds = engineers.stream()
+                .map(Engineer::getEmployeeId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, String> employeeNames = employeeIds.isEmpty()
+                ? Map.of()
+                : employeeApi.findByIds(employeeIds).stream()
+                        .collect(toMap(EmployeeInfo::id, EmployeeInfo::name));
+        return engineers.stream()
+                .map(engineer -> toResponse(engineer, employeeNames))
                 .toList();
     }
 
@@ -65,10 +77,7 @@ public class EngineerService {
     @Auditable(menu = Menu.AFTER_SERVICES, action = AuditAction.CREATE, targetType = "Engineer", targetIdFromReturn = true)
     @Transactional
     public Long create(EngineerRequest request) {
-        Long employeeId = request.employeeId();
-        if (employeeId != null) {
-            employeeApi.getById(employeeId);
-        }
+        Long employeeId = validateEmployeeLink(request);
         Engineer engineer = Engineer.builder()
                 .name(request.name().trim())
                 .type(request.type())
@@ -85,10 +94,7 @@ public class EngineerService {
     public void update(Long id, EngineerRequest request) {
         Engineer engineer = engineerRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(AfterServiceErrorCode.ENGINEER_NOT_FOUND));
-        Long employeeId = request.employeeId();
-        if (employeeId != null) {
-            employeeApi.getById(employeeId);
-        }
+        Long employeeId = validateEmployeeLink(request);
         engineer.update(
                 request.name().trim(),
                 request.type(),
@@ -116,7 +122,7 @@ public class EngineerService {
         engineerRepository.deleteById(id);
     }
 
-    private static EngineerResponse toResponse(Engineer engineer) {
+    private static EngineerResponse toResponse(Engineer engineer, Map<Long, String> employeeNames) {
         return EngineerResponse.builder()
                 .id(engineer.getId())
                 .name(engineer.getName())
@@ -124,7 +130,25 @@ public class EngineerService {
                 .affiliation(engineer.getAffiliation())
                 .phone(engineer.getPhone())
                 .employeeId(engineer.getEmployeeId())
+                .employeeName(employeeNames.get(engineer.getEmployeeId()))
                 .active(engineer.isActive())
                 .build();
+    }
+
+    private Long validateEmployeeLink(EngineerRequest request) {
+        Long employeeId = request.employeeId();
+        if (request.type() != EngineerType.INTERNAL) {
+            if (employeeId != null) {
+                throw new BusinessException(AfterServiceErrorCode.INVALID_ENGINEER_EMPLOYEE);
+            }
+            return null;
+        }
+        if (employeeId == null) {
+            throw new BusinessException(AfterServiceErrorCode.INVALID_ENGINEER_EMPLOYEE);
+        }
+        if (!employeeApi.isEligibleForNewWorkReference(employeeId)) {
+            throw new BusinessException(AfterServiceErrorCode.INVALID_ENGINEER_EMPLOYEE);
+        }
+        return employeeId;
     }
 }

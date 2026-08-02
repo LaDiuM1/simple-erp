@@ -6,14 +6,20 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.security.DataScope;
+import io.github.ladium1.erp.global.security.DataScopeContext;
+import io.github.ladium1.erp.global.security.DataScopeContextProvider;
+import io.github.ladium1.erp.global.security.DataScopeResolver;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.LoginAccountApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
+import io.github.ladium1.erp.employee.api.dto.EmploymentStatus;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeCreateRequest;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeDetailResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeProfileResponse;
+import io.github.ladium1.erp.employee.internal.dto.EmployeeReferenceResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeSearchCondition;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeSummaryResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeUpdateRequest;
@@ -38,9 +44,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
@@ -57,6 +66,8 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
     private final PositionApi positionApi;
     private final PasswordEncoder passwordEncoder;
     private final EmployeeExcelExporter employeeExcelExporter;
+    private final DataScopeResolver dataScopeResolver;
+    private final DataScopeContextProvider dataScopeContextProvider;
 
     @Override
     public Long getRoleIdByLoginId(String loginId) {
@@ -96,15 +107,39 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
     }
 
     @Override
-    public long countActive() {
+    public long countCurrentlyEmployed() {
         return employeeRepository.countByStatusNot(EmployeeStatus.RESIGNED);
     }
 
     @Override
-    public List<EmployeeInfo> findAllActive() {
+    public List<EmployeeInfo> findAllCurrentlyEmployed() {
         List<Employee> employees = employeeRepository.findByStatusNot(EmployeeStatus.RESIGNED);
         ReferenceCache refs = loadReferences(employees);
         return employees.stream().map(e -> toInfo(e, refs)).toList();
+    }
+
+    @Override
+    public boolean isCurrentlyEmployed(Long employeeId) {
+        return employeeId != null
+                && employeeRepository.findById(employeeId)
+                        .filter(employee -> employee.getStatus() != EmployeeStatus.RESIGNED)
+                        .isPresent();
+    }
+
+    @Override
+    public boolean isEligibleForNewWorkReference(Long employeeId) {
+        return employeeId != null && allEligibleForNewWorkReference(List.of(employeeId));
+    }
+
+    @Override
+    public boolean allEligibleForNewWorkReference(Collection<Long> employeeIds) {
+        if (employeeIds == null || employeeIds.isEmpty() || employeeIds.stream().anyMatch(Objects::isNull)) {
+            return false;
+        }
+        LinkedHashSet<Long> distinctIds = new LinkedHashSet<>(employeeIds);
+        List<Employee> employees = employeeRepository.findAllById(distinctIds);
+        return employees.size() == distinctIds.size()
+                && employees.stream().allMatch(employee -> employee.getStatus() == EmployeeStatus.ACTIVE);
     }
 
     @Override
@@ -123,6 +158,7 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
                 .departmentId(employee.getDepartmentId())
                 .departmentName(refs.departmentName(employee.getDepartmentId()))
                 .positionName(refs.positionName(employee.getPositionId()))
+                .status(EmploymentStatus.valueOf(employee.getStatus().name()))
                 .build();
     }
 
@@ -152,6 +188,61 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
         Page<Employee> page = employeeRepository.search(condition, pageable);
         ReferenceCache refs = loadReferences(page.getContent());
         return PageResponse.of(page.map(employee -> toSummary(employee, refs)));
+    }
+
+    public PageResponse<EmployeeReferenceResponse> searchReference(
+            EmployeeSearchCondition condition,
+            Pageable pageable
+    ) {
+        Page<Employee> page = employeeRepository.search(condition, pageable);
+        return toReferencePage(page);
+    }
+
+    public PageResponse<EmployeeReferenceResponse> searchContractReference(
+            EmployeeSearchCondition condition,
+            Pageable pageable
+    ) {
+        Page<Employee> page = employeeRepository.searchVisible(
+                condition,
+                resolveContractVisibleEmployeeIds().orElse(null),
+                pageable
+        );
+        return toReferencePage(page);
+    }
+
+    private PageResponse<EmployeeReferenceResponse> toReferencePage(Page<Employee> page) {
+        OrganizationReferenceCache refs = loadOrganizationReferences(page.getContent());
+        return PageResponse.of(page.map(employee -> EmployeeReferenceResponse.builder()
+                .id(employee.getId())
+                .name(employee.getName())
+                .departmentName(refs.departmentName(employee.getDepartmentId()))
+                .positionName(refs.positionName(employee.getPositionId()))
+                .status(employee.getStatus())
+                .build()));
+    }
+
+    private Optional<Set<Long>> resolveContractVisibleEmployeeIds() {
+        DataScope scope = dataScopeResolver.resolve(Menu.CONTRACTS);
+        if (scope == DataScope.ALL) {
+            return Optional.empty();
+        }
+        DataScopeContext context = dataScopeContextProvider.current();
+        return Optional.of(switch (scope) {
+            case ALL -> Set.of();
+            case SELF -> context.employeeId() == null
+                    ? Set.of()
+                    : Set.of(context.employeeId());
+            case DEPARTMENT -> context.departmentId() == null
+                    ? Set.of()
+                    : Set.copyOf(employeeRepository.findIdsByDepartmentIdIn(
+                            List.of(context.departmentId())
+                    ));
+            case DEPARTMENT_TREE -> context.departmentSubtreeIds().isEmpty()
+                    ? Set.of()
+                    : Set.copyOf(employeeRepository.findIdsByDepartmentIdIn(
+                            context.departmentSubtreeIds()
+                    ));
+        });
     }
 
     public byte[] exportExcel(EmployeeSearchCondition condition, Sort sort) {
@@ -298,6 +389,16 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
         return new ReferenceCache(deptNames, posNames, roleNames);
     }
 
+    private OrganizationReferenceCache loadOrganizationReferences(List<Employee> employees) {
+        List<Long> departmentIds = distinctIds(employees.stream().map(Employee::getDepartmentId));
+        List<Long> positionIds = distinctIds(employees.stream().map(Employee::getPositionId));
+        Map<Long, String> departmentNames = departmentApi.findByIds(departmentIds).stream()
+                .collect(toMap(DepartmentInfo::id, DepartmentInfo::name));
+        Map<Long, String> positionNames = positionApi.findByIds(positionIds).stream()
+                .collect(toMap(PositionInfo::id, PositionInfo::name));
+        return new OrganizationReferenceCache(departmentNames, positionNames);
+    }
+
     private static List<Long> distinctIds(Stream<Long> ids) {
         return ids.filter(java.util.Objects::nonNull).distinct().toList();
     }
@@ -316,6 +417,18 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
 
         String roleName(Long id) {
             return id == null ? null : roleNames.get(id);
+        }
+    }
+
+    private record OrganizationReferenceCache(Map<Long, String> departmentNames,
+                                              Map<Long, String> positionNames) {
+
+        String departmentName(Long id) {
+            return id == null ? null : departmentNames.get(id);
+        }
+
+        String positionName(Long id) {
+            return id == null ? null : positionNames.get(id);
         }
     }
 }

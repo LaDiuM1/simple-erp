@@ -103,6 +103,7 @@ class ContractServiceTest {
         // 모든 테스트 default — ALL 스코프로 통과 (행 가시성 제한 없음).
         // 가시성 자체를 검증하는 테스트가 stub 을 덮어쓴다.
         lenient().when(dataScopeResolver.resolve(Menu.CONTRACTS)).thenReturn(DataScope.ALL);
+        lenient().when(employeeApi.isEligibleForNewWorkReference(any())).thenReturn(true);
     }
 
     @AfterEach
@@ -237,7 +238,6 @@ class ContractServiceTest {
         // given
         ContractCreateRequest request = baseCreateRequest(null);
         given(customerApi.getById(1L)).willReturn(customerInfo());
-        given(employeeApi.getById(2L)).willReturn(employeeInfo(2L, "김영업"));
         given(productApi.getById(3L)).willReturn(productInfo());
         given(codeRuleApi.getRule(CodeRuleTarget.CONTRACT)).willReturn(ruleWithMode(InputMode.AUTO));
         given(codeRuleApi.generate(eq(CodeRuleTarget.CONTRACT), any())).willReturn("CT2026-001");
@@ -264,7 +264,6 @@ class ContractServiceTest {
         // given
         ContractCreateRequest request = baseCreateRequest(null);
         given(customerApi.getById(1L)).willReturn(customerInfo());
-        given(employeeApi.getById(2L)).willReturn(employeeInfo(2L, "김영업"));
         given(productApi.getById(3L)).willReturn(productInfo());
         given(codeRuleApi.getRule(CodeRuleTarget.CONTRACT)).willReturn(ruleWithMode(InputMode.AUTO));
         given(codeRuleApi.generate(eq(CodeRuleTarget.CONTRACT), any())).willReturn("CT2026-001");
@@ -283,7 +282,6 @@ class ContractServiceTest {
         // given
         ContractCreateRequest request = baseCreateRequest(null);
         given(customerApi.getById(1L)).willReturn(customerInfo());
-        given(employeeApi.getById(2L)).willReturn(employeeInfo(2L, "김영업"));
         given(productApi.getById(3L)).willReturn(productInfo());
         given(codeRuleApi.getRule(CodeRuleTarget.CONTRACT)).willReturn(ruleWithMode(InputMode.MANUAL));
 
@@ -300,7 +298,6 @@ class ContractServiceTest {
         Contract contract = mockContract(2L);
         given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
         given(customerApi.getById(1L)).willReturn(customerInfo());
-        given(employeeApi.getById(9L)).willReturn(employeeInfo(9L, "박이사"));
         given(productApi.getById(3L)).willReturn(productInfo());
         ContractUpdateRequest request = baseUpdateRequest(9L, 250_000_000L);
 
@@ -331,7 +328,6 @@ class ContractServiceTest {
         ReflectionTestUtils.setField(contract, "id", 1L);
         given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
         given(customerApi.getById(1L)).willReturn(customerInfo());
-        given(employeeApi.getById(2L)).willReturn(employeeInfo(2L, "김영업"));
         given(productApi.getById(3L)).willReturn(productInfo());
 
         // when
@@ -359,7 +355,6 @@ class ContractServiceTest {
                 .build();
         given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
         given(customerApi.getById(1L)).willReturn(customerInfo());
-        given(employeeApi.getById(2L)).willReturn(employeeInfo(2L, "김영업"));
         given(productApi.getById(3L)).willReturn(productInfo());
 
         // when

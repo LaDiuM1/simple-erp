@@ -2,6 +2,7 @@ package io.github.ladium1.erp.equipment.internal.web;
 
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentCreateRequest;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentDetailResponse;
+import io.github.ladium1.erp.equipment.internal.dto.EquipmentReferenceResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentSearchCondition;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentSummaryResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentUpdateRequest;
@@ -41,10 +42,7 @@ public class EquipmentController {
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
-    /**
-     * AS 접수 폼의 설비 검색 SelectField / 보증 판정 제안이 설비 검색 / 상세를 그대로 사용하므로,
-     * 둘 중 한쪽 메뉴 read 권한이 있으면 허용. (Customer 의 reference 권한과 동일 패턴)
-     */
+    /** AS 접수에서 고객사 범위의 설비 선택과 보증 판단에 사용하는 참조 권한. */
     private static final String CAN_READ_REFERENCE =
             "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
             + "or @menuPermissionEvaluator.canRead(authentication, 'AFTER_SERVICES')";
@@ -52,7 +50,7 @@ public class EquipmentController {
     private final EquipmentService equipmentService;
 
     @GetMapping
-    @PreAuthorize(CAN_READ_REFERENCE)
+    @PreAuthorize(CAN_READ)
     public PageResponse<EquipmentSummaryResponse> search(
             @RequestParam(required = false) Long customerId,
             @RequestParam(required = false) Long supplierId,
@@ -67,8 +65,32 @@ public class EquipmentController {
         );
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/reference")
     @PreAuthorize(CAN_READ_REFERENCE)
+    public PageResponse<EquipmentReferenceResponse> searchReference(
+            @RequestParam Long customerId,
+            @RequestParam(required = false) String serialKeyword,
+            @RequestParam(required = false) String addressKeyword,
+            @RequestParam(required = false) WarrantyFilter warranty,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return equipmentService.searchReference(
+                new EquipmentSearchCondition(customerId, null, serialKeyword, addressKeyword, warranty),
+                pageable
+        );
+    }
+
+    @GetMapping("/reference/{id}")
+    @PreAuthorize(CAN_READ_REFERENCE)
+    public EquipmentReferenceResponse getReference(
+            @PathVariable Long id,
+            @RequestParam Long customerId
+    ) {
+        return equipmentService.getReference(id, customerId);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize(CAN_READ)
     public EquipmentDetailResponse getDetail(@PathVariable Long id) {
         return equipmentService.getDetail(id);
     }

@@ -12,6 +12,7 @@ import io.github.ladium1.erp.equipment.api.dto.ExpiringWarrantyInfo;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentCreateRequest;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentDetailResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentExcelRow;
+import io.github.ladium1.erp.equipment.internal.dto.EquipmentReferenceResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentSearchCondition;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentSummaryResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentUpdateRequest;
@@ -39,6 +40,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -105,6 +107,22 @@ public class EquipmentService implements EquipmentApi {
         Page<Equipment> page = equipmentRepository.search(condition, pageable);
         RefNames refs = loadRefNames(page.getContent());
         return PageResponse.of(page.map(e -> toSummaryResponse(e, refs)));
+    }
+
+    public PageResponse<EquipmentReferenceResponse> searchReference(
+            EquipmentSearchCondition condition,
+            Pageable pageable
+    ) {
+        Page<Equipment> page = equipmentRepository.search(condition, pageable);
+        Map<Long, ProductInfo> products = loadReferenceProducts(page.getContent());
+        return PageResponse.of(page.map(equipment -> toReferenceResponse(equipment, products)));
+    }
+
+    public EquipmentReferenceResponse getReference(Long id, Long customerId) {
+        Equipment equipment = equipmentRepository.findById(id)
+                .filter(found -> Objects.equals(found.getCustomerId(), customerId))
+                .orElseThrow(() -> new BusinessException(EquipmentErrorCode.EQUIPMENT_NOT_FOUND));
+        return toReferenceResponse(equipment, loadReferenceProducts(List.of(equipment)));
     }
 
     /**
@@ -181,7 +199,7 @@ public class EquipmentService implements EquipmentApi {
     public Long create(EquipmentCreateRequest request) {
         // 참조 존재 검증 — 없으면 각 모듈이 NOT_FOUND 를 던진다.
         customerApi.getById(request.customerId());
-        ProductInfo product = productApi.getById(request.productId());
+        ProductInfo product = requireEligibleProduct(request.productId(), null);
 
         Equipment equipment = Equipment.builder()
                 .customerId(request.customerId())
@@ -233,11 +251,15 @@ public class EquipmentService implements EquipmentApi {
         Equipment equipment = equipmentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(EquipmentErrorCode.EQUIPMENT_NOT_FOUND));
         customerApi.getById(request.customerId());
-        ProductInfo product = productApi.getById(request.productId());
+        ProductInfo product = requireEligibleProduct(request.productId(), equipment.getProductId());
+        validateContractSnapshotUpdate(equipment, request);
+        Long supplierId = equipment.getContractId() == null
+                ? product.supplierId()
+                : equipment.getSupplierId();
 
         equipment.update(
                 request.customerId(),
-                product.supplierId(),
+                supplierId,
                 request.productId(),
                 request.outputValue(),
                 request.outputUnit(),
@@ -256,12 +278,47 @@ public class EquipmentService implements EquipmentApi {
     @Auditable(menu = Menu.EQUIPMENTS, action = AuditAction.DELETE, targetType = "Equipment", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
-        if (!equipmentRepository.existsById(id)) {
-            throw new BusinessException(EquipmentErrorCode.EQUIPMENT_NOT_FOUND);
+        Equipment equipment = equipmentRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(EquipmentErrorCode.EQUIPMENT_NOT_FOUND));
+        if (equipment.getContractId() != null) {
+            throw new BusinessException(EquipmentErrorCode.CONTRACT_LINKED_DELETE_FORBIDDEN);
         }
         // 다른 모듈 (AS 등) 의 사용 여부는 동기 이벤트로 검사 — 리스너가 throw 하면 트랜잭션 롤백.
         eventPublisher.publishEvent(new EquipmentDeletingEvent(id));
         equipmentRepository.deleteById(id);
+    }
+
+    /** 계약 설치 이벤트가 만든 원천 스냅샷은 계약과 설비 어느 쪽에서도 따로 바꿀 수 없다. */
+    private void validateContractSnapshotUpdate(
+            Equipment equipment,
+            EquipmentUpdateRequest request
+    ) {
+        if (equipment.getContractId() == null) {
+            return;
+        }
+        boolean snapshotUnchanged = Objects.equals(equipment.getCustomerId(), request.customerId())
+                && Objects.equals(equipment.getProductId(), request.productId())
+                && sameDecimal(equipment.getOutputValue(), request.outputValue())
+                && equipment.getOutputUnit() == request.outputUnit()
+                && Objects.equals(equipment.getInstalledDate(), request.installedDate());
+        if (!snapshotUnchanged) {
+            throw new BusinessException(EquipmentErrorCode.CONTRACT_SNAPSHOT_IMMUTABLE);
+        }
+    }
+
+    private static boolean sameDecimal(BigDecimal left, BigDecimal right) {
+        if (left == null || right == null) {
+            return left == right;
+        }
+        return left.compareTo(right) == 0;
+    }
+
+    private ProductInfo requireEligibleProduct(Long productId, Long currentProductId) {
+        ProductInfo product = productApi.getById(productId);
+        if (!Objects.equals(currentProductId, productId) && !product.active()) {
+            throw new BusinessException(EquipmentErrorCode.INACTIVE_PRODUCT);
+        }
+        return product;
     }
 
     /**
@@ -300,6 +357,35 @@ public class EquipmentService implements EquipmentApi {
                 .generalWarrantyEndDate(e.getGeneralWarrantyEndDate())
                 .warrantyInsurance(e.isWarrantyInsurance())
                 .build();
+    }
+
+    private EquipmentReferenceResponse toReferenceResponse(
+            Equipment equipment,
+            Map<Long, ProductInfo> products
+    ) {
+        ProductInfo product = products.get(equipment.getProductId());
+        return EquipmentReferenceResponse.builder()
+                .id(equipment.getId())
+                .customerId(equipment.getCustomerId())
+                .productModelName(product == null ? null : product.modelName())
+                .serialNo(equipment.getSerialNo())
+                .installAddress(equipment.getInstallAddress())
+                .installedDate(equipment.getInstalledDate())
+                .oscillatorWarrantyEndDate(equipment.getOscillatorWarrantyEndDate())
+                .generalWarrantyEndDate(equipment.getGeneralWarrantyEndDate())
+                .build();
+    }
+
+    private Map<Long, ProductInfo> loadReferenceProducts(List<Equipment> equipments) {
+        if (equipments.isEmpty()) {
+            return Map.of();
+        }
+        return productApi.findByIds(equipments.stream()
+                        .map(Equipment::getProductId)
+                        .distinct()
+                        .toList())
+                .stream()
+                .collect(toMap(ProductInfo::id, product -> product));
     }
 
     /**

@@ -8,6 +8,7 @@ import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.equipment.api.EquipmentDeletingEvent;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentCreateRequest;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentDetailResponse;
+import io.github.ladium1.erp.equipment.internal.dto.EquipmentReferenceResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentSearchCondition;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentSummaryResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentUpdateRequest;
@@ -115,6 +116,41 @@ class EquipmentServiceTest {
     }
 
     @Test
+    @DisplayName("AS 설비 참조는 고객사 범위를 벗어난 단건을 숨긴다")
+    void get_reference_rejects_other_customer_equipment() {
+        Equipment equipment = mockEquipment(null);
+        ReflectionTestUtils.setField(equipment, "id", 1L);
+        given(equipmentRepository.findById(1L)).willReturn(Optional.of(equipment));
+
+        assertThatThrownBy(() -> equipmentService.getReference(1L, 99L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", EquipmentErrorCode.EQUIPMENT_NOT_FOUND);
+        verify(productApi, never()).findByIds(anyList());
+    }
+
+    @Test
+    @DisplayName("AS 설비 참조는 선택과 보증 판단에 필요한 정보만 구성한다")
+    void search_reference_returns_minimum_fields() {
+        Equipment equipment = mockEquipment(null);
+        ReflectionTestUtils.setField(equipment, "id", 1L);
+        Pageable pageable = PageRequest.of(0, 20);
+        given(equipmentRepository.search(any(EquipmentSearchCondition.class), eq(pageable)))
+                .willReturn(new PageImpl<>(List.of(equipment), pageable, 1));
+        given(productApi.findByIds(List.of(3L))).willReturn(List.of(productInfo()));
+
+        EquipmentReferenceResponse result = equipmentService.searchReference(
+                new EquipmentSearchCondition(1L, null, null, null, null), pageable
+        ).content().getFirst();
+
+        assertThat(result.customerId()).isEqualTo(1L);
+        assertThat(result.productModelName()).isEqualTo("HLA-1530");
+        assertThat(result.generalWarrantyEndDate()).isEqualTo(LocalDate.of(2027, 3, 2));
+        verify(customerApi, never()).findByIds(anyList());
+        verify(supplierApi, never()).findByIds(anyList());
+        verify(contractApi, never()).findByIds(anyList());
+    }
+
+    @Test
     @DisplayName("create 성공 — 제품의 공급사를 스냅샷 저장 + 보증 만료일 계산")
     void create_success() {
         // given
@@ -135,6 +171,18 @@ class EquipmentServiceTest {
         assertThat(captor.getValue().getSupplierId()).isEqualTo(7L);
         assertThat(captor.getValue().getOscillatorWarrantyEndDate()).isEqualTo(LocalDate.of(2029, 3, 2));
         assertThat(captor.getValue().getGeneralWarrantyEndDate()).isEqualTo(LocalDate.of(2027, 3, 2));
+    }
+
+    @Test
+    @DisplayName("create 실패 — 비활성 제품 모델에는 새 설비를 연결할 수 없음")
+    void create_rejects_inactive_product() {
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(3L)).willReturn(productInfo(3L, false));
+
+        assertThatThrownBy(() -> equipmentService.create(baseCreateRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", EquipmentErrorCode.INACTIVE_PRODUCT);
+        verify(equipmentRepository, never()).save(any());
     }
 
     @Test
@@ -195,6 +243,34 @@ class EquipmentServiceTest {
         assertThat(equipment.getOscillatorWarrantyEndDate()).isEqualTo(LocalDate.of(2028, 4, 1));
         assertThat(equipment.getGeneralWarrantyEndDate()).isEqualTo(LocalDate.of(2027, 4, 1));
         assertThat(equipment.isWarrantyInsurance()).isTrue();
+    }
+
+    @Test
+    @DisplayName("update 성공 — 기존 비활성 제품 모델 참조는 그대로 유지 가능")
+    void update_keeps_existing_inactive_product() {
+        Equipment equipment = mockEquipment(null);
+        given(equipmentRepository.findById(1L)).willReturn(Optional.of(equipment));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(3L)).willReturn(productInfo(3L, false));
+
+        equipmentService.update(1L, baseUpdateRequest(3L, "메모"));
+
+        assertThat(equipment.getProductId()).isEqualTo(3L);
+        assertThat(equipment.getNote()).isEqualTo("메모");
+    }
+
+    @Test
+    @DisplayName("update 실패 — 제품 모델을 비활성 대상으로 변경할 수 없음")
+    void update_rejects_new_inactive_product() {
+        Equipment equipment = mockEquipment(null);
+        given(equipmentRepository.findById(1L)).willReturn(Optional.of(equipment));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(4L)).willReturn(productInfo(4L, false));
+
+        assertThatThrownBy(() -> equipmentService.update(1L, baseUpdateRequest(4L, null)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", EquipmentErrorCode.INACTIVE_PRODUCT);
+        assertThat(equipment.getProductId()).isEqualTo(3L);
     }
 
     @Test
@@ -261,6 +337,14 @@ class EquipmentServiceTest {
         );
     }
 
+    private EquipmentUpdateRequest baseUpdateRequest(Long productId, String note) {
+        return new EquipmentUpdateRequest(
+                1L, productId, new BigDecimal("12"), OutputUnit.KW,
+                "SN-001", "김포시 설치공장", LocalDate.of(2026, 3, 2), LocalDate.of(2026, 3, 9),
+                LocalDate.of(2026, 3, 2), 36, 12, false, note
+        );
+    }
+
     private EquipmentSearchCondition emptyCondition() {
         return new EquipmentSearchCondition(null, null, null, null, null);
     }
@@ -274,9 +358,13 @@ class EquipmentServiceTest {
     }
 
     private ProductInfo productInfo() {
+        return productInfo(3L, true);
+    }
+
+    private ProductInfo productInfo(Long id, boolean active) {
         return ProductInfo.builder()
-                .id(3L).categoryId(1L).categoryName("평판 레이저")
-                .modelName("HLA-1530").supplierId(7L).active(true)
+                .id(id).categoryId(1L).categoryName("평판 레이저")
+                .modelName("HLA-1530").supplierId(7L).active(active)
                 .build();
     }
 }

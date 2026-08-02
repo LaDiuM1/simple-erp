@@ -11,6 +11,7 @@ public record EngineerResponse(
         String affiliation,
         String phone,
         Long employeeId,
+        String employeeName,
         boolean active
 ) {
 }

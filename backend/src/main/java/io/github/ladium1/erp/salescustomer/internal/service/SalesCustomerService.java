@@ -39,6 +39,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toMap;
@@ -217,10 +218,8 @@ public class SalesCustomerService implements SalesCustomerApi {
     @Transactional
     public Long createActivity(SalesActivityCreateRequest request) {
         customerApi.getById(request.customerId());
-        employeeApi.getById(request.ourEmployeeId());
-        if (request.customerContactId() != null) {
-            salesContactApi.getById(request.customerContactId());
-        }
+        requireActiveEmployee(request.ourEmployeeId());
+        validateCustomerContact(request.customerId(), request.customerContactId());
 
         SalesActivity activity = SalesActivity.builder()
                 .customerId(request.customerId())
@@ -239,10 +238,10 @@ public class SalesCustomerService implements SalesCustomerApi {
     public void updateActivity(Long id, SalesActivityUpdateRequest request) {
         SalesActivity activity = activityRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(SalesCustomerErrorCode.ACTIVITY_NOT_FOUND));
-        employeeApi.getById(request.ourEmployeeId());
-        if (request.customerContactId() != null) {
-            salesContactApi.getById(request.customerContactId());
+        if (!Objects.equals(activity.getOurEmployeeId(), request.ourEmployeeId())) {
+            requireActiveEmployee(request.ourEmployeeId());
         }
+        validateCustomerContact(activity.getCustomerId(), request.customerContactId());
 
         activity.update(
                 request.type(),
@@ -267,7 +266,7 @@ public class SalesCustomerService implements SalesCustomerApi {
     @Transactional
     public Long createAssignment(SalesAssignmentCreateRequest request) {
         customerApi.getById(request.customerId());
-        employeeApi.getById(request.employeeId());
+        requireActiveEmployee(request.employeeId());
 
         // 신규 배정이 primary 면 기존 primary 해제 (한 고객사당 활성 primary 1명 보장)
         if (request.primary()) {
@@ -294,7 +293,6 @@ public class SalesCustomerService implements SalesCustomerApi {
         if (!assignment.isActive()) {
             throw new BusinessException(SalesCustomerErrorCode.ASSIGNMENT_ALREADY_TERMINATED);
         }
-
         // primary 변경 시 같은 고객사의 다른 primary 해제
         if (request.primary() && !assignment.isPrimary()) {
             assignmentRepository.findByCustomerIdAndPrimaryTrueAndEndDateIsNull(assignment.getCustomerId())
@@ -334,5 +332,21 @@ public class SalesCustomerService implements SalesCustomerApi {
         activities.forEach(a -> seen.put(a.getOurEmployeeId(), true));
         assignments.forEach(a -> seen.put(a.getEmployeeId(), true));
         return List.copyOf(seen.keySet());
+    }
+
+    private void requireActiveEmployee(Long employeeId) {
+        if (!employeeApi.isEligibleForNewWorkReference(employeeId)) {
+            throw new BusinessException(SalesCustomerErrorCode.INACTIVE_EMPLOYEE);
+        }
+    }
+
+    private void validateCustomerContact(Long customerId, Long contactId) {
+        if (contactId == null) {
+            return;
+        }
+        salesContactApi.getById(contactId);
+        if (!salesContactApi.hasActiveEmploymentAtCustomer(contactId, customerId)) {
+            throw new BusinessException(SalesCustomerErrorCode.CONTACT_CUSTOMER_MISMATCH);
+        }
     }
 }

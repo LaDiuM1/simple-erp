@@ -18,6 +18,11 @@ public interface SalesContactApi {
     List<SalesContactInfo> findByIds(List<Long> ids);
 
     /**
+     * 명함이 현재 해당 고객사에 재직 중인지 확인한다. 종료된 이력과 외부 회사 이력은 제외한다.
+     */
+    boolean hasActiveEmploymentAtCustomer(Long contactId, Long customerId);
+
+    /**
      * 전체 영업 명부 수 — 대시보드 KPI 용.
      */
     long count();

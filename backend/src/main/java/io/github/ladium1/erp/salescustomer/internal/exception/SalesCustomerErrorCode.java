@@ -12,6 +12,8 @@ public enum SalesCustomerErrorCode implements ErrorCode {
     ACTIVITY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 영업 활동입니다."),
     ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 영업 담당 배정입니다."),
     ASSIGNMENT_ALREADY_TERMINATED(HttpStatus.BAD_REQUEST, "이미 종료된 배정입니다."),
+    INACTIVE_EMPLOYEE(HttpStatus.BAD_REQUEST, "재직 중인 직원만 담당자로 지정할 수 있습니다."),
+    CONTACT_CUSTOMER_MISMATCH(HttpStatus.BAD_REQUEST, "해당 고객사에 현재 재직 중인 고객 담당자만 지정할 수 있습니다."),
     INVALID_END_DATE(HttpStatus.BAD_REQUEST, "종료일은 시작일보다 빠를 수 없습니다.");
 
     private final HttpStatus status;

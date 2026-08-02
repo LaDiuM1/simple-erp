@@ -36,13 +36,16 @@ public class DepartmentController {
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
-    /**
-     * 드롭다운 / 필터로 소비되는 reference 목록 — 직원 관리 / 부서 관리 양쪽에서 사용.
-     * 둘 중 하나라도 read 권한이 있으면 허용.
-     */
+    /** 직원 참조 검색의 부서 필터와 부서 선택에서 사용하는 참조 권한. */
     private static final String CAN_READ_REFERENCE =
             "@menuPermissionEvaluator.canRead(authentication, 'EMPLOYEES') "
-            + "or @menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
+            + "or @menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'APPROVALS') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'EXPENSES') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'ATTENDANCE') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'SALES_CUSTOMERS') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'CONTRACTS') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'AFTER_SERVICES')";
 
     private final DepartmentService departmentService;
 

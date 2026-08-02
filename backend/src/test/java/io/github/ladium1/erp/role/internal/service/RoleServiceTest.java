@@ -257,6 +257,34 @@ class RoleServiceTest {
     }
 
     @Test
+    @DisplayName("지원 메뉴만 요청한 데이터 범위를 저장한다")
+    void create_normalizes_scope_for_unsupported_menu() {
+        RoleCreateRequest request = new RoleCreateRequest(
+                "SCOPED", "범위 역할", null,
+                List.of(
+                        new MenuPermissionRequest(Menu.SALES_CUSTOMERS, true, false, DataScope.SELF),
+                        new MenuPermissionRequest(Menu.EMPLOYEES, true, false, DataScope.SELF)
+                )
+        );
+        given(roleRepository.existsByCode("SCOPED")).willReturn(false);
+        Role saved = mockRole("SCOPED", "범위 역할", false);
+        ReflectionTestUtils.setField(saved, "id", 2L);
+        given(roleRepository.save(any(Role.class))).willReturn(saved);
+
+        roleService.create(request);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<RoleMenu>> rowsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(roleMenuRepository).saveAll(rowsCaptor.capture());
+        assertThat(rowsCaptor.getValue())
+                .extracting(RoleMenu::getMenuCode, RoleMenu::getDataScope)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple(Menu.SALES_CUSTOMERS, DataScope.SELF),
+                        org.assertj.core.groups.Tuple.tuple(Menu.EMPLOYEES, DataScope.ALL)
+                );
+    }
+
+    @Test
     @DisplayName("update — 일반 권한은 매트릭스도 변경")
     void update_normal_role_replaces_matrix() {
         // given
@@ -357,6 +385,30 @@ class RoleServiceTest {
         assertThat(detail.menuPermissions().stream()
                 .filter(p -> p.menuCode() != Menu.EMPLOYEES))
                 .allMatch(p -> !p.canRead() && !p.canWrite());
+    }
+
+    @Test
+    @DisplayName("기존의 미지원 데이터 범위는 조회 시 전체로 정규화한다")
+    void get_detail_normalizes_legacy_unsupported_scope() {
+        Role role = mockRole("STAFF", "사원", false);
+        ReflectionTestUtils.setField(role, "id", 7L);
+        given(roleRepository.findById(7L)).willReturn(Optional.of(role));
+        RoleMenu employee = RoleMenu.builder()
+                .role(role)
+                .menuCode(Menu.EMPLOYEES)
+                .canRead(true)
+                .canWrite(false)
+                .dataScope(DataScope.SELF)
+                .build();
+        given(roleMenuRepository.findAllByRole(role)).willReturn(List.of(employee));
+
+        RoleDetailResponse detail = roleService.getDetail(7L);
+
+        assertThat(detail.menuPermissions())
+                .filteredOn(p -> p.menuCode() == Menu.EMPLOYEES)
+                .singleElement()
+                .extracting(MenuPermission::dataScope)
+                .isEqualTo(DataScope.ALL);
     }
 
 

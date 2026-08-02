@@ -11,6 +11,7 @@ import io.github.ladium1.erp.product.api.ProductDeletingEvent;
 import io.github.ladium1.erp.product.api.dto.ProductInfo;
 import io.github.ladium1.erp.product.internal.dto.ProductCreateRequest;
 import io.github.ladium1.erp.product.internal.dto.ProductDetailResponse;
+import io.github.ladium1.erp.product.internal.dto.ProductReferenceResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductSearchCondition;
 import io.github.ladium1.erp.product.internal.dto.ProductSummaryResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductUpdateRequest;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -69,6 +71,20 @@ public class ProductService implements ProductApi {
         ));
     }
 
+    public PageResponse<ProductReferenceResponse> searchReference(
+            ProductSearchCondition condition,
+            Pageable pageable
+    ) {
+        Page<Product> page = productRepository.search(condition, pageable);
+        Map<Long, String> supplierNames = loadSupplierNames(page.getContent());
+        return PageResponse.of(page.map(
+                product -> productMapper.toReferenceResponse(
+                        product,
+                        supplierNames.get(product.getSupplierId())
+                )
+        ));
+    }
+
     public ProductDetailResponse getDetail(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND));
@@ -76,11 +92,18 @@ public class ProductService implements ProductApi {
         return productMapper.toDetailResponse(product, supplier.name());
     }
 
+    public ProductReferenceResponse getReference(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND));
+        SupplierInfo supplier = supplierApi.getById(product.getSupplierId());
+        return productMapper.toReferenceResponse(product, supplier.name());
+    }
+
     @Auditable(menu = Menu.PRODUCTS, action = AuditAction.CREATE, targetType = "Product", targetIdFromReturn = true)
     @Transactional
     public Long create(ProductCreateRequest request) {
         // 공급사 존재 검증 — 없으면 supplier 모듈이 SUPPLIER_NOT_FOUND 를 던진다.
-        supplierApi.getById(request.supplierId());
+        requireEligibleSupplier(request.supplierId(), null);
         ProductCategory category = resolveCategory(request.categoryId());
 
         String modelName = request.modelName().trim();
@@ -104,7 +127,7 @@ public class ProductService implements ProductApi {
     public void update(Long id, ProductUpdateRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND));
-        supplierApi.getById(request.supplierId());
+        requireEligibleSupplier(request.supplierId(), product.getSupplierId());
         ProductCategory category = resolveCategory(request.categoryId());
 
         String modelName = request.modelName().trim();
@@ -118,6 +141,13 @@ public class ProductService implements ProductApi {
     private ProductCategory resolveCategory(Long categoryId) {
         return productCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.CATEGORY_NOT_FOUND));
+    }
+
+    private void requireEligibleSupplier(Long supplierId, Long currentSupplierId) {
+        SupplierInfo supplier = supplierApi.getById(supplierId);
+        if (!Objects.equals(currentSupplierId, supplierId) && !supplier.active()) {
+            throw new BusinessException(ProductErrorCode.INACTIVE_SUPPLIER);
+        }
     }
 
     @Auditable(menu = Menu.PRODUCTS, action = AuditAction.DELETE, targetType = "Product", targetIdParam = "id")

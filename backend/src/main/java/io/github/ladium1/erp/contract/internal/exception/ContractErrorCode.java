@@ -15,6 +15,7 @@ public enum ContractErrorCode implements ErrorCode {
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 대금 회차입니다."),
     NOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 계약 메모입니다."),
     AUTHOR_NOT_RESOLVED(HttpStatus.UNAUTHORIZED, "작성자 정보를 확인할 수 없습니다."),
+    INVALID_EMPLOYEE(HttpStatus.BAD_REQUEST, "계약 담당자는 재직 중인 직원만 지정할 수 있습니다."),
     CUSTOMER_IN_USE(HttpStatus.BAD_REQUEST, "계약이 참조하는 고객사는 삭제할 수 없습니다."),
     PRODUCT_IN_USE(HttpStatus.BAD_REQUEST, "계약이 참조하는 제품 모델은 삭제할 수 없습니다."),
     SUPPLIER_IN_USE(HttpStatus.BAD_REQUEST, "계약이 참조하는 공급사는 삭제할 수 없습니다.");

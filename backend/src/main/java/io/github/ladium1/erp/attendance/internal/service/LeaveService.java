@@ -134,7 +134,7 @@ public class LeaveService {
         Map<Long, LeaveBalance> balances = leaveBalanceProvider.findAllByYear(year).stream()
                 .collect(Collectors.toMap(LeaveBalance::getEmployeeId, Function.identity()));
 
-        return employeeApi.findAllActive().stream()
+        return employeeApi.findAllCurrentlyEmployed().stream()
                 .map(employee -> {
                     LeaveBalance balance = balances.get(employee.id());
                     return balance != null
@@ -149,6 +149,9 @@ public class LeaveService {
     @Auditable(menu = Menu.ATTENDANCE, action = AuditAction.UPDATE, targetType = "LeaveBalance", targetIdParam = "employeeId")
     @Transactional
     public void changeGrantedDays(Long employeeId, LeaveBalanceUpdateRequest request) {
+        if (!employeeApi.isCurrentlyEmployed(employeeId)) {
+            throw new BusinessException(AttendanceErrorCode.INVALID_LEAVE_BALANCE_EMPLOYEE);
+        }
         leaveBalanceProvider.getOrCreate(employeeId, request.year())
                 .changeGrantedDays(request.grantedDays());
     }

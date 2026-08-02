@@ -14,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Set;
 
 @RequiredArgsConstructor
 public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
@@ -22,8 +23,20 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
 
     @Override
     public Page<Employee> search(EmployeeSearchCondition condition, Pageable pageable) {
+        return searchVisible(condition, null, pageable);
+    }
+
+    @Override
+    public Page<Employee> searchVisible(
+            EmployeeSearchCondition condition,
+            Set<Long> visibleEmployeeIds,
+            Pageable pageable
+    ) {
         QEmployee m = QEmployee.employee;
         BooleanBuilder where = buildPredicate(condition, m);
+        if (visibleEmployeeIds != null) {
+            where.and(m.id.in(visibleEmployeeIds));
+        }
 
         List<Employee> content = queryFactory
                 .selectFrom(m)

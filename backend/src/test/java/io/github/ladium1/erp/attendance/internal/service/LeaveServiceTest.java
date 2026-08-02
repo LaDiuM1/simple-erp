@@ -17,6 +17,7 @@ import io.github.ladium1.erp.attendance.internal.exception.AttendanceErrorCode;
 import io.github.ladium1.erp.attendance.internal.repository.LeaveRequestRepository;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
+import io.github.ladium1.erp.employee.api.dto.EmploymentStatus;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.web.PageResponse;
 import org.junit.jupiter.api.DisplayName;
@@ -72,6 +73,7 @@ class LeaveServiceTest {
             .id(EMPLOYEE_ID)
             .loginId(LOGIN_ID)
             .name("테스트직원")
+            .status(EmploymentStatus.ACTIVE)
             .build();
 
     private LeaveBalance balance(String granted, String used) {
@@ -491,7 +493,7 @@ class LeaveServiceTest {
     void get_balances_synthesizes_missing_rows() {
         // given — 직원 1 은 잔여 행 보유, 직원 2 는 미보유
         EmployeeInfo other = EmployeeInfo.builder().id(2L).loginId("other").name("직원2").build();
-        given(employeeApi.findAllActive()).willReturn(List.of(employee, other));
+        given(employeeApi.findAllCurrentlyEmployed()).willReturn(List.of(employee, other));
         given(leaveBalanceProvider.findAllByYear(2026)).willReturn(List.of(balance("15", "3")));
 
         // when
@@ -512,14 +514,31 @@ class LeaveServiceTest {
     void change_granted_days_success() {
         // given
         LeaveBalance balance = balance("15", "3");
+        given(employeeApi.isCurrentlyEmployed(EMPLOYEE_ID)).willReturn(true);
         given(leaveBalanceProvider.getOrCreate(EMPLOYEE_ID, 2026)).willReturn(balance);
 
         // when
-        leaveService.changeGrantedDays(EMPLOYEE_ID, new LeaveBalanceUpdateRequest(2026, new BigDecimal("20")));
+        leaveService.changeGrantedDays(
+                EMPLOYEE_ID,
+                new LeaveBalanceUpdateRequest(2026, new BigDecimal("20"))
+        );
 
         // then
         assertThat(balance.getGrantedDays()).isEqualByComparingTo("20");
         assertThat(balance.getUsedDays()).isEqualByComparingTo("3");
         assertThat(balance.remainingDays()).isEqualByComparingTo("17");
+    }
+
+    @Test
+    @DisplayName("부여 일수 조정 실패 — 비재직 직원은 대상에서 제외")
+    void change_granted_days_rejects_inactive_employee() {
+        given(employeeApi.isCurrentlyEmployed(99L)).willReturn(false);
+
+        assertThatThrownBy(() -> leaveService.changeGrantedDays(
+                99L, new LeaveBalanceUpdateRequest(2026, new BigDecimal("20"))))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode", AttendanceErrorCode.INVALID_LEAVE_BALANCE_EMPLOYEE);
+        verify(leaveBalanceProvider, never()).getOrCreate(anyLong(), anyInt());
     }
 }

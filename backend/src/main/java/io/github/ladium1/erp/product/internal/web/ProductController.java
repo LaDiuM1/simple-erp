@@ -34,19 +34,10 @@ public class ProductController {
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
-    /**
-     * 계약 / 설비 대장 등록 / 수정 폼의 제품 모델 검색 SelectField 가 그대로 사용하므로,
-     * 이 중 한쪽 메뉴 read 권한이 있으면 허용. (Customer 의 reference 권한과 동일 패턴)
-     */
-    private static final String CAN_READ_REFERENCE =
-            "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
-            + "or @menuPermissionEvaluator.canRead(authentication, 'CONTRACTS') "
-            + "or @menuPermissionEvaluator.canRead(authentication, 'EQUIPMENTS')";
-
     private final ProductService productService;
 
     @GetMapping("/summary")
-    @PreAuthorize(CAN_READ_REFERENCE)
+    @PreAuthorize(CAN_READ)
     public PageResponse<ProductSummaryResponse> search(
             @RequestParam(required = false) String modelNameKeyword,
             @RequestParam(required = false) Long categoryId,
@@ -59,7 +50,7 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize(CAN_READ_REFERENCE)
+    @PreAuthorize(CAN_READ)
     public ProductDetailResponse getDetail(@PathVariable Long id) {
         return productService.getDetail(id);
     }

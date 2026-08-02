@@ -14,10 +14,16 @@ import io.github.ladium1.erp.position.internal.service.PositionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
@@ -31,6 +37,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,7 +47,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(PositionController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(PositionControllerTest.MethodSecurityTestConfig.class)
+@WithMockUser
 class PositionControllerTest {
+
+    @TestConfiguration
+    @EnableMethodSecurity
+    static class MethodSecurityTestConfig {
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -51,7 +65,7 @@ class PositionControllerTest {
     @MockitoBean
     private PositionService positionService;
 
-    @MockitoBean
+    @MockitoBean(name = "menuPermissionEvaluator")
     private MenuPermissionEvaluator menuPermissionEvaluator;
 
     @BeforeEach
@@ -72,6 +86,25 @@ class PositionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].code").value("P001"))
                 .andExpect(jsonPath("$.data[0].name").value("이사"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "APPROVALS", "EXPENSES", "ATTENDANCE", "SALES_CUSTOMERS", "CONTRACTS", "AFTER_SERVICES"
+    })
+    @WithMockUser
+    @DisplayName("직원 참조 소비 메뉴는 직책 필터 목록을 조회할 수 있다")
+    void employee_reference_consumers_can_read_positions(String menuCode) throws Exception {
+        reset(menuPermissionEvaluator);
+        given(menuPermissionEvaluator.canRead(any(), any())).willAnswer(invocation ->
+                menuCode.equals(invocation.getArgument(1)));
+        given(positionService.findAll()).willReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/positions"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/positions/summary"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

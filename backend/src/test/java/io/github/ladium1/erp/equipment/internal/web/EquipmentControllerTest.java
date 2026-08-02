@@ -2,6 +2,7 @@ package io.github.ladium1.erp.equipment.internal.web;
 
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentCreateRequest;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentDetailResponse;
+import io.github.ladium1.erp.equipment.internal.dto.EquipmentReferenceResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentSearchCondition;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentSummaryResponse;
 import io.github.ladium1.erp.equipment.internal.dto.EquipmentUpdateRequest;
@@ -19,7 +20,11 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
@@ -34,6 +39,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,7 +49,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(EquipmentController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(EquipmentControllerTest.MethodSecurityTestConfig.class)
+@WithMockUser
 class EquipmentControllerTest {
+
+    @TestConfiguration
+    @EnableMethodSecurity
+    static class MethodSecurityTestConfig {
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -54,7 +67,7 @@ class EquipmentControllerTest {
     @MockitoBean
     private EquipmentService equipmentService;
 
-    @MockitoBean
+    @MockitoBean(name = "menuPermissionEvaluator")
     private MenuPermissionEvaluator menuPermissionEvaluator;
 
     @BeforeEach
@@ -85,6 +98,45 @@ class EquipmentControllerTest {
                 .andExpect(jsonPath("$.data.content[0].customerName").value("대성상사"))
                 .andExpect(jsonPath("$.data.content[0].contractNo").value("CT2026-001"))
                 .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("AS 조회 권한은 고객사 범위의 최소 설비 참조만 조회할 수 있다")
+    void after_service_reader_can_only_search_scoped_equipment_references() throws Exception {
+        reset(menuPermissionEvaluator);
+        given(menuPermissionEvaluator.canRead(any(), any())).willAnswer(invocation ->
+                "AFTER_SERVICES".equals(invocation.getArgument(1)));
+        EquipmentReferenceResponse reference = EquipmentReferenceResponse.builder()
+                .id(1L)
+                .customerId(48L)
+                .productModelName("HLA-1530")
+                .generalWarrantyEndDate(LocalDate.of(2027, 3, 2))
+                .build();
+        given(equipmentService.searchReference(any(), any())).willReturn(new PageResponse<>(
+                List.of(reference), 0, 20, 1, 1, false));
+
+        mockMvc.perform(get("/api/v1/equipments/reference").param("customerId", "48"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].productModelName").value("HLA-1530"))
+                .andExpect(jsonPath("$.data.content[0].supplierName").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].contractNo").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].note").doesNotExist());
+        ArgumentCaptor<EquipmentSearchCondition> condition =
+                ArgumentCaptor.forClass(EquipmentSearchCondition.class);
+        verify(equipmentService).searchReference(condition.capture(), any());
+        assertThat(condition.getValue().customerId()).isEqualTo(48L);
+        assertThat(condition.getValue().supplierId()).isNull();
+
+        mockMvc.perform(get("/api/v1/equipments"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("설비 참조 목록은 고객사 범위를 필수로 받는다")
+    void equipment_reference_requires_customer_scope() throws Exception {
+        mockMvc.perform(get("/api/v1/equipments/reference"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

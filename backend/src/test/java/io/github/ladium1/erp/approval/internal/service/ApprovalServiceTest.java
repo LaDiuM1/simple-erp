@@ -4,6 +4,7 @@ import io.github.ladium1.erp.approval.api.ApprovalDocType;
 import io.github.ladium1.erp.approval.api.ApprovalResultHandler;
 import io.github.ladium1.erp.approval.api.dto.ApprovalSubmitCommand;
 import io.github.ladium1.erp.approval.internal.dto.ApprovalAttachmentDownload;
+import io.github.ladium1.erp.approval.internal.dto.ApprovalCreateRequest;
 import io.github.ladium1.erp.approval.internal.dto.DecisionRequest;
 import io.github.ladium1.erp.approval.internal.entity.ApprovalDocument;
 import io.github.ladium1.erp.approval.internal.entity.ApprovalStatus;
@@ -17,6 +18,7 @@ import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
+import io.github.ladium1.erp.global.validation.RequestValidationErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,8 +27,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.LongStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -92,22 +96,20 @@ class ApprovalServiceTest {
     }
 
     private void loginAs(Long employeeId) {
-        EmployeeInfo employee = EmployeeInfo.builder().id(employeeId).loginId(LOGIN_ID).name("직원" + employeeId).build();
+        EmployeeInfo employee = EmployeeInfo.builder().id(employeeId).loginId(LOGIN_ID)
+                .name("직원" + employeeId).build();
         given(employeeApi.findByLoginId(LOGIN_ID)).willReturn(Optional.of(employee));
     }
 
-    private void approversExist(List<Long> approverIds) {
-        given(employeeApi.findByIds(approverIds)).willReturn(
-                approverIds.stream()
-                        .map(id -> EmployeeInfo.builder().id(id).name("직원" + id).build())
-                        .toList());
+    private void approversAreEligible(List<Long> approverIds) {
+        given(employeeApi.allEligibleForNewWorkReference(approverIds)).willReturn(true);
     }
 
     @Test
     @DisplayName("상신 성공 — 결재선 순서대로 step 생성")
     void submit_success() {
         // given
-        approversExist(List.of(2L, 3L));
+        approversAreEligible(List.of(2L, 3L));
         given(approvalDocumentRepository.save(any(ApprovalDocument.class))).willAnswer(inv -> inv.getArgument(0));
 
         // when
@@ -123,6 +125,75 @@ class ApprovalServiceTest {
         assertThat(saved.getSteps()).extracting(ApprovalStep::getStepOrder).containsExactly(1, 2);
         assertThat(saved.getSteps()).extracting(ApprovalStep::getApproverId).containsExactly(2L, 3L);
         assertThat(saved.getSteps()).extracting(ApprovalStep::getStatus).containsOnly(StepStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("결재선은 일괄 변경 상한인 20명까지 허용")
+    void submit_accepts_max_approval_line_size() {
+        List<Long> approverIds = LongStream.rangeClosed(2, 21).boxed().toList();
+        approversAreEligible(approverIds);
+        given(approvalDocumentRepository.save(any(ApprovalDocument.class))).willAnswer(inv -> inv.getArgument(0));
+
+        approvalService.submit(command(approverIds));
+
+        verify(employeeApi).allEligibleForNewWorkReference(approverIds);
+        verify(approvalDocumentRepository).save(any(ApprovalDocument.class));
+    }
+
+    @Test
+    @DisplayName("결재선이 20명을 넘으면 직원 조회와 저장 전에 거절")
+    void submit_rejects_approval_line_over_limit_before_domain_calls() {
+        List<Long> approverIds = LongStream.rangeClosed(2, 22).boxed().toList();
+
+        assertThatThrownBy(() -> approvalService.submit(command(approverIds)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", RequestValidationErrorCode.INVALID_MUTATION_BATCH);
+        verify(employeeApi, never()).allEligibleForNewWorkReference(any());
+        verify(approvalDocumentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("결재선에 null 직원이 있으면 직원 조회와 저장 전에 거절")
+    void submit_rejects_null_approver_before_domain_calls() {
+        List<Long> approverIds = Arrays.asList(2L, null);
+
+        assertThatThrownBy(() -> approvalService.submit(command(approverIds)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", RequestValidationErrorCode.INVALID_MUTATION_BATCH);
+        verify(employeeApi, never()).allEligibleForNewWorkReference(any());
+        verify(approvalDocumentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("일반 기안은 submit의 단일 결재선 검증 경계에서 상한을 거절")
+    void createGeneral_delegates_approval_line_limit_to_submit() {
+        ApprovalCreateRequest request = new ApprovalCreateRequest(
+                "월간 구매 기안", "본문", LongStream.rangeClosed(2, 22).boxed().toList(), null
+        );
+        loginAs(DRAFTER_ID);
+
+        assertThatThrownBy(() -> approvalService.createGeneral(LOGIN_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", RequestValidationErrorCode.INVALID_MUTATION_BATCH);
+        verify(employeeApi).findByLoginId(LOGIN_ID);
+        verify(employeeApi, never()).allEligibleForNewWorkReference(any());
+        verify(approvalDocumentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("일반 기안은 submit의 단일 결재선 검증 경계에서 null을 거절")
+    void createGeneral_delegates_null_approver_validation_to_submit() {
+        ApprovalCreateRequest request = new ApprovalCreateRequest(
+                "월간 구매 기안", "본문", Arrays.asList(2L, null), null
+        );
+        loginAs(DRAFTER_ID);
+
+        assertThatThrownBy(() -> approvalService.createGeneral(LOGIN_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", RequestValidationErrorCode.INVALID_MUTATION_BATCH);
+        verify(employeeApi).findByLoginId(LOGIN_ID);
+        verify(employeeApi, never()).allEligibleForNewWorkReference(any());
+        verify(approvalDocumentRepository, never()).save(any());
     }
 
     @Test
@@ -146,9 +217,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("존재하지 않는 결재자 거부")
     void submit_fail_unknown_approver() {
-        // given
-        given(employeeApi.findByIds(List.of(2L, 3L))).willReturn(
-                List.of(EmployeeInfo.builder().id(2L).name("직원2").build()));
+        given(employeeApi.allEligibleForNewWorkReference(List.of(2L, 3L))).willReturn(false);
 
         // when & then
         assertThatThrownBy(() -> approvalService.submit(command(List.of(2L, 3L))))

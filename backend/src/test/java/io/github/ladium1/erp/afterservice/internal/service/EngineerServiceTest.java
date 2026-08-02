@@ -47,8 +47,17 @@ class EngineerServiceTest {
     @DisplayName("findAll — 구분 / 이름 순 목록 반환")
     void find_all_success() {
         // given
+        Engineer engineer = Engineer.builder()
+                .name("박기술")
+                .type(EngineerType.INTERNAL)
+                .affiliation("기술부")
+                .employeeId(3L)
+                .active(true)
+                .build();
         given(engineerRepository.findAllByOrderByTypeAscNameAsc())
-                .willReturn(List.of(mockEngineer("박기술", EngineerType.INTERNAL)));
+                .willReturn(List.of(engineer));
+        given(employeeApi.findByIds(List.of(3L))).willReturn(List.of(
+                EmployeeInfo.builder().id(3L).name("박기술").build()));
 
         // when
         List<EngineerResponse> engineers = engineerService.findAll();
@@ -57,6 +66,8 @@ class EngineerServiceTest {
         assertThat(engineers).hasSize(1);
         assertThat(engineers.getFirst().name()).isEqualTo("박기술");
         assertThat(engineers.getFirst().type()).isEqualTo(EngineerType.INTERNAL);
+        assertThat(engineers.getFirst().employeeName()).isEqualTo("박기술");
+        verify(employeeApi).findByIds(List.of(3L));
     }
 
     @Test
@@ -96,7 +107,7 @@ class EngineerServiceTest {
 
         // then
         assertThat(id).isEqualTo(5L);
-        verify(employeeApi, never()).getById(any());
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
     }
 
     @Test
@@ -104,14 +115,55 @@ class EngineerServiceTest {
     void create_internal_validates_employee_link() {
         // given
         EngineerRequest request = new EngineerRequest("박기술", EngineerType.INTERNAL, "기술부", null, 3L, true);
-        given(employeeApi.getById(3L)).willReturn(EmployeeInfo.builder().id(3L).name("박기술").build());
+        given(employeeApi.isEligibleForNewWorkReference(3L)).willReturn(true);
         given(engineerRepository.save(any(Engineer.class))).willReturn(mockEngineer("박기술", EngineerType.INTERNAL));
 
         // when
         engineerService.create(request);
 
         // then
-        verify(employeeApi).getById(3L);
+        verify(employeeApi).isEligibleForNewWorkReference(3L);
+    }
+
+    @Test
+    @DisplayName("create 실패 — 비재직 직원은 내부 엔지니어로 연결 불가")
+    void create_rejects_inactive_or_private_employee_link() {
+        EngineerRequest request = new EngineerRequest(
+                "복구 운영자", EngineerType.INTERNAL, "기술부", null, 3L, true);
+        given(employeeApi.isEligibleForNewWorkReference(3L)).willReturn(false);
+
+        assertThatThrownBy(() -> engineerService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode", AfterServiceErrorCode.INVALID_ENGINEER_EMPLOYEE);
+        verify(engineerRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create 실패 — 외부 엔지니어에는 직원 링크를 둘 수 없음")
+    void create_rejects_external_employee_link() {
+        EngineerRequest request = new EngineerRequest(
+                "김기사", EngineerType.OUTSOURCED, "협력사", null, 3L, true);
+
+        assertThatThrownBy(() -> engineerService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode", AfterServiceErrorCode.INVALID_ENGINEER_EMPLOYEE);
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+    }
+
+    @Test
+    @DisplayName("create 실패 — 내부 엔지니어는 재직 직원 링크 필수")
+    void create_rejects_internal_without_employee_link() {
+        EngineerRequest request = new EngineerRequest(
+                "박기술", EngineerType.INTERNAL, "기술부", null, null, true);
+
+        assertThatThrownBy(() -> engineerService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode", AfterServiceErrorCode.INVALID_ENGINEER_EMPLOYEE);
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+        verify(engineerRepository, never()).save(any());
     }
 
     @Test

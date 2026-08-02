@@ -22,6 +22,7 @@ import io.github.ladium1.erp.salescustomer.internal.repository.AggregatedActivit
 import io.github.ladium1.erp.salescustomer.internal.repository.SalesActivityRepository;
 import io.github.ladium1.erp.salescustomer.internal.repository.SalesAssignmentRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,6 +55,12 @@ class SalesCustomerServiceTest {
     @Mock private CustomerApi customerApi;
     @Mock private EmployeeApi employeeApi;
     @Mock private SalesContactApi salesContactApi;
+
+    @BeforeEach
+    void setupEligibleReferences() {
+        lenient().when(employeeApi.isEligibleForNewWorkReference(any())).thenReturn(true);
+        lenient().when(salesContactApi.hasActiveEmploymentAtCustomer(any(), any())).thenReturn(true);
+    }
 
     @Test
     @DisplayName("getDetail 성공 — customer + activities + assignments 통합 반환")
@@ -135,7 +143,7 @@ class SalesCustomerServiceTest {
         // then
         assertThat(id).isEqualTo(100L);
         verify(customerApi).getById(1L);
-        verify(employeeApi).getById(10L);
+        verify(employeeApi).isEligibleForNewWorkReference(10L);
     }
 
     @Test

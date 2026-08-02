@@ -31,12 +31,28 @@ public interface EmployeeApi {
     /**
      * 재직 중 직원 수 (퇴사자 제외) — 대시보드 KPI 용.
      */
-    long countActive();
+    long countCurrentlyEmployed();
 
     /**
      * 재직 중 직원 전체 (퇴사자 제외) — 관리자 화면의 전 직원 벌크 조회 용.
      */
-    List<EmployeeInfo> findAllActive();
+    List<EmployeeInfo> findAllCurrentlyEmployed();
+
+    /**
+     * 직원이 현재 재직 관계에 있는지 판정한다. 휴직은 재직에 포함하고 퇴사는 제외한다.
+     */
+    boolean isCurrentlyEmployed(Long employeeId);
+
+    /**
+     * 신규 업무가 단일 직원을 참조할 수 있는지 판정한다.
+     */
+    boolean isEligibleForNewWorkReference(Long employeeId);
+
+    /**
+     * 신규 업무의 담당자, 결재자, 내부 엔지니어처럼 새 참조를 만들 수 있는 직원인지 일괄 판정한다.
+     * 모든 ID가 존재하고 ACTIVE 상태여야 한다.
+     */
+    boolean allEligibleForNewWorkReference(Collection<Long> employeeIds);
 
     /**
      * 주어진 부서들에 속한 직원 식별자 목록 — 데이터 스코프 (DEPARTMENT / DEPARTMENT_TREE) 적용 시 사용.

@@ -16,6 +16,8 @@ public enum AfterServiceErrorCode implements ErrorCode {
     EXPENSE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 경비 항목입니다."),
     ENGINEER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 엔지니어입니다."),
     ENGINEER_IN_USE(HttpStatus.BAD_REQUEST, "AS 기록이 참조하는 엔지니어는 삭제할 수 없습니다."),
+    INVALID_ENGINEER_EMPLOYEE(
+            HttpStatus.BAD_REQUEST, "내부 엔지니어에는 재직 중인 직원만 연결할 수 있습니다."),
     CUSTOMER_IN_USE(HttpStatus.BAD_REQUEST, "AS 건이 참조하는 고객사는 삭제할 수 없습니다."),
     EQUIPMENT_IN_USE(HttpStatus.BAD_REQUEST, "AS 건이 참조하는 설비는 삭제할 수 없습니다."),
     EQUIPMENT_CUSTOMER_MISMATCH(HttpStatus.BAD_REQUEST, "선택한 설비가 해당 고객사의 설비가 아닙니다.");

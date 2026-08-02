@@ -6,6 +6,7 @@ import io.github.ladium1.erp.employee.internal.dto.AvailabilityResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeCreateRequest;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeDetailResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeProfileResponse;
+import io.github.ladium1.erp.employee.internal.dto.EmployeeReferenceResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeSearchCondition;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeSummaryResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeUpdateRequest;
@@ -45,13 +46,16 @@ public class EmployeeController {
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
-    /**
-     * 계약 관리의 계약자 (직원) 검색 SelectField 가 직원 목록 검색을 그대로 사용하므로,
-     * 둘 중 한쪽 메뉴 read 권한이 있으면 허용. (Customer 의 reference 권한과 동일 패턴)
-     */
+    /** 업무 입력과 목록 필터에서 사용하는 최소 직원 참조 권한. */
     private static final String CAN_READ_REFERENCE =
             "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
-            + "or @menuPermissionEvaluator.canRead(authentication, 'CONTRACTS')";
+            + "or @menuPermissionEvaluator.canRead(authentication, 'APPROVALS') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'EXPENSES') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'ATTENDANCE') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'SALES_CUSTOMERS') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'AFTER_SERVICES')";
+    private static final String CAN_READ_CONTRACT_REFERENCE =
+            "@menuPermissionEvaluator.canRead(authentication, 'CONTRACTS')";
 
     private final EmployeeService employeeService;
 
@@ -67,7 +71,7 @@ public class EmployeeController {
     }
 
     @GetMapping
-    @PreAuthorize(CAN_READ_REFERENCE)
+    @PreAuthorize(CAN_READ)
     public PageResponse<EmployeeSummaryResponse> search(
             @RequestParam(required = false) String loginIdKeyword,
             @RequestParam(required = false) String nameKeyword,
@@ -78,6 +82,34 @@ public class EmployeeController {
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return employeeService.search(toCondition(loginIdKeyword, nameKeyword, departmentId, positionId, roleId, status), pageable);
+    }
+
+    @GetMapping("/reference")
+    @PreAuthorize(CAN_READ_REFERENCE)
+    public PageResponse<EmployeeReferenceResponse> searchReference(
+            @RequestParam(required = false) String nameKeyword,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long positionId,
+            @RequestParam(required = false) EmployeeStatus status,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        EmployeeSearchCondition condition = new EmployeeSearchCondition(
+                null, nameKeyword, departmentId, positionId, null, status);
+        return employeeService.searchReference(condition, pageable);
+    }
+
+    @GetMapping("/contract-reference")
+    @PreAuthorize(CAN_READ_CONTRACT_REFERENCE)
+    public PageResponse<EmployeeReferenceResponse> searchContractReference(
+            @RequestParam(required = false) String nameKeyword,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long positionId,
+            @RequestParam(required = false) EmployeeStatus status,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        EmployeeSearchCondition condition = new EmployeeSearchCondition(
+                null, nameKeyword, departmentId, positionId, null, status);
+        return employeeService.searchContractReference(condition, pageable);
     }
 
     @GetMapping("/{id}")

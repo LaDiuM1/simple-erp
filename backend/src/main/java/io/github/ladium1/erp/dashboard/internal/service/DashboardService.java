@@ -57,7 +57,7 @@ public class DashboardService {
         DashboardKpiResponse kpi = DashboardKpiResponse.builder()
                 .totalCustomers(customerApi.count())
                 .totalSalesContacts(salesContactApi.count())
-                .activeEmployees(employeeApi.countActive())
+                .activeEmployees(employeeApi.countCurrentlyEmployed())
                 .monthlySalesActivities(salesCustomerApi.countActivitiesSince(startOfMonth))
                 .build();
 

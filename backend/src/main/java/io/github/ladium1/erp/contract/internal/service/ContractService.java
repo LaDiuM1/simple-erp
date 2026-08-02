@@ -272,7 +272,7 @@ public class ContractService implements ContractApi {
     public Long create(ContractCreateRequest request) {
         // 참조 존재 검증 — 없으면 각 모듈이 NOT_FOUND 를 던진다.
         customerApi.getById(request.customerId());
-        employeeApi.getById(request.employeeId());
+        requireActiveEmployee(request.employeeId());
         ProductInfo product = productApi.getById(request.productId());
 
         String contractNo = resolveContractNo(request.contractNo());
@@ -321,7 +321,7 @@ public class ContractService implements ContractApi {
         assertVisible(contract);
 
         customerApi.getById(request.customerId());
-        employeeApi.getById(request.employeeId());
+        requireActiveEmployee(request.employeeId());
         ProductInfo product = productApi.getById(request.productId());
 
         ContractStatus previousStatus = contract.getStatus();
@@ -513,6 +513,12 @@ public class ContractService implements ContractApi {
                 contract.getOutputUnit() == null ? null : contract.getOutputUnit().name(),
                 contract.getInstalledDate()
         ));
+    }
+
+    private void requireActiveEmployee(Long employeeId) {
+        if (!employeeApi.isEligibleForNewWorkReference(employeeId)) {
+            throw new BusinessException(ContractErrorCode.INVALID_EMPLOYEE);
+        }
     }
 
     private static Long outstanding(Long finalAmount, Long paidTotal) {

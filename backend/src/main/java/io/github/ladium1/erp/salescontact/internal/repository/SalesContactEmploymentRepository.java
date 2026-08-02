@@ -27,4 +27,6 @@ public interface SalesContactEmploymentRepository extends JpaRepository<SalesCon
      * 명부의 활성 재직 — 동시 다중 재직 허용 / 단건 조회 시 첫 번째.
      */
     List<SalesContactEmployment> findByContactIdAndEndDateIsNull(Long contactId);
+
+    boolean existsByContactIdAndCustomerIdAndEndDateIsNull(Long contactId, Long customerId);
 }

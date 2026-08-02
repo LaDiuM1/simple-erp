@@ -9,6 +9,7 @@ public record EmployeeInfo(
         String name,
         Long departmentId,
         String departmentName,
-        String positionName
+        String positionName,
+        EmploymentStatus status
 ) {
 }

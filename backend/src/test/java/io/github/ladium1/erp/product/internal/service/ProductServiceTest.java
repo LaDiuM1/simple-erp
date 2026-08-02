@@ -142,6 +142,18 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("create 실패 — 비활성 공급사에는 새 제품 모델을 연결할 수 없음")
+    void create_rejects_inactive_supplier() {
+        ProductCreateRequest request = new ProductCreateRequest(1L, "HLA-1530", 1L, null, true);
+        given(supplierApi.getById(1L)).willReturn(supplierInfo(1L, "YAWEI", false));
+
+        assertThatThrownBy(() -> productService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ProductErrorCode.INACTIVE_SUPPLIER);
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("create 실패 — 존재하지 않는 카테고리 시 CATEGORY_NOT_FOUND")
     void create_fail_category_not_found() {
         // given
@@ -192,6 +204,34 @@ class ProductServiceTest {
         assertThat(product.getModelName()).isEqualTo("DAP-3S-360");
         assertThat(product.getSupplierId()).isEqualTo(2L);
         assertThat(product.isActive()).isFalse();
+    }
+
+    @Test
+    @DisplayName("update 성공 — 기존 비활성 공급사 참조는 그대로 유지 가능")
+    void update_keeps_existing_inactive_supplier() {
+        Product product = mockProduct("HLA-1530", 1L);
+        given(productRepository.findById(1L)).willReturn(Optional.of(product));
+        given(supplierApi.getById(1L)).willReturn(supplierInfo(1L, "YAWEI", false));
+        given(productCategoryRepository.findById(1L)).willReturn(Optional.of(product.getCategory()));
+
+        productService.update(1L, new ProductUpdateRequest(1L, "HLA-1530", 1L, "비고", true));
+
+        assertThat(product.getSupplierId()).isEqualTo(1L);
+        assertThat(product.getNote()).isEqualTo("비고");
+    }
+
+    @Test
+    @DisplayName("update 실패 — 공급사를 비활성 대상으로 변경할 수 없음")
+    void update_rejects_new_inactive_supplier() {
+        Product product = mockProduct("HLA-1530", 1L);
+        given(productRepository.findById(1L)).willReturn(Optional.of(product));
+        given(supplierApi.getById(2L)).willReturn(supplierInfo(2L, "ACME", false));
+
+        assertThatThrownBy(() -> productService.update(1L,
+                new ProductUpdateRequest(1L, "HLA-1530", 2L, null, true)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ProductErrorCode.INACTIVE_SUPPLIER);
+        assertThat(product.getSupplierId()).isEqualTo(1L);
     }
 
     @Test
@@ -290,6 +330,10 @@ class ProductServiceTest {
     }
 
     private SupplierInfo supplierInfo(Long id, String name) {
-        return SupplierInfo.builder().id(id).name(name).active(true).build();
+        return supplierInfo(id, name, true);
+    }
+
+    private SupplierInfo supplierInfo(Long id, String name, boolean active) {
+        return SupplierInfo.builder().id(id).name(name).active(active).build();
     }
 }

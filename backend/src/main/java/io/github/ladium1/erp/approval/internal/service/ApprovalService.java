@@ -210,8 +210,7 @@ public class ApprovalService implements ApprovalApi {
         if (approverIds.contains(drafterId)) {
             throw new BusinessException(ApprovalErrorCode.INVALID_APPROVAL_LINE);
         }
-        // 존재하지 않는 직원 거부 — EmployeeInfo 에 재직 상태가 없어 존재 검증까지만
-        if (employeeApi.findByIds(approverIds).size() != approverIds.size()) {
+        if (!employeeApi.allEligibleForNewWorkReference(approverIds)) {
             throw new BusinessException(ApprovalErrorCode.INVALID_APPROVAL_LINE);
         }
     }

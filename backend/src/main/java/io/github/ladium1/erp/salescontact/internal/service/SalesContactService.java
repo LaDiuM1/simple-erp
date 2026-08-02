@@ -119,6 +119,14 @@ public class SalesContactService implements SalesContactApi {
     }
 
     @Override
+    public boolean hasActiveEmploymentAtCustomer(Long contactId, Long customerId) {
+        if (contactId == null || customerId == null) {
+            return false;
+        }
+        return employmentRepository.existsByContactIdAndCustomerIdAndEndDateIsNull(contactId, customerId);
+    }
+
+    @Override
     public long count() {
         return contactRepository.count();
     }

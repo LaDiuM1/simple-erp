@@ -3,6 +3,8 @@ package io.github.ladium1.erp.employee.internal.web;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeCreateRequest;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeDetailResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeProfileResponse;
+import io.github.ladium1.erp.employee.internal.dto.EmployeeReferenceResponse;
+import io.github.ladium1.erp.employee.internal.dto.EmployeeSearchCondition;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeSummaryResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeUpdateRequest;
 import io.github.ladium1.erp.employee.internal.entity.EmployeeStatus;
@@ -14,6 +16,9 @@ import io.github.ladium1.erp.global.web.PageResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -21,6 +26,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,11 +37,13 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -47,6 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(EmployeeController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import(EmployeeControllerTest.TestWebMvcConfig.class)
+@WithMockUser
 class EmployeeControllerTest {
 
     /**
@@ -55,6 +64,7 @@ class EmployeeControllerTest {
      * 본 테스트에서만 resolver 를 직접 등록.
      */
     @TestConfiguration
+    @EnableMethodSecurity
     static class TestWebMvcConfig implements WebMvcConfigurer {
         @Override
         public void addArgumentResolvers(java.util.List<HandlerMethodArgumentResolver> resolvers) {
@@ -71,7 +81,7 @@ class EmployeeControllerTest {
     @MockitoBean
     private EmployeeService employeeService;
 
-    @MockitoBean
+    @MockitoBean(name = "menuPermissionEvaluator")
     private MenuPermissionEvaluator menuPermissionEvaluator;
 
     @BeforeEach
@@ -136,6 +146,71 @@ class EmployeeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].loginId").value("hong"))
                 .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "APPROVALS", "EXPENSES", "ATTENDANCE", "SALES_CUSTOMERS", "AFTER_SERVICES"
+    })
+    @DisplayName("업무 메뉴 조회 권한은 최소 직원 참조만 조회할 수 있다")
+    void work_menu_reader_can_only_search_employee_references(String menuCode) throws Exception {
+        reset(menuPermissionEvaluator);
+        given(menuPermissionEvaluator.canRead(any(), any())).willAnswer(invocation ->
+                menuCode.equals(invocation.getArgument(1)));
+        EmployeeReferenceResponse reference = EmployeeReferenceResponse.builder()
+                .id(1L)
+                .name("홍길동")
+                .departmentName("영업팀")
+                .positionName("대리")
+                .status(EmployeeStatus.ACTIVE)
+                .build();
+        given(employeeService.searchReference(any(), any())).willReturn(new PageResponse<>(
+                List.of(reference), 0, 20, 1, 1, false));
+
+        mockMvc.perform(get("/api/v1/employees/reference"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].name").value("홍길동"))
+                .andExpect(jsonPath("$.data.content[0].loginId").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].email").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].phone").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].birthDate").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].joinDate").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].roleName").doesNotExist());
+        ArgumentCaptor<EmployeeSearchCondition> condition =
+                ArgumentCaptor.forClass(EmployeeSearchCondition.class);
+        verify(employeeService).searchReference(condition.capture(), any());
+        assertThat(condition.getValue().loginIdKeyword()).isNull();
+        assertThat(condition.getValue().roleId()).isNull();
+
+        mockMvc.perform(get("/api/v1/employees"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("계약 권한은 계약 데이터 범위가 적용된 직원 참조만 조회한다")
+    void contracts_reader_uses_scoped_employee_reference() throws Exception {
+        reset(menuPermissionEvaluator);
+        given(menuPermissionEvaluator.canRead(any(), any())).willAnswer(invocation ->
+                "CONTRACTS".equals(invocation.getArgument(1)));
+        EmployeeReferenceResponse reference = EmployeeReferenceResponse.builder()
+                .id(1L)
+                .name("홍길동")
+                .departmentName("영업팀")
+                .positionName("대리")
+                .status(EmployeeStatus.ACTIVE)
+                .build();
+        given(employeeService.searchContractReference(any(), any())).willReturn(
+                new PageResponse<>(List.of(reference), 0, 20, 1, 1, false)
+        );
+
+        mockMvc.perform(get("/api/v1/employees/contract-reference"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].name").value("홍길동"))
+                .andExpect(jsonPath("$.data.content[0].loginId").doesNotExist());
+
+        mockMvc.perform(get("/api/v1/employees/reference"))
+                .andExpect(status().isForbidden());
+        verify(employeeService).searchContractReference(any(), any());
     }
 
     @Test

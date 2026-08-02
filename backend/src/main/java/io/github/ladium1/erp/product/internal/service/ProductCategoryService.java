@@ -6,6 +6,7 @@ import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.product.internal.dto.ProductCategoryCreateRequest;
+import io.github.ladium1.erp.product.internal.dto.ProductCategoryReferenceResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductCategoryReorderRequest;
 import io.github.ladium1.erp.product.internal.dto.ProductCategoryResponse;
 import io.github.ladium1.erp.product.internal.dto.ProductCategoryUpdateRequest;
@@ -43,6 +44,15 @@ public class ProductCategoryService {
                         .name(category.getName())
                         .sortOrder(category.getSortOrder())
                         .productCount(productCounts.getOrDefault(category.getId(), 0L))
+                        .build())
+                .toList();
+    }
+
+    public List<ProductCategoryReferenceResponse> findReferences() {
+        return productCategoryRepository.findAllByOrderBySortOrderAsc().stream()
+                .map(category -> ProductCategoryReferenceResponse.builder()
+                        .id(category.getId())
+                        .name(category.getName())
                         .build())
                 .toList();
     }
