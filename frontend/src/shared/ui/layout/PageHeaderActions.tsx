@@ -37,6 +37,8 @@ export type PageHeaderAction =
       design: 'create' | 'save';
       label?: string;
       menuCode?: string;
+      /** 메뉴 권한 기준. 일반 관리 액션은 write, 본인 신청 액션은 read를 사용한다. */
+      permission?: 'read' | 'write';
       loading?: boolean;
       disabled?: boolean;
       /** 있으면 type=submit + form 속성으로 폼 포털 연결. 없으면 onClick 사용. */
@@ -168,7 +170,7 @@ function renderAction(action: PageHeaderAction): ReactNode {
 
   if (action.menuCode) {
     return (
-      <PermissionGate menuCode={action.menuCode} action="write">
+      <PermissionGate menuCode={action.menuCode} action={action.permission ?? 'write'}>
         {button}
       </PermissionGate>
     );

@@ -17,6 +17,7 @@ import {
   isDeductibleLeaveType,
   isHalfDayLeaveType,
 } from '@/features/attendance/utils/leaveDays';
+import { validateLeavePeriod } from '@/features/attendance/utils/leavePeriod';
 
 export const LEAVE_CREATE_FORM_ID = 'leave-create-form';
 
@@ -82,12 +83,21 @@ export function useLeaveCreateForm(balance: LeaveBalance | undefined): LeaveCrea
     e.preventDefault();
     if (isSaving) return;
 
-    if (values.startDate === '' || values.endDate === '') {
+    const periodError = validateLeavePeriod(values.startDate, values.endDate);
+    if (periodError === 'REQUIRED' || periodError === 'INVALID') {
       snackbar.error('휴가 기간을 선택해주세요.');
       return;
     }
-    if (values.startDate > values.endDate) {
+    if (periodError === 'END_BEFORE_START') {
       snackbar.error('종료일은 시작일보다 빠를 수 없습니다.');
+      return;
+    }
+    if (periodError === 'DIFFERENT_YEAR') {
+      snackbar.error('휴가 시작일과 종료일은 같은 연도여야 합니다.');
+      return;
+    }
+    if (periodError === 'TOO_LONG') {
+      snackbar.error('휴가 기간은 최대 365일까지 선택할 수 있습니다.');
       return;
     }
     if (values.approvalLine.length === 0) {

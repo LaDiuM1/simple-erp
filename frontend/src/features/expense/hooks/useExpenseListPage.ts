@@ -41,6 +41,7 @@ export function useExpenseListPage(): {
       label: '경비 등록',
       onClick: () => navigate(`${MENU_PATH[MENU_CODE.EXPENSES]}/new`),
       menuCode: MENU_CODE.EXPENSES,
+      permission: 'read',
     },
   ];
 

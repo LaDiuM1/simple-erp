@@ -11,6 +11,7 @@ import ApprovalLineField from '@/shared/ui/ApprovalLineField';
 import FileAttachField from '@/shared/ui/FileAttachField';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import type { ExpenseCreateFormState } from '@/features/expense/hooks/useExpenseCreateForm';
+import { EXPENSE_ITEM_DESCRIPTION_MAX_LENGTH } from '@/features/expense/validation/expenseFormValidation';
 import { formatKrw } from '@/shared/utils/formatKrw';
 import {
   EXPENSE_CATEGORY_OPTIONS,
@@ -128,7 +129,7 @@ export default function ExpenseCreateForm({ form }: Props) {
                       value={item.description}
                       onChange={(e) => form.updateItem(item.rowId, 'description', e.target.value)}
                       placeholder="지출 내용"
-                      slotProps={{ htmlInput: { maxLength: 500 } }}
+                      slotProps={{ htmlInput: { maxLength: EXPENSE_ITEM_DESCRIPTION_MAX_LENGTH } }}
                     />
                   </ItemFieldGrid>
                   <FileAttachField

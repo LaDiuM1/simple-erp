@@ -1,6 +1,8 @@
 import type { ValidatorMap } from '@/shared/hooks/useFieldValidation';
 import type { ExpenseFormValues, ExpenseItemFormValues } from '@/features/expense/types';
 
+export const EXPENSE_ITEM_DESCRIPTION_MAX_LENGTH = 255;
+
 /** BE ExpenseCreateRequest 의 @NotBlank title 미러 — 즉시 피드백용. */
 export const expenseValidators: ValidatorMap<ExpenseFormValues> = {
   title: (v) => (v.trim() === '' ? '제목을 입력해주세요.' : null),
@@ -18,6 +20,9 @@ export function validateExpenseItems(items: ExpenseItemFormValues[]): string | n
     const amount = Number(item.amount);
     if (item.amount.trim() === '' || Number.isNaN(amount) || amount <= 0) {
       return `${no}번째 항목의 금액을 0보다 크게 입력해주세요.`;
+    }
+    if (item.description.length > EXPENSE_ITEM_DESCRIPTION_MAX_LENGTH) {
+      return `${no}번째 항목의 내용은 ${EXPENSE_ITEM_DESCRIPTION_MAX_LENGTH}자 이하여야 합니다.`;
     }
   }
   return null;

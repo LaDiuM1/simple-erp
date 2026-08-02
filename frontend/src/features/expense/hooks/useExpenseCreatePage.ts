@@ -20,6 +20,7 @@ export function useExpenseCreatePage(): {
       formId: EXPENSE_CREATE_FORM_ID,
       loading: form.isSaving,
       menuCode: MENU_CODE.EXPENSES,
+      permission: 'read',
     },
   ];
 
