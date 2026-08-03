@@ -164,6 +164,23 @@ class SalesCustomerControllerTest {
     }
 
     @Test
+    @DisplayName("활성 담당자 중복 배정 시 409")
+    void create_assignment_fail_duplicate_active_assignment() throws Exception {
+        // given
+        SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
+                1L, 10L, LocalDate.of(2026, 4, 1), false, "중복 배정");
+        willThrow(new BusinessException(SalesCustomerErrorCode.DUPLICATE_ACTIVE_ASSIGNMENT))
+                .given(salesCustomerService).createAssignment(any());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/sales-customers/assignments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("이미 해당 고객사의 활성 담당자로 배정된 직원입니다."));
+    }
+
+    @Test
     @DisplayName("배정 수정 성공")
     void update_assignment_success() throws Exception {
         // given

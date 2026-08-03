@@ -24,6 +24,8 @@ public interface SalesAssignmentRepository extends JpaRepository<SalesAssignment
      */
     List<SalesAssignment> findByCustomerIdAndPrimaryTrueAndEndDateIsNull(Long customerId);
 
+    boolean existsByCustomerIdAndEmployeeIdAndEndDateIsNull(Long customerId, Long employeeId);
+
     boolean existsByEmployeeIdAndEndDateIsNull(Long employeeId);
 
     /**

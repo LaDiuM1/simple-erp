@@ -5,6 +5,7 @@ import type { SalesAssignment } from '@/features/salesCustomer/types';
 
 export interface AssignmentTabModalProps {
   customerId: number;
+  excludedEmployeeIds: number[];
   creating: boolean;
   editing: SalesAssignment | null;
   terminating: SalesAssignment | null;
@@ -24,6 +25,7 @@ export default function AssignmentTabModals({ modal }: { modal: AssignmentTabMod
         open={modal.creating}
         onClose={modal.onCloseCreate}
         customerId={modal.customerId}
+        excludeEmployeeIds={modal.excludedEmployeeIds}
       />
       <AssignmentFormModal
         open={modal.editing !== null}

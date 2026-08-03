@@ -28,8 +28,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -181,7 +183,7 @@ class SalesCustomerServiceTest {
                 .willReturn(List.of(existingPrimary));
         SalesAssignment saved = mockAssignment(1L, 10L, true);
         ReflectionTestUtils.setField(saved, "id", 200L);
-        given(assignmentRepository.save(any(SalesAssignment.class))).willReturn(saved);
+        given(assignmentRepository.saveAndFlush(any(SalesAssignment.class))).willReturn(saved);
 
         SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
                 1L, 10L, LocalDate.of(2026, 4, 1), true, "신규 주담당 배정");
@@ -202,13 +204,64 @@ class SalesCustomerServiceTest {
                 1L, 10L, LocalDate.of(2026, 4, 1), false, "보조 담당");
         SalesAssignment saved = mockAssignment(1L, 10L, false);
         ReflectionTestUtils.setField(saved, "id", 200L);
-        given(assignmentRepository.save(any(SalesAssignment.class))).willReturn(saved);
+        given(assignmentRepository.saveAndFlush(any(SalesAssignment.class))).willReturn(saved);
 
         // when
         salesCustomerService.createAssignment(request);
 
         // then
         verify(assignmentRepository, never()).findByCustomerIdAndPrimaryTrueAndEndDateIsNull(any());
+    }
+
+    @Test
+    @DisplayName("createAssignment 실패 — 같은 고객사·직원의 활성 배정 중복")
+    void create_assignment_rejects_duplicate_active_assignment() {
+        // given
+        SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
+                1L, 10L, LocalDate.of(2026, 4, 1), true, "중복 배정");
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(true);
+        given(assignmentRepository.existsByCustomerIdAndEmployeeIdAndEndDateIsNull(1L, 10L))
+                .willReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> salesCustomerService.createAssignment(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.DUPLICATE_ACTIVE_ASSIGNMENT);
+        verify(assignmentRepository, never()).findByCustomerIdAndPrimaryTrueAndEndDateIsNull(any());
+        verify(assignmentRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("createAssignment 실패 — 동시 등록 DB 충돌을 409 계약으로 변환")
+    void create_assignment_translates_concurrent_duplicate() {
+        // given
+        SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
+                1L, 10L, LocalDate.of(2026, 4, 1), false, "동시 배정");
+        DataIntegrityViolationException duplicate = integrityViolation(
+                SalesAssignment.ACTIVE_ASSIGNMENT_UNIQUE_CONSTRAINT);
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(true);
+        given(assignmentRepository.saveAndFlush(any(SalesAssignment.class)))
+                .willThrow(duplicate);
+
+        // when & then
+        assertThatThrownBy(() -> salesCustomerService.createAssignment(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.DUPLICATE_ACTIVE_ASSIGNMENT);
+    }
+
+    @Test
+    @DisplayName("createAssignment 실패 — 다른 DB 무결성 오류는 중복 배정으로 오인하지 않음")
+    void create_assignment_preserves_unrelated_integrity_violation() {
+        // given
+        SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
+                1L, 10L, LocalDate.of(2026, 4, 1), false, "담당 배정");
+        DataIntegrityViolationException unrelated = integrityViolation("fk_sales_assignments_employee");
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(true);
+        given(assignmentRepository.saveAndFlush(any(SalesAssignment.class))).willThrow(unrelated);
+
+        // when & then
+        assertThatThrownBy(() -> salesCustomerService.createAssignment(request))
+                .isSameAs(unrelated);
     }
 
     @Test
@@ -333,5 +386,13 @@ class SalesCustomerServiceTest {
                 SalesActivityType.CALL, LocalDateTime.now(),
                 "수정된 제목", "수정된 내용", employeeId, null
         );
+    }
+    private DataIntegrityViolationException integrityViolation(String constraintName) {
+        SQLIntegrityConstraintViolationException sqlException = new SQLIntegrityConstraintViolationException(
+                "Duplicate entry for key '" + constraintName + "'");
+        org.hibernate.exception.ConstraintViolationException hibernateException =
+                new org.hibernate.exception.ConstraintViolationException(
+                        "could not execute statement", sqlException, constraintName);
+        return new DataIntegrityViolationException("무결성 제약 위반", hibernateException);
     }
 }

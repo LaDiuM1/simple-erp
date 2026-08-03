@@ -29,6 +29,8 @@ import io.github.ladium1.erp.salescustomer.internal.repository.AggregatedActivit
 import io.github.ladium1.erp.salescustomer.internal.repository.SalesActivityRepository;
 import io.github.ladium1.erp.salescustomer.internal.repository.SalesAssignmentRepository;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -267,6 +270,10 @@ public class SalesCustomerService implements SalesCustomerApi {
     public Long createAssignment(SalesAssignmentCreateRequest request) {
         customerApi.getById(request.customerId());
         requireActiveEmployee(request.employeeId());
+        if (assignmentRepository.existsByCustomerIdAndEmployeeIdAndEndDateIsNull(
+                request.customerId(), request.employeeId())) {
+            throw new BusinessException(SalesCustomerErrorCode.DUPLICATE_ACTIVE_ASSIGNMENT);
+        }
 
         // 신규 배정이 primary 면 기존 primary 해제 (한 고객사당 활성 primary 1명 보장)
         if (request.primary()) {
@@ -282,7 +289,14 @@ public class SalesCustomerService implements SalesCustomerApi {
                 .primary(request.primary())
                 .reason(request.reason())
                 .build();
-        return assignmentRepository.save(assignment).getId();
+        try {
+            return assignmentRepository.saveAndFlush(assignment).getId();
+        } catch (DataIntegrityViolationException duplicate) {
+            if (isActiveAssignmentUniqueViolation(duplicate)) {
+                throw new BusinessException(SalesCustomerErrorCode.DUPLICATE_ACTIVE_ASSIGNMENT);
+            }
+            throw duplicate;
+        }
     }
 
     @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.UPDATE, targetType = "SalesAssignment", targetIdParam = "id")
@@ -348,5 +362,25 @@ public class SalesCustomerService implements SalesCustomerApi {
         if (!salesContactApi.hasActiveEmploymentAtCustomer(contactId, customerId)) {
             throw new BusinessException(SalesCustomerErrorCode.CONTACT_CUSTOMER_MISMATCH);
         }
+    }
+
+    private boolean isActiveAssignmentUniqueViolation(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof ConstraintViolationException violation
+                    && containsActiveAssignmentConstraint(violation.getConstraintName())) {
+                return true;
+            }
+            if (containsActiveAssignmentConstraint(current.getMessage())) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private boolean containsActiveAssignmentConstraint(String value) {
+        return value != null && value.toLowerCase(Locale.ROOT)
+                .contains(SalesAssignment.ACTIVE_ASSIGNMENT_UNIQUE_CONSTRAINT);
     }
 }

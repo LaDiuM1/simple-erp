@@ -15,6 +15,7 @@ const entitySelect = vi.hoisted(() => ({
   props: null as null | {
     fixedQueryParams?: Record<string, unknown>;
     scopeKey?: string;
+    excludeIds?: number[];
     config: {
       searchFilter: Array<{ key: string }>;
       column: Array<{
@@ -92,6 +93,12 @@ describe('reference picker constraints', () => {
     expect(entitySelect.props?.config.column.map((column) => column.key)).not.toEqual(
       expect.arrayContaining(['loginId', 'birthDate', 'joinDate', 'roleName', 'email', 'phone']),
     );
+  });
+
+  it('직원 선택에서 이미 사용 중인 복수 id 를 검색 결과에서 제외한다', () => {
+    render(<EmployeeSelectField {...commonProps} excludeIds={[2, 5]} />);
+
+    expect(entitySelect.props?.excludeIds).toEqual([2, 5]);
   });
 
   it('AS 설비 선택은 고객사 조건을 강제한다', () => {

@@ -23,6 +23,7 @@ import { MENU_CODE } from '@/shared/config/menuConfig';
 import { useDeleteSalesAssignmentMutation } from '@/features/salesCustomer/api/salesCustomerApi';
 import type { SalesAssignment } from '@/features/salesCustomer/types';
 import type { AssignmentTabModalProps } from '@/features/salesCustomer/components/AssignmentTabModals/AssignmentTabModals';
+import { activeAssignmentEmployeeIds } from '@/features/salesCustomer/utils/assignmentOptions';
 
 /**
  * 영업 고객사 상세의 담당자 탭 — 등록/수정/종료/삭제 모달 owner.
@@ -177,6 +178,7 @@ export function useAssignmentTab(
 
   const modal: AssignmentTabModalProps = {
     customerId,
+    excludedEmployeeIds: activeAssignmentEmployeeIds(assignments),
     creating,
     editing,
     terminating,

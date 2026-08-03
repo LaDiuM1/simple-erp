@@ -44,11 +44,19 @@ interface Props {
   open: boolean;
   onClose: () => void;
   customerId: number;
+  /** 신규 배정 후보에서 제외할 현재 활성 담당 직원 id. */
+  excludeEmployeeIds?: number[];
   /** 수정 모드 — 기존 배정 데이터. 미지정 시 등록 모드. */
   assignment?: SalesAssignment;
 }
 
-export default function AssignmentFormModal({ open, onClose, customerId, assignment }: Props) {
+export default function AssignmentFormModal({
+  open,
+  onClose,
+  customerId,
+  excludeEmployeeIds,
+  assignment,
+}: Props) {
   const isEdit = assignment !== undefined;
   const snackbar = useSnackbar();
   const submit = useApiSubmit();
@@ -117,6 +125,7 @@ export default function AssignmentFormModal({ open, onClose, customerId, assignm
                 update('employeeName', name);
               }}
               disabled={isEdit}
+              excludeIds={excludeEmployeeIds}
               helperText={isEdit ? '담당자 변경은 종료 후 신규 배정으로 진행하세요.' : undefined}
             />
             <TextField

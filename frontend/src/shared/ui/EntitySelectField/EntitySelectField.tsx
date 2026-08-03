@@ -49,6 +49,8 @@ interface Props<TSummary, TFilters extends object> {
   placeholder?: string;
   /** 결과 목록에서 제외할 id (예: 자기 자신을 상위로 못 고르도록). */
   excludeId?: number;
+  /** 결과 목록에서 제외할 복수 id (예: 이미 활성 배정된 직원). */
+  excludeIds?: number[];
   /** 선택 문맥이 강제하는 서버 검색 조건. 검색 필터에서 같은 키를 바꿔도 이 값이 우선한다. */
   fixedQueryParams?: Partial<TFilters>;
   /** 고정 검색 문맥 식별자. 값 변경 시 모달 검색/선택 상태를 초기화한다. */
@@ -79,6 +81,7 @@ export default function EntitySelectField<TSummary, TFilters extends object>({
   disabled,
   placeholder,
   excludeId,
+  excludeIds,
   fixedQueryParams,
   scopeKey,
   dense,
@@ -200,7 +203,7 @@ export default function EntitySelectField<TSummary, TFilters extends object>({
         initialSelected={
           value && valueLabel ? [{ id: Number(value), label: valueLabel }] : []
         }
-        excludeIds={excludeId != null ? [excludeId] : undefined}
+        excludeIds={excludeIds ?? (excludeId != null ? [excludeId] : undefined)}
       />
     </>
   );

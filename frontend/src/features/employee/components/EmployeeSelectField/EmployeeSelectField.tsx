@@ -28,6 +28,8 @@ interface Props {
   activeOnly?: boolean;
   /** 선택 결과에서 제외할 직원 id (예: 기안자 본인). */
   excludeId?: number;
+  /** 선택 결과에서 제외할 복수 직원 id (예: 이미 활성 배정된 담당자). */
+  excludeIds?: number[];
 }
 
 const employeeSelectConfig: EntitySelectConfig<EmployeeReference, EmployeeReferenceListFilters> = {

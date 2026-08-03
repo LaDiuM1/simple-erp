@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,9 +28,16 @@ import java.time.LocalDate;
         indexes = {
                 @Index(name = "idx_sales_assignments_customer_id", columnList = "customer_id"),
                 @Index(name = "idx_sales_assignments_employee_id", columnList = "employee_id")
-        })
+        },
+        uniqueConstraints = @UniqueConstraint(
+                name = SalesAssignment.ACTIVE_ASSIGNMENT_UNIQUE_CONSTRAINT,
+                columnNames = {"customer_id", "active_employee_id"}
+        ))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SalesAssignment extends BaseEntity {
+
+    public static final String ACTIVE_ASSIGNMENT_UNIQUE_CONSTRAINT =
+            "uk_sales_assignments_active_customer_employee";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,6 +54,14 @@ public class SalesAssignment extends BaseEntity {
 
     @Column(name = "end_date", comment = "배정 종료일 — null 이면 현재 담당")
     private LocalDate endDate;
+
+    /**
+     * 활성 배정일 때만 employee_id 를 투영하는 MariaDB 생성 컬럼.
+     * 종료 이력은 null 이 되어 복수 보관할 수 있고, 활성 행만 고객사·직원 조합 유일성이 적용된다.
+     */
+    @Column(name = "active_employee_id", insertable = false, updatable = false,
+            columnDefinition = "BIGINT GENERATED ALWAYS AS (CASE WHEN end_date IS NULL THEN employee_id ELSE NULL END)")
+    private Long activeEmployeeId;
 
     @Column(name = "is_primary", nullable = false, comment = "주 담당 여부")
     private boolean primary;
