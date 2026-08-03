@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function BasicSection({ form }: Props) {
-  const { values, update, validation, supplierName } = form;
+  const { values, update, validation, supplierName, contractLinked } = form;
 
   return (
     <FormSection
@@ -23,6 +23,7 @@ export default function BasicSection({ form }: Props) {
     >
       <FieldGrid>
         <CustomerSelectField
+          disabled={contractLinked}
           required
           value={values.customerId}
           valueLabel={values.customerName}
@@ -33,6 +34,7 @@ export default function BasicSection({ form }: Props) {
           helperText={validation.errorMessage('customerId')}
         />
         <ProductSelectField
+          disabled={contractLinked}
           required
           value={values.productId}
           valueLabel={values.productModelName}
@@ -54,6 +56,7 @@ export default function BasicSection({ form }: Props) {
             size="small"
             type="number"
             label="출력 값"
+            disabled={contractLinked}
             value={values.outputValue}
             onChange={(e) => update('outputValue', e.target.value)}
             onBlur={validation.onBlur('outputValue')}
@@ -66,6 +69,7 @@ export default function BasicSection({ form }: Props) {
             select
             size="small"
             label="출력 단위"
+            disabled={contractLinked}
             value={values.outputUnit}
             onChange={(e) => update('outputUnit', e.target.value)}
             onBlur={validation.onBlur('outputUnit')}

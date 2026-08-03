@@ -1,5 +1,6 @@
 import type { ValidatorMap } from '@/shared/hooks/useFieldValidation';
 import {
+  SERVICE_STATUS,
   WARRANTY_DECISION,
   type AfterServiceFormValues,
   type WarrantyDecision,
@@ -11,8 +12,31 @@ const AMOUNT_RE = /^\d+$/;
 export const afterServiceValidators: ValidatorMap<AfterServiceFormValues> = {
   customerId: (v) => (v === '' ? '고객사를 선택해주세요.' : null),
   receivedDate: (v) => (v === '' ? '접수일을 선택해주세요.' : null),
-  billingAmount: (v) =>
-    v.trim() !== '' && !AMOUNT_RE.test(v.trim()) ? '금액은 숫자만 입력해주세요.' : null,
+  billingAmount: (v, all) => {
+    const amount = v.trim();
+    if (all.warrantyDecision === WARRANTY_DECISION.PAID && amount === '') {
+      return '유상 AS의 청구액을 입력해주세요.';
+    }
+    if (amount !== '' && !AMOUNT_RE.test(amount)) {
+      return '금액은 숫자만 입력해주세요.';
+    }
+    if (all.warrantyDecision === WARRANTY_DECISION.PAID && Number(amount) <= 0) {
+      return '유상 AS의 청구액은 0원보다 커야 해요.';
+    }
+    return null;
+  },
+  completedDate: (v, all) => {
+    if (all.status === SERVICE_STATUS.COMPLETED && v === '') {
+      return '완료 상태의 완료일을 입력해주세요.';
+    }
+    if (all.status !== SERVICE_STATUS.COMPLETED && v !== '') {
+      return '완료 전 상태에는 완료일을 입력할 수 없어요.';
+    }
+    if (v !== '' && all.receivedDate !== '' && v < all.receivedDate) {
+      return '완료일은 접수일보다 빠를 수 없어요.';
+    }
+    return null;
+  },
 };
 
 export interface WarrantySuggestion {

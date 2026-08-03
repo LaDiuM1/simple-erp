@@ -18,6 +18,8 @@ import {
 import {
   contractValidators,
   suggestStatus,
+  validateContractSchedule,
+  validateInstalledContractChange,
 } from '@/features/contract/validation/contractFormValidation';
 import type { ContractFormStateBase } from './contractFormState';
 
@@ -60,6 +62,16 @@ export function useContractEditForm(id: number, detail: ContractDetail): Contrac
       snackbar.error('입력값을 확인해주세요.');
       return;
     }
+    const scheduleError = validateContractSchedule(values);
+    if (scheduleError) {
+      snackbar.error(scheduleError);
+      return;
+    }
+    const installedChangeError = validateInstalledContractChange(detail, values);
+    if (installedChangeError) {
+      snackbar.error(installedChangeError);
+      return;
+    }
     confirm.on();
   };
 
@@ -80,6 +92,8 @@ export function useContractEditForm(id: number, detail: ContractDetail): Contrac
     validation,
     supplierName,
     statusSuggestion: suggestStatus(values),
+    installationBoundary:
+      detail.status === 'INSTALLED' || detail.status === 'SETTLED' ? detail.status : null,
     detail,
     isSaving,
     confirmOpen,

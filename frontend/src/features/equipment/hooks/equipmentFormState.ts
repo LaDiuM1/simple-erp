@@ -11,4 +11,6 @@ export interface EquipmentFormStateBase {
   validation: FieldValidation<EquipmentFormValues>;
   /** 선택된 제품 모델에서 파생된 공급사 표시명 — 입력이 아닌 읽기 전용 (BE 가 제품에서 저장). */
   supplierName: string;
+  /** 계약 설치 이벤트로 생성되어 원천 스냅샷을 보호해야 하는 설비인지 여부. */
+  contractLinked: boolean;
 }

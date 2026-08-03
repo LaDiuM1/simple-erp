@@ -15,7 +15,10 @@ import {
   type EquipmentDetail,
   type EquipmentFormValues,
 } from '@/features/equipment/types';
-import { equipmentValidators } from '@/features/equipment/validation/equipmentFormValidation';
+import {
+  equipmentValidators,
+  validateContractLinkedEquipmentChange,
+} from '@/features/equipment/validation/equipmentFormValidation';
 import type { EquipmentFormStateBase } from './equipmentFormState';
 
 export interface EquipmentEditFormState extends EquipmentFormStateBase {
@@ -47,14 +50,20 @@ export function useEquipmentEditForm(id: number, detail: EquipmentDetail): Equip
   const productQuery = useGetProductReferenceQuery(Number(values.productId), {
     skip: values.productId === '',
   });
-  const supplierName =
-    values.productId === '' ? '' : (productQuery.data?.supplierName ?? '');
+  const supplierName = detail.contractId !== null
+    ? (detail.supplierName ?? '')
+    : values.productId === '' ? '' : (productQuery.data?.supplierName ?? '');
 
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSaving) return;
     if (!validation.validateAll()) {
       snackbar.error('입력값을 확인해주세요.');
+      return;
+    }
+    const snapshotError = validateContractLinkedEquipmentChange(detail, values);
+    if (snapshotError) {
+      snackbar.error(snapshotError);
       return;
     }
     confirm.on();
@@ -76,6 +85,7 @@ export function useEquipmentEditForm(id: number, detail: EquipmentDetail): Equip
     update,
     validation,
     supplierName,
+    contractLinked: detail.contractId !== null,
     detail,
     isSaving,
     confirmOpen,

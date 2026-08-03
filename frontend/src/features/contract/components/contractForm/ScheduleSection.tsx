@@ -38,7 +38,15 @@ const DATE_FIELDS: DateFieldSpec[] = [
 ];
 
 export default function ScheduleSection({ form }: Props) {
-  const { values, update, validation, statusSuggestion } = form;
+  const { values, update, validation, statusSuggestion, installationBoundary } = form;
+  const statusOptions = (Object.keys(CONTRACT_STATUS_LABELS) as ContractStatus[])
+    .filter((status) => {
+      if (installationBoundary === 'SETTLED') return status === 'SETTLED';
+      if (installationBoundary === 'INSTALLED') {
+        return status === 'INSTALLED' || status === 'SETTLED';
+      }
+      return true;
+    });
 
   return (
     <FormSection
@@ -54,6 +62,7 @@ export default function ScheduleSection({ form }: Props) {
             type="date"
             label={f.label}
             required={f.required}
+            disabled={installationBoundary !== null && f.key === 'installedDate'}
             value={values[f.key]}
             onChange={(e) => update(f.key, e.target.value)}
             onBlur={f.required ? validation.onBlur(f.key) : undefined}
@@ -75,7 +84,7 @@ export default function ScheduleSection({ form }: Props) {
               : undefined
           }
         >
-          {(Object.keys(CONTRACT_STATUS_LABELS) as ContractStatus[]).map((s) => (
+          {statusOptions.map((s) => (
             <MenuItem key={s} value={s}>
               {CONTRACT_STATUS_LABELS[s]}
             </MenuItem>

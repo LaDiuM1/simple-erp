@@ -14,7 +14,7 @@ interface Props {
  * 서버가 파생 저장하며 AS 접수 시 유상 / 무상 자동 판정의 근거가 된다.
  */
 export default function WarrantySection({ form }: Props) {
-  const { values, update, validation } = form;
+  const { values, update, validation, contractLinked } = form;
 
   return (
     <FormSection
@@ -27,6 +27,7 @@ export default function WarrantySection({ form }: Props) {
           size="small"
           type="date"
           label="설치일"
+          disabled={contractLinked}
           value={values.installedDate}
           onChange={(e) => update('installedDate', e.target.value)}
           slotProps={{ inputLabel: { shrink: true } }}

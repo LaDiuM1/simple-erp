@@ -13,4 +13,6 @@ export interface ContractFormStateBase {
   supplierName: string;
   /** 마일스톤 일자 기반 상태 제안 — null 이면 현재 상태와 일치 (제안 없음). */
   statusSuggestion: ContractStatus | null;
+  /** 설치 이벤트가 이미 설비 스냅샷을 만든 수정 폼의 원래 완료 상태. */
+  installationBoundary: ContractStatus | null;
 }

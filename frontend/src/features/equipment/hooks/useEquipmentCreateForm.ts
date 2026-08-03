@@ -69,6 +69,7 @@ export function useEquipmentCreateForm(): EquipmentCreateFormState {
     update,
     validation,
     supplierName,
+    contractLinked: false,
     isSaving,
     confirmOpen,
     handleSubmit,

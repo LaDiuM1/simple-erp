@@ -4,6 +4,7 @@ import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import { FormSection } from '@/shared/ui/GenericForm';
 import {
   SERVICE_STATUS_LABELS,
+  SERVICE_STATUS,
   WARRANTY_DECISION,
   WARRANTY_DECISION_LABELS,
   type ServiceStatus,
@@ -23,6 +24,12 @@ export default function ProcessSection({ form }: Props) {
   const { values, update, validation, engineers, warrantySuggestion, handleWarrantyDecisionChange } =
     form;
   const isPaid = values.warrantyDecision === WARRANTY_DECISION.PAID;
+  const isCompleted = values.status === SERVICE_STATUS.COMPLETED;
+
+  const handleStatusChange = (status: string) => {
+    update('status', status);
+    if (status !== SERVICE_STATUS.COMPLETED) update('completedDate', '');
+  };
 
   return (
     <FormSection
@@ -51,7 +58,7 @@ export default function ProcessSection({ form }: Props) {
           label="진행 상태"
           required
           value={values.status}
-          onChange={(e) => update('status', e.target.value)}
+          onChange={(e) => handleStatusChange(e.target.value)}
         >
           {(Object.keys(SERVICE_STATUS_LABELS) as ServiceStatus[]).map((s) => (
             <MenuItem key={s} value={s}>
@@ -92,14 +99,22 @@ export default function ProcessSection({ form }: Props) {
             ?? (isPaid ? '유상 확정 건 — 고객 청구액을 입력해주세요.' : '유상 확정 시에만 입력합니다.')
           }
           placeholder="0"
-          slotProps={{ htmlInput: { min: 0 } }}
+          slotProps={{ htmlInput: { min: 1 } }}
         />
         <TextField
           size="small"
           type="date"
           label="완료일"
+          required={isCompleted}
+          disabled={!isCompleted}
           value={values.completedDate}
           onChange={(e) => update('completedDate', e.target.value)}
+          onBlur={validation.onBlur('completedDate')}
+          error={validation.isInvalid('completedDate')}
+          helperText={
+            validation.errorMessage('completedDate')
+            ?? (isCompleted ? '접수일 이후의 실제 완료일을 입력해주세요.' : '완료 상태에서만 입력합니다.')
+          }
           slotProps={{ inputLabel: { shrink: true } }}
         />
       </FieldGrid>

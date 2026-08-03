@@ -17,6 +17,7 @@ import {
 import {
   contractValidators,
   suggestStatus,
+  validateContractSchedule,
 } from '@/features/contract/validation/contractFormValidation';
 import type { ContractFormStateBase } from './contractFormState';
 
@@ -56,6 +57,11 @@ export function useContractCreateForm(): ContractCreateFormState {
       snackbar.error('입력값을 확인해주세요.');
       return;
     }
+    const scheduleError = validateContractSchedule(values);
+    if (scheduleError) {
+      snackbar.error(scheduleError);
+      return;
+    }
     confirm.on();
   };
 
@@ -73,6 +79,7 @@ export function useContractCreateForm(): ContractCreateFormState {
     validation,
     supplierName,
     statusSuggestion: suggestStatus(values),
+    installationBoundary: null,
     isSaving,
     confirmOpen,
     handleSubmit,

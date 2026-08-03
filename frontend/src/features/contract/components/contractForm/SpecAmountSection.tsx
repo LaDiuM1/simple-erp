@@ -15,7 +15,7 @@ interface Props {
  * 제품 마스터가 아닌 계약 필드로 입력한다. 금액은 초기가 / 최종가 2단 (협상 증감 실무).
  */
 export default function SpecAmountSection({ form }: Props) {
-  const { values, update, validation } = form;
+  const { values, update, validation, installationBoundary } = form;
 
   return (
     <FormSection
@@ -29,6 +29,7 @@ export default function SpecAmountSection({ form }: Props) {
             size="small"
             type="number"
             label="출력 값"
+            disabled={installationBoundary !== null}
             value={values.outputValue}
             onChange={(e) => update('outputValue', e.target.value)}
             onBlur={validation.onBlur('outputValue')}
@@ -41,6 +42,7 @@ export default function SpecAmountSection({ form }: Props) {
             select
             size="small"
             label="출력 단위"
+            disabled={installationBoundary !== null}
             value={values.outputUnit}
             onChange={(e) => update('outputUnit', e.target.value)}
             onBlur={validation.onBlur('outputUnit')}

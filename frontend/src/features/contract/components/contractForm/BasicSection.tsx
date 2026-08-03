@@ -16,7 +16,7 @@ interface Props {
 }
 
 export default function BasicSection({ form, mode }: Props) {
-  const { values, update, validation, supplierName } = form;
+  const { values, update, validation, supplierName, installationBoundary } = form;
 
   return (
     <FormSection
@@ -42,6 +42,7 @@ export default function BasicSection({ form, mode }: Props) {
           slotProps={{ htmlInput: { maxLength: 10 } }}
         />
         <CustomerSelectField
+          disabled={installationBoundary !== null}
           required
           value={values.customerId}
           valueLabel={values.customerName}
@@ -63,6 +64,7 @@ export default function BasicSection({ form, mode }: Props) {
           helperText={validation.errorMessage('employeeId')}
         />
         <ProductSelectField
+          disabled={installationBoundary !== null}
           required
           value={values.productId}
           valueLabel={values.productModelName}
