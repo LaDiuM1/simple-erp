@@ -1,13 +1,26 @@
+import { useCallback, useState } from 'react';
+
 declare global {
   interface Window {
-    daum?: {
-      Postcode: new (options: DaumPostcodeOptions) => { open: () => void };
-    };
+    kakao?: PostcodeNamespace;
+    daum?: PostcodeNamespace;
   }
 }
 
+interface PostcodeNamespace {
+  Postcode: new (options: DaumPostcodeOptions) => DaumPostcodeInstance;
+}
+
+interface DaumPostcodeInstance {
+  embed: (container: HTMLElement) => void;
+}
+
+const SCRIPT_ID = 'daum-postcode-script';
 const SCRIPT_URL =
-  'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+  'https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+const LOAD_TIMEOUT_MS = 8_000;
+const LOAD_ERROR_MESSAGE =
+  '주소 검색을 불러오지 못했습니다. 다시 시도하거나 주소를 직접 입력해주세요.';
 
 export interface DaumPostcodeData {
   zonecode: string;
@@ -22,39 +35,105 @@ export interface DaumPostcodeData {
 interface DaumPostcodeOptions {
   oncomplete: (data: DaumPostcodeData) => void;
   onclose?: () => void;
+  width?: string | number;
+  height?: string | number;
+  maxSuggestItems?: number;
+}
+
+interface EmbedOptions {
+  onComplete: (data: DaumPostcodeData) => void;
+  onClose: () => void;
+  signal?: AbortSignal;
+}
+
+export interface DaumPostcodeState {
+  embedPostcode: (container: HTMLElement, options: EmbedOptions) => Promise<boolean>;
+  isLoading: boolean;
+  error: string | null;
 }
 
 let scriptPromise: Promise<void> | null = null;
 
+function getPostcodeConstructor() {
+  return window.kakao?.Postcode ?? window.daum?.Postcode;
+}
+
 function loadDaumPostcode(): Promise<void> {
-  if (window.daum?.Postcode) return Promise.resolve();
+  if (getPostcodeConstructor()) return Promise.resolve();
   if (scriptPromise) return scriptPromise;
 
   scriptPromise = new Promise<void>((resolve, reject) => {
+    document.getElementById(SCRIPT_ID)?.remove();
+
     const script = document.createElement('script');
+    script.id = SCRIPT_ID;
     script.src = SCRIPT_URL;
     script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => {
+
+    const finish = (error?: Error) => {
+      window.clearTimeout(timeoutId);
+      script.onload = null;
+      script.onerror = null;
       scriptPromise = null;
-      reject(new Error('Daum 우편번호 스크립트 로드 실패'));
+      if (error) {
+        script.remove();
+        reject(error);
+        return;
+      }
+      resolve();
     };
+
+    const timeoutId = window.setTimeout(
+      () => finish(new Error(LOAD_ERROR_MESSAGE)),
+      LOAD_TIMEOUT_MS,
+    );
+
+    script.onload = () => {
+      if (!getPostcodeConstructor()) {
+        finish(new Error(LOAD_ERROR_MESSAGE));
+        return;
+      }
+      finish();
+    };
+    script.onerror = () => finish(new Error(LOAD_ERROR_MESSAGE));
     document.head.appendChild(script);
   });
+
   return scriptPromise;
 }
 
-/**
- * Daum 우편번호 검색 위젯을 띄우는 훅.
- * 첫 호출 시점에 스크립트를 lazy 로드하고, 이후 호출은 즉시 모달을 연다.
- * API 키 / 사용량 제한 없이 무료 사용.
- */
-export function useDaumPostcode() {
-  return async (onComplete: (data: DaumPostcodeData) => void) => {
-    await loadDaumPostcode();
-    if (!window.daum?.Postcode) {
-      throw new Error('Daum 우편번호를 사용할 수 없습니다.');
+/** Kakao 우편번호 위젯의 script 로딩과 WebView 호환 embed 경계를 공통 관리하는 훅. */
+export function useDaumPostcode(): DaumPostcodeState {
+  const [isLoading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const embedPostcode = useCallback(async (
+    container: HTMLElement,
+    options: EmbedOptions,
+  ) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await loadDaumPostcode();
+      if (options.signal?.aborted) return false;
+      const Postcode = getPostcodeConstructor();
+      if (!Postcode) throw new Error(LOAD_ERROR_MESSAGE);
+      new Postcode({
+        oncomplete: options.onComplete,
+        onclose: options.onClose,
+        width: '100%',
+        height: '100%',
+        maxSuggestItems: 5,
+      }).embed(container);
+      return true;
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : LOAD_ERROR_MESSAGE;
+      setError(message);
+      throw new Error(message, { cause });
+    } finally {
+      setLoading(false);
     }
-    new window.daum.Postcode({ oncomplete: onComplete }).open();
-  };
+  }, []);
+
+  return { embedPostcode, isLoading, error };
 }

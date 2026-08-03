@@ -9,5 +9,4 @@ export interface EmployeeFormStateBase {
   values: EmployeeFormValues;
   update: <K extends keyof EmployeeFormValues>(key: K, v: EmployeeFormValues[K]) => void;
   validation: FieldValidation<EmployeeFormValues>;
-  handleAddressSearch: () => void;
 }

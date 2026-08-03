@@ -10,6 +10,5 @@ export interface CustomerFormStateBase {
   values: CustomerFormValues;
   update: <K extends keyof CustomerFormValues>(key: K, v: CustomerFormValues[K]) => void;
   validation: FieldValidation<CustomerFormValues>;
-  handleAddressSearch: () => void;
   bizRegNoStatus: AvailabilityStatus;
 }

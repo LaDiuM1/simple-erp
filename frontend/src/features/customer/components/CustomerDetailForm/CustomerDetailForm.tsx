@@ -35,7 +35,6 @@ export default function CustomerDetailForm({ id, detail }: { id: number; detail:
     values,
     update: () => undefined,
     validation,
-    handleAddressSearch: () => undefined,
     bizRegNoStatus: 'idle',
   };
 

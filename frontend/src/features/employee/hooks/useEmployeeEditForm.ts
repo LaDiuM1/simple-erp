@@ -2,7 +2,6 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU_PATH } from '@/shared/config/menuConfig';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
-import { useDaumPostcode } from '@/shared/hooks/useDaumPostcode';
 import { useFieldValidation } from '@/shared/hooks/useFieldValidation';
 import { useToggle } from '@/shared/hooks/useToggle';
 import { useFormState } from '@/shared/ui/GenericForm/useFormState';
@@ -39,7 +38,6 @@ export function useEmployeeEditForm(
   const navigate = useNavigate();
   const snackbar = useSnackbar();
   const submit = useApiSubmit();
-  const openPostcode = useDaumPostcode();
 
   const { values, updateField: update } = useFormState<EmployeeFormValues>(() =>
     employeeDetailToFormValues(detail),
@@ -48,15 +46,6 @@ export function useEmployeeEditForm(
   const [updateEmployee, { isLoading: isSaving }] = useUpdateEmployeeMutation();
 
   const validation = useFieldValidation(values, employeeEditValidators);
-
-  const handleAddressSearch = () => {
-    openPostcode((data) => {
-      update('zipCode', data.zonecode);
-      update('roadAddress', data.roadAddress);
-    }).catch((err: Error) => {
-      snackbar.error(err.message);
-    });
-  };
 
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -81,7 +70,6 @@ export function useEmployeeEditForm(
     values,
     update,
     validation,
-    handleAddressSearch,
     detail,
     isSaving,
     confirmOpen,

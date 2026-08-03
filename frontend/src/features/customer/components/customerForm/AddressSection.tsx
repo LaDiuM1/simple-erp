@@ -1,12 +1,10 @@
 import TextField from '@mui/material/TextField';
 import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded';
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import NotesRoundedIcon from '@mui/icons-material/NotesRounded';
 import { FormSection } from '@/shared/ui/GenericForm';
+import AddressSearchField from '@/shared/ui/AddressSearchField';
 import type { CustomerFormStateBase } from '@/features/customer/hooks/customerFormState';
 import {
-  AddressSearchButton,
-  AddressSearchRow,
   FieldFull,
   FieldGrid,
 } from './customerForm.styles';
@@ -18,7 +16,7 @@ interface Props {
 }
 
 export default function AddressSection({ form, readOnly = false }: Props) {
-  const { values, update, handleAddressSearch } = form;
+  const { values, update } = form;
 
   return (
     <FormSection
@@ -27,35 +25,13 @@ export default function AddressSection({ form, readOnly = false }: Props) {
       description="사업장 주소와 자유 메모."
     >
       <FieldGrid>
-        <AddressSearchRow>
-          <TextField
-            size="small"
-            label="우편번호"
-            value={values.zipCode}
-            placeholder="00000"
-            disabled
-            sx={{ flex: 1 }}
-          />
-          {!readOnly && (
-            <AddressSearchButton
-              type="button"
-              variant="outlined"
-              startIcon={<SearchRoundedIcon sx={{ fontSize: 18 }} />}
-              onClick={handleAddressSearch}
-            >
-              주소 검색
-            </AddressSearchButton>
-          )}
-        </AddressSearchRow>
-        <FieldFull>
-          <TextField
-            fullWidth
-            size="small"
-            label="기본 주소"
-            value={values.roadAddress}
-            disabled
-          />
-        </FieldFull>
+        <AddressSearchField
+          zipCode={values.zipCode}
+          roadAddress={values.roadAddress}
+          onZipCodeChange={(value) => update('zipCode', value)}
+          onRoadAddressChange={(value) => update('roadAddress', value)}
+          readOnly={readOnly}
+        />
         <FieldFull>
           <TextField
             fullWidth
