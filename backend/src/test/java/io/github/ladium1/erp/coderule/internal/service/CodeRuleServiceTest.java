@@ -24,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Set;
 
@@ -188,6 +189,24 @@ class CodeRuleServiceTest {
         assertThatThrownBy(() -> codeRuleService.validate(TARGET, "X-bad"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CodeRuleErrorCode.CODE_FORMAT_MISMATCH);
+    }
+
+    @Test
+    @DisplayName("validate — 업무 기준일을 날짜 토큰 검증에 전달")
+    void validate_with_generation_date() {
+        initWithoutAttributes();
+        CodeRule rule = mockRule();
+        LocalDate businessDate = LocalDate.of(2025, 12, 31);
+        given(codeRuleRepository.findByTarget(TARGET)).willReturn(Optional.of(rule));
+        given(patternCompiler.matches("D{SEQ:3}", "D004", businessDate)).willReturn(true);
+
+        codeRuleService.validate(
+                TARGET,
+                "D004",
+                CodeGenerationContext.onDate(businessDate)
+        );
+
+        verify(patternCompiler).matches("D{SEQ:3}", "D004", businessDate);
     }
 
     @Test

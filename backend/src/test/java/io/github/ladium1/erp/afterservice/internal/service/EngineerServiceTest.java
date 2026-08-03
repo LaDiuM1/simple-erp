@@ -183,6 +183,45 @@ class EngineerServiceTest {
     }
 
     @Test
+    @DisplayName("update 성공 — 기존 직원 연결은 재직 상태가 바뀌어도 유지")
+    void update_keeps_existing_ineligible_employee_reference() {
+        Engineer engineer = Engineer.builder()
+                .name("박기술")
+                .type(EngineerType.INTERNAL)
+                .affiliation("기술부")
+                .employeeId(3L)
+                .active(true)
+                .build();
+        given(engineerRepository.findById(5L)).willReturn(Optional.of(engineer));
+
+        engineerService.update(5L,
+                new EngineerRequest("박기술", EngineerType.INTERNAL, "AS부", null, 3L, true));
+
+        assertThat(engineer.getAffiliation()).isEqualTo("AS부");
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+    }
+
+    @Test
+    @DisplayName("update 실패 — 비활성 직원으로 연결을 변경할 수 없음")
+    void update_rejects_new_ineligible_employee_reference() {
+        Engineer engineer = Engineer.builder()
+                .name("박기술")
+                .type(EngineerType.INTERNAL)
+                .affiliation("기술부")
+                .employeeId(3L)
+                .active(true)
+                .build();
+        given(engineerRepository.findById(5L)).willReturn(Optional.of(engineer));
+        given(employeeApi.isEligibleForNewWorkReference(4L)).willReturn(false);
+
+        assertThatThrownBy(() -> engineerService.update(5L,
+                new EngineerRequest("박기술", EngineerType.INTERNAL, "기술부", null, 4L, true)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode", AfterServiceErrorCode.INVALID_ENGINEER_EMPLOYEE);
+    }
+
+    @Test
     @DisplayName("update 실패 — 존재하지 않는 엔지니어")
     void update_fail_not_found() {
         given(engineerRepository.findById(99L)).willReturn(Optional.empty());
@@ -225,13 +264,39 @@ class EngineerServiceTest {
     }
 
     @Test
-    @DisplayName("validateId 실패 — ENGINEER_NOT_FOUND")
-    void validate_id_fail_not_found() {
-        given(engineerRepository.existsById(99L)).willReturn(false);
+    @DisplayName("validateWorkReference 실패 — 존재하지 않는 엔지니어")
+    void validate_work_reference_fail_not_found() {
+        given(engineerRepository.findById(99L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> engineerService.validateId(99L))
+        assertThatThrownBy(() -> engineerService.validateWorkReference(99L, null))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", AfterServiceErrorCode.ENGINEER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("validateWorkReference 실패 — 비활성 엔지니어에 새 참조 생성 불가")
+    void validate_work_reference_rejects_inactive_engineer() {
+        Engineer engineer = mockEngineer("김기사", EngineerType.OUTSOURCED);
+        ReflectionTestUtils.setField(engineer, "id", 5L);
+        ReflectionTestUtils.setField(engineer, "active", false);
+        given(engineerRepository.findById(5L)).willReturn(Optional.of(engineer));
+
+        assertThatThrownBy(() -> engineerService.validateWorkReference(5L, null))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", AfterServiceErrorCode.INACTIVE_ENGINEER);
+    }
+
+    @Test
+    @DisplayName("validateWorkReference 성공 — 기존 비활성 엔지니어 참조는 유지 가능")
+    void validate_work_reference_keeps_existing_inactive_engineer() {
+        Engineer engineer = mockEngineer("김기사", EngineerType.OUTSOURCED);
+        ReflectionTestUtils.setField(engineer, "id", 5L);
+        ReflectionTestUtils.setField(engineer, "active", false);
+        given(engineerRepository.findById(5L)).willReturn(Optional.of(engineer));
+
+        engineerService.validateWorkReference(5L, 5L);
+
+        verify(engineerRepository).findById(5L);
     }
 
     private Engineer mockEngineer(String name, EngineerType type) {

@@ -6,6 +6,7 @@ import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceCreateRequest
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceDetailResponse;
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceSearchCondition;
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceSummaryResponse;
+import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceUpdateRequest;
 import io.github.ladium1.erp.afterservice.internal.dto.ServiceExpenseRequest;
 import io.github.ladium1.erp.afterservice.internal.dto.ServiceVisitRequest;
 import io.github.ladium1.erp.afterservice.internal.entity.AfterService;
@@ -191,6 +192,63 @@ class AfterServiceServiceTest {
     }
 
     @Test
+    @DisplayName("create — 새 주 담당 엔지니어 참조는 현재 ID 없이 검증")
+    void create_validates_new_engineer_reference() {
+        AfterServiceCreateRequest request = new AfterServiceCreateRequest(
+                null, 1L, null, LocalDate.of(2026, 5, 1),
+                ServiceType.REPAIR, null, ServiceStatus.ASSIGNED,
+                5L, WarrantyDecision.UNDECIDED, null, null
+        );
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(codeRuleApi.getRule(CodeRuleTarget.AFTER_SERVICE)).willReturn(ruleWithMode(InputMode.AUTO));
+        given(codeRuleApi.generate(eq(CodeRuleTarget.AFTER_SERVICE), any())).willReturn("AS2026-0001");
+        given(afterServiceRepository.save(any(AfterService.class))).willReturn(mockAfterService(1L, null));
+
+        afterServiceService.create(request);
+
+        verify(engineerService).validateWorkReference(5L, null);
+    }
+
+    @Test
+    @DisplayName("create는 진행 상태와 청구액 불변식을 참조 조회 전에 검증한다")
+    void create_rejects_invalid_process_state() {
+        AfterServiceCreateRequest request = new AfterServiceCreateRequest(
+                null, 1L, null, LocalDate.of(2026, 5, 1),
+                ServiceType.REPAIR, null, ServiceStatus.COMPLETED,
+                null, WarrantyDecision.PAID, null, null
+        );
+
+        assertThatThrownBy(() -> afterServiceService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode",
+                        AfterServiceErrorCode.PAID_BILLING_AMOUNT_REQUIRED
+                );
+        verify(customerApi, never()).getById(any());
+        verify(afterServiceRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("update는 기존 AS를 변경하기 전에 진행 상태 불변식을 검증한다")
+    void update_rejects_invalid_process_state() {
+        AfterService existing = mockAfterService(1L, 10L);
+        given(afterServiceRepository.findById(1L)).willReturn(Optional.of(existing));
+        AfterServiceUpdateRequest request = new AfterServiceUpdateRequest(
+                1L, 10L, LocalDate.of(2026, 5, 1),
+                ServiceType.REPAIR, null, ServiceStatus.IN_PROGRESS,
+                null, WarrantyDecision.FREE, null, LocalDate.of(2026, 5, 2)
+        );
+
+        assertThatThrownBy(() -> afterServiceService.update(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode",
+                        AfterServiceErrorCode.COMPLETED_DATE_NOT_ALLOWED
+                );
+        verify(customerApi, never()).getById(any());
+    }
+
+    @Test
     @DisplayName("create — 무상 판정은 청구액을 null 로 정규화")
     void create_free_nullifies_billing_amount() {
         // given
@@ -269,6 +327,22 @@ class AfterServiceServiceTest {
     }
 
     @Test
+    @DisplayName("update — 기존 주 담당 엔지니어 참조를 자격 재검증 없이 유지")
+    void update_keeps_existing_engineer_reference() {
+        AfterService as = mockAfterService(1L, null);
+        given(afterServiceRepository.findById(1L)).willReturn(Optional.of(as));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        var request = new AfterServiceUpdateRequest(
+                1L, null, LocalDate.of(2026, 5, 1), ServiceType.REPAIR, "출력 저하",
+                ServiceStatus.ASSIGNED, 5L, WarrantyDecision.UNDECIDED, null, null
+        );
+
+        afterServiceService.update(1L, request);
+
+        verify(engineerService).validateWorkReference(5L, 5L);
+    }
+
+    @Test
     @DisplayName("delete 성공 — 일지 / 경비도 함께 삭제")
     void delete_success() {
         // given
@@ -299,7 +373,7 @@ class AfterServiceServiceTest {
 
         // then
         assertThat(id).isEqualTo(10L);
-        verify(engineerService).validateId(5L);
+        verify(engineerService).validateWorkReference(5L, null);
     }
 
     @Test
@@ -312,6 +386,19 @@ class AfterServiceServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", AfterServiceErrorCode.AFTER_SERVICE_NOT_FOUND);
         verify(visitRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("updateVisit — 기존 엔지니어 참조를 유지하면 현재 ID를 전달")
+    void update_visit_keeps_existing_engineer_reference() {
+        ServiceVisit visit = ServiceVisit.builder()
+                .afterServiceId(1L).visitDate(LocalDate.of(2026, 5, 2)).engineerId(5L).build();
+        given(visitRepository.findById(10L)).willReturn(Optional.of(visit));
+
+        afterServiceService.updateVisit(10L,
+                new ServiceVisitRequest(LocalDate.of(2026, 5, 3), 5L, null, null));
+
+        verify(engineerService).validateWorkReference(5L, 5L);
     }
 
     @Test
@@ -329,7 +416,40 @@ class AfterServiceServiceTest {
 
         // then
         assertThat(id).isEqualTo(20L);
-        verify(engineerService, never()).validateId(any());
+        verify(engineerService, never()).validateWorkReference(any(), any());
+    }
+
+    @Test
+    @DisplayName("createExpense — 새 엔지니어 참조는 현재 ID 없이 검증")
+    void create_expense_validates_new_engineer_reference() {
+        given(afterServiceRepository.existsById(1L)).willReturn(true);
+        ServiceExpense saved = expense(1L, ServiceExpenseCategory.DAILY_WAGE, 200_000L);
+        given(expenseRepository.save(any(ServiceExpense.class))).willReturn(saved);
+
+        afterServiceService.createExpense(1L, new ServiceExpenseRequest(
+                ServiceExpenseCategory.DAILY_WAGE, 200_000L,
+                ExpensePayerType.ENGINEER, null, 5L, null));
+
+        verify(engineerService).validateWorkReference(5L, null);
+    }
+
+    @Test
+    @DisplayName("updateExpense — 기존 엔지니어 참조를 유지하면 현재 ID를 전달")
+    void update_expense_keeps_existing_engineer_reference() {
+        ServiceExpense expense = ServiceExpense.builder()
+                .afterServiceId(1L)
+                .category(ServiceExpenseCategory.DAILY_WAGE)
+                .amount(200_000L)
+                .payerType(ExpensePayerType.ENGINEER)
+                .engineerId(5L)
+                .build();
+        given(expenseRepository.findById(20L)).willReturn(Optional.of(expense));
+
+        afterServiceService.updateExpense(20L, new ServiceExpenseRequest(
+                ServiceExpenseCategory.DAILY_WAGE, 250_000L,
+                ExpensePayerType.ENGINEER, null, 5L, null));
+
+        verify(engineerService).validateWorkReference(5L, 5L);
     }
 
     @Test

@@ -132,6 +132,19 @@ class PatternCompilerTest {
     }
 
     @Test
+    @DisplayName("날짜 컨텍스트 매칭 — 날짜 토큰이 업무 기준일과 정확히 일치")
+    void matches_date_context() {
+        assertThat(compiler.matches(
+                "CT{YYYY}-{SEQ:3}", "CT2026-042", FIXED_DATE)).isTrue();
+        assertThat(compiler.matches(
+                "CT{YYYY}-{SEQ:3}", "CT2025-042", FIXED_DATE)).isFalse();
+        assertThat(compiler.matches(
+                "{YY}{MM}{DD}-{SEQ:3}", "260426-001", FIXED_DATE)).isTrue();
+        assertThat(compiler.matches(
+                "{YY}{MM}{DD}-{SEQ:3}", "260425-001", FIXED_DATE)).isFalse();
+    }
+
+    @Test
     @DisplayName("매칭 — literal 이 다른 코드는 false")
     void matches_different_literal() {
         assertThat(compiler.matches("D{SEQ:3}", "X004")).isFalse();

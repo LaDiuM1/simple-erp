@@ -92,7 +92,15 @@ public class PatternCompiler {
         if (code == null) {
             return false;
         }
-        return toRegex(pattern).matcher(code).matches();
+        return toRegex(pattern, null).matcher(code).matches();
+    }
+
+    /** 날짜 토큰은 전달된 업무 기준일의 실제 값과 일치해야 한다. */
+    public boolean matches(String pattern, String code, LocalDate generationDate) {
+        if (code == null || generationDate == null) {
+            return false;
+        }
+        return toRegex(pattern, generationDate).matcher(code).matches();
     }
 
     public boolean usesParentToken(String pattern) {
@@ -178,7 +186,7 @@ public class PatternCompiler {
         return String.format("%0" + width + "d", seq);
     }
 
-    private Pattern toRegex(String pattern) {
+    private Pattern toRegex(String pattern, LocalDate generationDate) {
         StringBuilder sb = new StringBuilder("^");
         Matcher m = TOKEN.matcher(pattern);
         int last = 0;
@@ -186,7 +194,7 @@ public class PatternCompiler {
             if (m.start() > last) {
                 sb.append(Pattern.quote(pattern.substring(last, m.start())));
             }
-            sb.append(tokenToRegex(m.group(1), m.group(2)));
+            sb.append(tokenToRegex(m.group(1), m.group(2), generationDate));
             last = m.end();
         }
         if (last < pattern.length()) {
@@ -196,10 +204,20 @@ public class PatternCompiler {
         return Pattern.compile(sb.toString());
     }
 
-    private String tokenToRegex(String name, String arg) {
+    private String tokenToRegex(String name, String arg, LocalDate generationDate) {
         return switch (name) {
-            case "YYYY"   -> "\\d{4}";
-            case "YY", "MM", "DD" -> "\\d{2}";
+            case "YYYY" -> generationDate == null
+                    ? "\\d{4}"
+                    : Pattern.quote(String.format("%04d", generationDate.getYear()));
+            case "YY" -> generationDate == null
+                    ? "\\d{2}"
+                    : Pattern.quote(String.format("%02d", generationDate.getYear() % 100));
+            case "MM" -> generationDate == null
+                    ? "\\d{2}"
+                    : Pattern.quote(String.format("%02d", generationDate.getMonthValue()));
+            case "DD" -> generationDate == null
+                    ? "\\d{2}"
+                    : Pattern.quote(String.format("%02d", generationDate.getDayOfMonth()));
             case "SEQ"    -> arg != null ? "\\d{" + arg + "}" : "\\d+";
             // PARENT / 도메인 attribute 토큰 — 외부 결정 사항이라 느슨하게 매칭
             default -> ".+?";

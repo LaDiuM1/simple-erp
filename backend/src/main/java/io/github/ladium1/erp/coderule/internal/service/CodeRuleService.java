@@ -66,7 +66,7 @@ public class CodeRuleService implements CodeRuleApi {
         CodeRule rule = findRuleOrThrow(target);
         Map<String, String> sourceAttributes = context != null ? context.attributes() : Map.of();
         String parentCode = context != null ? context.parentCode() : null;
-        LocalDate now = LocalDate.now();
+        LocalDate now = generationDate(context);
 
         Set<String> attributeKeys = attributeKeys(target);
         Set<String> usedKeys = patternCompiler.usedAttributeKeys(rule.getPattern(), attributeKeys);
@@ -83,7 +83,7 @@ public class CodeRuleService implements CodeRuleApi {
         CodeRule rule = findRuleOrThrow(target);
         Map<String, String> sourceAttributes = context != null ? context.attributes() : Map.of();
         String parentCode = context != null ? context.parentCode() : null;
-        LocalDate now = LocalDate.now();
+        LocalDate now = generationDate(context);
 
         Set<String> attributeKeys = attributeKeys(target);
         Set<String> usedKeys = patternCompiler.usedAttributeKeys(rule.getPattern(), attributeKeys);
@@ -101,6 +101,14 @@ public class CodeRuleService implements CodeRuleApi {
     public void validate(CodeRuleTarget target, String code) {
         CodeRule rule = findRuleOrThrow(target);
         if (!patternCompiler.matches(rule.getPattern(), code)) {
+            throw new BusinessException(CodeRuleErrorCode.CODE_FORMAT_MISMATCH);
+        }
+    }
+
+    @Override
+    public void validate(CodeRuleTarget target, String code, CodeGenerationContext context) {
+        CodeRule rule = findRuleOrThrow(target);
+        if (!patternCompiler.matches(rule.getPattern(), code, generationDate(context))) {
             throw new BusinessException(CodeRuleErrorCode.CODE_FORMAT_MISMATCH);
         }
     }
@@ -183,6 +191,12 @@ public class CodeRuleService implements CodeRuleApi {
     private CodeRule findRuleOrThrow(CodeRuleTarget target) {
         return codeRuleRepository.findByTarget(target)
                 .orElseThrow(() -> new BusinessException(CodeRuleErrorCode.RULE_NOT_FOUND));
+    }
+
+    private static LocalDate generationDate(CodeGenerationContext context) {
+        return context != null && context.generationDate() != null
+                ? context.generationDate()
+                : LocalDate.now();
     }
 
     private List<CodeRuleAttributeProvider> providersFor(CodeRuleTarget target) {

@@ -165,7 +165,7 @@ public class AfterServiceService implements AfterServiceApi {
     @Auditable(menu = Menu.AFTER_SERVICES, action = AuditAction.CREATE, targetType = "AfterService", targetIdFromReturn = true)
     @Transactional
     public Long create(AfterServiceCreateRequest request) {
-        validateReferences(request.customerId(), request.equipmentId(), request.assignedEngineerId());
+        validateReferences(request.customerId(), request.equipmentId(), request.assignedEngineerId(), null);
 
         String receiptNo = resolveReceiptNo(request.receiptNo());
         if (afterServiceRepository.existsByReceiptNo(receiptNo)) {
@@ -193,7 +193,12 @@ public class AfterServiceService implements AfterServiceApi {
     public void update(Long id, AfterServiceUpdateRequest request) {
         AfterService afterService = afterServiceRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(AfterServiceErrorCode.AFTER_SERVICE_NOT_FOUND));
-        validateReferences(request.customerId(), request.equipmentId(), request.assignedEngineerId());
+        validateReferences(
+                request.customerId(),
+                request.equipmentId(),
+                request.assignedEngineerId(),
+                afterService.getAssignedEngineerId()
+        );
 
         afterService.update(
                 request.customerId(),
@@ -239,7 +244,7 @@ public class AfterServiceService implements AfterServiceApi {
     @Transactional
     public Long createVisit(Long afterServiceId, ServiceVisitRequest request) {
         requireAfterService(afterServiceId);
-        engineerService.validateId(request.engineerId());
+        engineerService.validateWorkReference(request.engineerId(), null);
 
         ServiceVisit visit = ServiceVisit.builder()
                 .afterServiceId(afterServiceId)
@@ -256,7 +261,7 @@ public class AfterServiceService implements AfterServiceApi {
     public void updateVisit(Long id, ServiceVisitRequest request) {
         ServiceVisit visit = visitRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(AfterServiceErrorCode.VISIT_NOT_FOUND));
-        engineerService.validateId(request.engineerId());
+        engineerService.validateWorkReference(request.engineerId(), visit.getEngineerId());
         visit.update(request.visitDate(), request.engineerId(), request.problem(), request.resolution());
     }
 
@@ -274,7 +279,7 @@ public class AfterServiceService implements AfterServiceApi {
     public Long createExpense(Long afterServiceId, ServiceExpenseRequest request) {
         requireAfterService(afterServiceId);
         if (request.engineerId() != null) {
-            engineerService.validateId(request.engineerId());
+            engineerService.validateWorkReference(request.engineerId(), null);
         }
 
         ServiceExpense expense = ServiceExpense.builder()
@@ -295,7 +300,7 @@ public class AfterServiceService implements AfterServiceApi {
         ServiceExpense expense = expenseRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(AfterServiceErrorCode.EXPENSE_NOT_FOUND));
         if (request.engineerId() != null) {
-            engineerService.validateId(request.engineerId());
+            engineerService.validateWorkReference(request.engineerId(), expense.getEngineerId());
         }
         expense.update(
                 request.category(),
@@ -353,7 +358,12 @@ public class AfterServiceService implements AfterServiceApi {
      * 참조 무결성 검증 — 고객사 / 설비 / 주 담당 엔지니어.
      * 설비가 연결되면 그 설비의 소속 고객사와 접수 고객사가 일치해야 한다 (남의 설비로 접수 방지).
      */
-    private void validateReferences(Long customerId, Long equipmentId, Long assignedEngineerId) {
+    private void validateReferences(
+            Long customerId,
+            Long equipmentId,
+            Long assignedEngineerId,
+            Long currentEngineerId
+    ) {
         customerApi.getById(customerId);
         if (equipmentId != null) {
             EquipmentInfo equipment = equipmentApi.getById(equipmentId);
@@ -362,7 +372,7 @@ public class AfterServiceService implements AfterServiceApi {
             }
         }
         if (assignedEngineerId != null) {
-            engineerService.validateId(assignedEngineerId);
+            engineerService.validateWorkReference(assignedEngineerId, currentEngineerId);
         }
     }
 

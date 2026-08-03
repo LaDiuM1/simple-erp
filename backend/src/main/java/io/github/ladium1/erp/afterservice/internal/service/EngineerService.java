@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static java.util.stream.Collectors.toMap;
 
@@ -65,12 +66,12 @@ public class EngineerService {
                 .collect(toMap(Engineer::getId, Engineer::getName));
     }
 
-    /**
-     * AS 건 / 일지 / 경비가 참조하는 엔지니어의 존재 검증.
-     */
-    public void validateId(Long engineerId) {
-        if (!engineerRepository.existsById(engineerId)) {
-            throw new BusinessException(AfterServiceErrorCode.ENGINEER_NOT_FOUND);
+    /** 신규 참조는 활성 엔지니어만 허용하되 기존 기록의 동일 참조는 보존한다. */
+    public void validateWorkReference(Long engineerId, Long currentEngineerId) {
+        Engineer engineer = engineerRepository.findById(engineerId)
+                .orElseThrow(() -> new BusinessException(AfterServiceErrorCode.ENGINEER_NOT_FOUND));
+        if (!Objects.equals(currentEngineerId, engineerId) && !engineer.isActive()) {
+            throw new BusinessException(AfterServiceErrorCode.INACTIVE_ENGINEER);
         }
     }
 
@@ -94,7 +95,7 @@ public class EngineerService {
     public void update(Long id, EngineerRequest request) {
         Engineer engineer = engineerRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(AfterServiceErrorCode.ENGINEER_NOT_FOUND));
-        Long employeeId = validateEmployeeLink(request);
+        Long employeeId = validateEmployeeLink(request, engineer.getEmployeeId());
         engineer.update(
                 request.name().trim(),
                 request.type(),
@@ -136,6 +137,10 @@ public class EngineerService {
     }
 
     private Long validateEmployeeLink(EngineerRequest request) {
+        return validateEmployeeLink(request, null);
+    }
+
+    private Long validateEmployeeLink(EngineerRequest request, Long currentEmployeeId) {
         Long employeeId = request.employeeId();
         if (request.type() != EngineerType.INTERNAL) {
             if (employeeId != null) {
@@ -146,7 +151,8 @@ public class EngineerService {
         if (employeeId == null) {
             throw new BusinessException(AfterServiceErrorCode.INVALID_ENGINEER_EMPLOYEE);
         }
-        if (!employeeApi.isEligibleForNewWorkReference(employeeId)) {
+        if (!Objects.equals(currentEmployeeId, employeeId)
+                && !employeeApi.isEligibleForNewWorkReference(employeeId)) {
             throw new BusinessException(AfterServiceErrorCode.INVALID_ENGINEER_EMPLOYEE);
         }
         return employeeId;

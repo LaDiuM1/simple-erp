@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -28,9 +29,10 @@ import java.time.LocalDate;
 @Entity
 @Getter
 @Table(name = "equipments",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_equipments_contract_id", columnNames = "contract_id"),
         indexes = {
                 @Index(name = "idx_equipments_customer_id", columnList = "customer_id"),
-                @Index(name = "idx_equipments_contract_id", columnList = "contract_id"),
                 @Index(name = "idx_equipments_product_id", columnList = "product_id")
         })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

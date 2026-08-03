@@ -285,9 +285,48 @@ class EquipmentServiceTest {
     }
 
     @Test
+    @DisplayName("update 실패 — 계약에서 생성된 설비의 원천 스냅샷 변경")
+    void update_rejects_contract_snapshot_change() {
+        Equipment equipment = mockEquipment(10L);
+        given(equipmentRepository.findById(1L)).willReturn(Optional.of(equipment));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(3L)).willReturn(productInfo());
+        EquipmentUpdateRequest request = new EquipmentUpdateRequest(
+                1L, 3L, new BigDecimal("13"), OutputUnit.KW,
+                null, null, LocalDate.of(2026, 3, 2), null,
+                null, null, null, false, null
+        );
+
+        assertThatThrownBy(() -> equipmentService.update(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode", EquipmentErrorCode.CONTRACT_SNAPSHOT_IMMUTABLE);
+    }
+
+    @Test
+    @DisplayName("update 성공 — 계약 연결 설비는 제품 마스터 변경과 무관하게 공급사 스냅샷 보존")
+    void update_contract_linked_preserves_supplier_snapshot() {
+        Equipment equipment = mockEquipment(10L);
+        given(equipmentRepository.findById(1L)).willReturn(Optional.of(equipment));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(3L)).willReturn(ProductInfo.builder()
+                .id(3L).supplierId(99L).active(true).build());
+        EquipmentUpdateRequest request = new EquipmentUpdateRequest(
+                1L, 3L, new BigDecimal("12.0"), OutputUnit.KW,
+                "SN-001", null, LocalDate.of(2026, 3, 2), null,
+                null, null, null, false, "memo"
+        );
+
+        equipmentService.update(1L, request);
+
+        assertThat(equipment.getSupplierId()).isEqualTo(7L);
+        assertThat(equipment.getSerialNo()).isEqualTo("SN-001");
+    }
+
+    @Test
     @DisplayName("delete 성공 — 삭제 전 EquipmentDeletingEvent 발행")
     void delete_success() {
-        given(equipmentRepository.existsById(1L)).willReturn(true);
+        given(equipmentRepository.findById(1L)).willReturn(Optional.of(mockEquipment(null)));
 
         equipmentService.delete(1L);
 
@@ -298,11 +337,24 @@ class EquipmentServiceTest {
     @Test
     @DisplayName("delete 실패 — 존재하지 않는 설비")
     void delete_fail_not_found() {
-        given(equipmentRepository.existsById(99L)).willReturn(false);
+        given(equipmentRepository.findById(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> equipmentService.delete(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", EquipmentErrorCode.EQUIPMENT_NOT_FOUND);
+        verify(equipmentRepository, never()).deleteById(any());
+    }
+
+    @Test
+    @DisplayName("delete 실패 — 계약에서 생성된 설비는 직접 삭제 금지")
+    void delete_rejects_contract_linked_equipment() {
+        given(equipmentRepository.findById(1L)).willReturn(Optional.of(mockEquipment(10L)));
+
+        assertThatThrownBy(() -> equipmentService.delete(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode", EquipmentErrorCode.CONTRACT_LINKED_DELETE_FORBIDDEN);
+        verify(eventPublisher, never()).publishEvent(any());
         verify(equipmentRepository, never()).deleteById(any());
     }
 
@@ -322,6 +374,7 @@ class EquipmentServiceTest {
                 .productId(3L)
                 .outputValue(new BigDecimal("12"))
                 .outputUnit(OutputUnit.KW)
+                .installedDate(LocalDate.of(2026, 3, 2))
                 .warrantyStartDate(LocalDate.of(2026, 3, 2))
                 .oscillatorWarrantyMonths(36)
                 .generalWarrantyMonths(12)

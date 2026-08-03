@@ -35,6 +35,11 @@ public interface CodeRuleApi {
     void validate(CodeRuleTarget target, String code);
 
     /**
+     * 사용자가 직접 입력한 코드의 날짜 토큰까지 업무 기준일과 일치하는지 검증한다.
+     */
+    void validate(CodeRuleTarget target, String code, CodeGenerationContext context);
+
+    /**
      * 도메인이 {@link CodeRuleAttributeProvider} 로 등록한 attribute 후보 목록.
      * <p>
      * 채번 규칙 화면이 토큰 만들기 옵션과 매핑 관리 UI 를 그리기 위해 사용한다.
