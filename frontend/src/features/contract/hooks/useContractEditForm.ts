@@ -7,7 +7,7 @@ import { useToggle } from '@/shared/hooks/useToggle';
 import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { trimStringValues } from '@/shared/utils/trimStringValues';
-import { useGetProductQuery } from '@/features/product/api/productApi';
+import { useGetProductReferenceQuery } from '@/features/product/api/productApi';
 import { useUpdateContractMutation } from '@/features/contract/api/contractApi';
 import {
   contractDetailToFormValues,
@@ -47,7 +47,7 @@ export function useContractEditForm(id: number, detail: ContractDetail): Contrac
 
   const validation = useFieldValidation(values, contractValidators);
 
-  const productQuery = useGetProductQuery(Number(values.productId), {
+  const productQuery = useGetProductReferenceQuery(Number(values.productId), {
     skip: values.productId === '',
   });
   const supplierName =

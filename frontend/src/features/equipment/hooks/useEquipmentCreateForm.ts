@@ -7,7 +7,7 @@ import { useToggle } from '@/shared/hooks/useToggle';
 import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { trimStringValues } from '@/shared/utils/trimStringValues';
-import { useGetProductQuery } from '@/features/product/api/productApi';
+import { useGetProductReferenceQuery } from '@/features/product/api/productApi';
 import { useCreateEquipmentMutation } from '@/features/equipment/api/equipmentApi';
 import {
   EMPTY_EQUIPMENT_FORM,
@@ -40,7 +40,7 @@ export function useEquipmentCreateForm(): EquipmentCreateFormState {
   const validation = useFieldValidation(values, equipmentValidators);
 
   // 공급사는 입력받지 않고 선택된 제품에서 파생 표시 — 저장도 BE 가 제품 기준으로 수행.
-  const productQuery = useGetProductQuery(Number(values.productId), {
+  const productQuery = useGetProductReferenceQuery(Number(values.productId), {
     skip: values.productId === '',
   });
   const supplierName =

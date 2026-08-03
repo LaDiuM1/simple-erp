@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type { StateResetKey } from '@/shared/hooks/useResettableState';
 import { useListState, type ColumnConfig, type FilterConfig } from '@/shared/ui/GenericList';
 import type { CommonSearchModalApi } from './types';
 
@@ -8,6 +9,16 @@ interface Args<TRow, TFilters extends object> {
   column: ColumnConfig<TRow>[];
   /** select 모드 전용 — 결과에서 제외할 id 목록. manage 모드에서는 미지정. */
   excludeIds?: number[];
+  fixedQueryParams?: Partial<TFilters>;
+  scopeKey?: StateResetKey;
+}
+
+/** 화면 검색 조건 뒤에 문맥 고정 조건을 병합해 고정 조건의 우선순위를 보장한다. */
+export function mergeFixedQueryParams<TQuery extends object, TFixed extends object>(
+  queryParams: TQuery,
+  fixedQueryParams?: TFixed,
+): TQuery & TFixed {
+  return { ...queryParams, ...fixedQueryParams } as TQuery & TFixed;
 }
 
 /**
@@ -19,13 +30,16 @@ export function useSearchModalQueryState<TRow, TFilters extends object>({
   searchFilter,
   column,
   excludeIds,
+  fixedQueryParams,
+  scopeKey,
 }: Args<TRow, TFilters>) {
   const state = useListState<TFilters>({
     searchFilter: searchFilter ?? [],
     column,
     pageSize: api.pageSize ?? 10,
+    resetKey: scopeKey,
   });
-  const query = api.useList(state.queryParams);
+  const query = api.useList(mergeFixedQueryParams(state.queryParams, fixedQueryParams));
 
   const visibleRows = useMemo(() => {
     const rows = query.data?.content ?? [];

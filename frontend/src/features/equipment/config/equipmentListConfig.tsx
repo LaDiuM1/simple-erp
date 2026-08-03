@@ -12,6 +12,7 @@ import WarrantyDateText from '@/features/equipment/components/WarrantyDateText';
 import {
   WARRANTY_FILTER_OPTIONS,
   formatOutput,
+  type EquipmentReference,
   type EquipmentSummary,
 } from '@/features/equipment/types';
 
@@ -102,28 +103,29 @@ export const equipmentListColumns: ColumnConfig<EquipmentSummary>[] = [
  * 검색 모달용 컬럼 — AS 접수 폼의 설비 SelectField 등 선택용이라 식별 정보만 노출.
  * 목록 페이지(`equipmentListColumns`)와 의도적으로 분리 (productSelectColumns 와 동일 정책).
  */
-export const equipmentSelectColumns: ColumnConfig<EquipmentSummary>[] = [
-  {
-    key: 'customerName',
-    label: '고객사',
-    flex: 1.2,
-    render: (m) => (
-      <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
-        {m.customerName ?? '-'}
-      </Typography>
-    ),
-  },
+export const equipmentSelectColumns: ColumnConfig<EquipmentReference>[] = [
   {
     key: 'productModelName',
     label: '모델명',
+    mobilePrimary: true,
     flex: 1,
-    render: (m) => m.productModelName ?? <Muted />,
+    render: (m) => (
+      <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+        {m.productModelName ?? '-'}
+      </Typography>
+    ),
   },
   {
     key: 'serialNo',
     label: '시리얼',
     width: 120,
     render: (m) => m.serialNo ?? <Muted />,
+  },
+  {
+    key: 'installAddress',
+    label: '설치 주소',
+    flex: 1.5,
+    render: (m) => m.installAddress ?? <Muted />,
   },
   {
     key: 'installedDate',
@@ -139,7 +141,7 @@ export const equipmentSelectColumns: ColumnConfig<EquipmentSummary>[] = [
     key: 'generalWarrantyEndDate',
     label: '무상 AS',
     hideOnMobile: true,
-    width: 130,
+    width: 152,
     render: (m) => <WarrantyDateText endDate={m.generalWarrantyEndDate} />,
   },
 ];
@@ -164,3 +166,7 @@ export const equipmentListFilters: FilterConfig[] = [
   { type: 'search', key: 'addressKeyword', placeholder: '설치 주소 검색' },
   { type: 'select', key: 'warranty', label: '보증 상태', options: WARRANTY_FILTER_OPTIONS, minWidth: 150 },
 ];
+
+export const equipmentReferenceFilters: FilterConfig[] = equipmentListFilters.filter(
+  (filter) => ['serialKeyword', 'addressKeyword', 'warranty'].includes(filter.key),
+);

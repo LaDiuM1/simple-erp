@@ -8,11 +8,9 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
-import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import { CommonManageModal } from '@/shared/ui/CommonSearchModal';
-import type { ColumnConfig } from '@/shared/ui/GenericList';
 import { PrimaryPageHeaderButton, CancelPageHeaderButton } from '@/shared/ui/layout/PageHeaderButton';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
@@ -22,11 +20,11 @@ import {
   useGetAcquisitionSourcesQuery,
 } from '@/features/acquisitionSource/api/acquisitionSourceApi';
 import {
-  ACQUISITION_SOURCE_TYPE_LABELS,
   ACQUISITION_SOURCE_TYPE_OPTIONS,
   type AcquisitionSourceInfo,
   type AcquisitionSourceType,
 } from '@/features/acquisitionSource/types';
+import { acquisitionSourceModalColumns } from './acquisitionSourceModalColumns';
 
 interface Props {
   open: boolean;
@@ -91,25 +89,6 @@ export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
     setPendingDelete(null);
   };
 
-  const columns: ColumnConfig<AcquisitionSourceInfo>[] = [
-    {
-      key: 'name',
-      label: '이름',
-      mobilePrimary: true,
-      render: (s) => (
-        <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
-          {s.name}
-        </Typography>
-      ),
-    },
-    {
-      key: 'type',
-      label: '분류',
-      render: (s) => ACQUISITION_SOURCE_TYPE_LABELS[s.type],
-    },
-    { key: 'description', label: '설명' },
-  ];
-
   const headerActions = (
     <PrimaryPageHeaderButton
       startIcon={<AddIcon />}
@@ -127,7 +106,7 @@ export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
         onClose={onClose}
         title="컨택 경로 관리"
         api={adapterApi}
-        column={columns}
+        column={acquisitionSourceModalColumns}
         emptyMessage="등록된 컨택 경로가 없습니다."
         hidePagination
         headerActions={headerActions}

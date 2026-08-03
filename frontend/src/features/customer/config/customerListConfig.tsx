@@ -8,6 +8,7 @@ import {
   CUSTOMER_STATUS_OPTIONS,
   CUSTOMER_TYPE_LABELS,
   CUSTOMER_TYPE_OPTIONS,
+  type CustomerReference,
   type CustomerSummary,
 } from '@/features/customer/types';
 
@@ -55,10 +56,23 @@ export const customerListColumns: ColumnConfig<CustomerSummary>[] = [
 ];
 
 /**
- * 검색 모달용 컬럼 — 모바일에서는 고객사명 / 고객사 코드 / 전화번호만 노출.
- * 목록 페이지(`customerListColumns`)와 의도적으로 분리: 모달은 선택용이라 식별 정보만 필요.
+ * 검색 모달용 컬럼 — 고객사를 구분하고 거래 가능 여부를 판단하는 정보만 노출.
+ * 사업자등록번호·전체 주소는 고유 고객사 코드가 있는 선택 화면에서는 불필요하다.
  */
-export const customerSelectColumns: ColumnConfig<CustomerSummary>[] = [
+export const customerSelectColumns: ColumnConfig<CustomerReference>[] = [
+  {
+    key: 'name',
+    label: '고객사명',
+    sortable: true,
+    sortDirection: 'asc',
+    mobilePrimary: true,
+    flex: 1.2,
+    render: (m) => (
+      <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+        {m.name}
+      </Typography>
+    ),
+  },
   {
     key: 'code',
     label: '고객사 코드',
@@ -71,16 +85,13 @@ export const customerSelectColumns: ColumnConfig<CustomerSummary>[] = [
       </Typography>
     ),
   },
-  { key: 'name', label: '고객사명', sortable: true, sortDirection: 'asc', flex: 1.6 },
-  { key: 'phone', label: '전화', flex: 1 },
-  { key: 'bizRegNo', label: '사업자등록번호', hideOnMobile: true, width: 140 },
   { key: 'representative', label: '대표자', hideOnMobile: true, flex: 0.8 },
-  { key: 'roadAddress', label: '주소', hideOnMobile: true, flex: 2 },
+  { key: 'phone', label: '전화', flex: 1 },
   {
     key: 'type',
     label: '분류',
     hideOnMobile: true,
-    width: 80,
+    width: 112,
     render: (m) => CUSTOMER_TYPE_LABELS[m.type],
   },
   {
@@ -88,8 +99,7 @@ export const customerSelectColumns: ColumnConfig<CustomerSummary>[] = [
     label: '상태',
     sortable: true,
     sortDirection: 'asc',
-    hideOnMobile: true,
-    width: 96,
+    width: 104,
     render: (m) => <CustomerStatusIndicator status={m.status} />,
   },
 ];
@@ -102,3 +112,7 @@ export const customerListFilters: FilterConfig[] = [
   { type: 'select', key: 'type', label: '분류', options: CUSTOMER_TYPE_OPTIONS, minWidth: 120 },
   { type: 'select', key: 'status', label: '상태', options: CUSTOMER_STATUS_OPTIONS, minWidth: 120 },
 ];
+
+export const customerSelectFilters: FilterConfig[] = customerListFilters.filter((filter) =>
+  ['codeKeyword', 'nameKeyword', 'phoneKeyword', 'type', 'status'].includes(filter.key),
+);

@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -9,7 +8,12 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
+import EmployeeSelectField from '@/features/employee/components/EmployeeSelectField/EmployeeSelectField';
 import {
   useCreateEngineerMutation,
   useUpdateEngineerMutation,
@@ -28,6 +32,8 @@ interface FormValues {
   affiliation: string;
   phone: string;
   active: string;
+  employeeId: string;
+  employeeName: string;
 }
 
 const EMPTY: FormValues = {
@@ -36,6 +42,8 @@ const EMPTY: FormValues = {
   affiliation: '',
   phone: '',
   active: 'true',
+  employeeId: '',
+  employeeName: '',
 };
 
 interface Props {
@@ -46,8 +54,7 @@ interface Props {
 }
 
 /**
- * 엔지니어 등록 / 수정 모달. 내부 직원 링크 (employeeId) 는 현재 화면에서 받지 않는다 —
- * 실무 식별은 이름 / 소속으로 충분하고, 직원 연동 필요가 생기면 EmployeeSelectField 를 추가한다.
+ * 엔지니어 등록 / 수정 모달. 내부 엔지니어는 재직 직원과 연결하고 외부 엔지니어는 링크를 두지 않는다.
  */
 export default function EngineerFormModal({ open, onClose, engineer }: Props) {
   const isEdit = engineer !== undefined;
@@ -56,14 +63,10 @@ export default function EngineerFormModal({ open, onClose, engineer }: Props) {
   const [createMut, { isLoading: isCreating }] = useCreateEngineerMutation();
   const [updateMut, { isLoading: isUpdating }] = useUpdateEngineerMutation();
 
-  const [values, setValues] = useState<FormValues>(() =>
-    engineer ? toFormValues(engineer) : EMPTY,
+  const [values, setValues] = useResettableState<FormValues>(
+    modalStateResetKey(open, engineer?.id),
+    () => (engineer ? toFormValues(engineer) : EMPTY),
   );
-
-  React.useEffect(() => {
-    if (!open) return;
-    setValues(engineer ? toFormValues(engineer) : EMPTY);
-  }, [open, engineer]);
 
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));
@@ -78,13 +81,19 @@ export default function EngineerFormModal({ open, onClose, engineer }: Props) {
       snackbar.error('이름을 입력해주세요.');
       return;
     }
+    if (values.type === ENGINEER_TYPE.INTERNAL && values.employeeId === '') {
+      snackbar.error('내부 엔지니어로 연결할 직원을 선택해주세요.');
+      return;
+    }
 
     const body: EngineerRequest = {
       name: values.name.trim(),
       type: values.type as EngineerType,
       affiliation: emptyToNull(values.affiliation),
       phone: emptyToNull(values.phone),
-      employeeId: engineer?.employeeId ?? null,
+      employeeId: values.type === ENGINEER_TYPE.INTERNAL
+        ? Number(values.employeeId)
+        : null,
       active: values.active === 'true',
     };
 
@@ -119,7 +128,13 @@ export default function EngineerFormModal({ open, onClose, engineer }: Props) {
                 label="구분"
                 required
                 value={values.type}
-                onChange={(e) => update('type', e.target.value)}
+                onChange={(e) => {
+                  update('type', e.target.value);
+                  if (e.target.value !== ENGINEER_TYPE.INTERNAL) {
+                    update('employeeId', '');
+                    update('employeeName', '');
+                  }
+                }}
                 sx={{ flex: 1 }}
               >
                 {(Object.keys(ENGINEER_TYPE_LABELS) as EngineerType[]).map((t) => (
@@ -129,6 +144,19 @@ export default function EngineerFormModal({ open, onClose, engineer }: Props) {
                 ))}
               </TextField>
             </Stack>
+            {values.type === ENGINEER_TYPE.INTERNAL && (
+              <EmployeeSelectField
+                label="연결 직원"
+                required
+                value={values.employeeId}
+                valueLabel={values.employeeName}
+                onChange={(id, name) => {
+                  update('employeeId', id);
+                  update('employeeName', name);
+                }}
+                helperText="재직 중인 직원만 내부 엔지니어로 연결할 수 있습니다."
+              />
+            )}
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField
                 size="small"
@@ -180,6 +208,8 @@ function toFormValues(e: Engineer): FormValues {
     affiliation: e.affiliation ?? '',
     phone: e.phone ?? '',
     active: String(e.active),
+    employeeId: e.employeeId == null ? '' : String(e.employeeId),
+    employeeName: e.employeeName ?? '',
   };
 }
 

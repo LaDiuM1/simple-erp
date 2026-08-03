@@ -1,10 +1,10 @@
 import EntitySelectField, { type EntitySelectConfig } from '@/shared/ui/EntitySelectField';
 import { useGetRolesSummaryQuery } from '@/features/role/api/roleApi';
 import {
-  roleListColumns,
   roleListFilters,
+  roleSelectColumns,
 } from '@/features/role/config/roleListConfig';
-import type { RoleSummary } from '@/features/role/types';
+import type { RoleListFilters, RoleSummary } from '@/features/role/types';
 import { useGetRolesQuery } from '@/features/reference/api/referenceApi';
 
 interface Props {
@@ -20,14 +20,14 @@ interface Props {
   excludeId?: number;
 }
 
-const roleSelectConfig: EntitySelectConfig<RoleSummary> = {
+const roleSelectConfig: EntitySelectConfig<RoleSummary, RoleListFilters> = {
   modalTitle: '권한 검색',
   searchAriaLabel: '권한 검색',
   useSearchList: useGetRolesSummaryQuery,
   rowKey: (m) => m.id,
   rowLabel: (m) => m.name,
   searchFilter: roleListFilters,
-  column: roleListColumns,
+  column: roleSelectColumns,
 };
 
 /** 권한 검색 SelectField — 표시 라벨은 reference 캐시 (`useGetRolesQuery`) 로 lookup. */

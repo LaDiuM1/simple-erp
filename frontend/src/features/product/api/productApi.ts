@@ -2,11 +2,13 @@ import { api } from '@/shared/api/baseApi';
 import type { PageResponse } from '@/shared/types/api';
 import type {
   ProductCategoryCreateRequest,
+  ProductCategoryReference,
   ProductCategoryReorderRequest,
   ProductCategorySummary,
   ProductCategoryUpdateRequest,
   ProductCreateRequest,
   ProductDetail,
+  ProductReference,
   ProductSearchParams,
   ProductSummary,
   ProductUpdateRequest,
@@ -18,7 +20,7 @@ function cleanParams<T extends object>(params: T): Partial<T> {
   ) as Partial<T>;
 }
 
-const productApi = api.injectEndpoints({
+export const productApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getProductsSummary: builder.query<PageResponse<ProductSummary>, ProductSearchParams>({
       query: (params) => ({
@@ -35,24 +37,56 @@ const productApi = api.injectEndpoints({
       query: (id) => ({ url: `/api/v1/products/${id}`, method: 'GET' }),
       providesTags: (_result, _error, id) => [{ type: 'Product', id }],
     }),
+    getProductReferences: builder.query<PageResponse<ProductReference>, ProductSearchParams>({
+      query: (params) => ({
+        url: '/api/v1/products/reference',
+        method: 'GET',
+        params: cleanParams(params),
+      }),
+      providesTags: (result) => [
+        { type: 'Product', id: 'REFERENCE_LIST' },
+        ...(result?.content.map((product) => ({
+          type: 'Product' as const,
+          id: product.id,
+        })) ?? []),
+      ],
+    }),
+    getProductReference: builder.query<ProductReference, number>({
+      query: (id) => ({ url: `/api/v1/products/reference/${id}`, method: 'GET' }),
+      providesTags: (_result, _error, id) => [{ type: 'Product', id }],
+    }),
+    getProductReferenceCategories: builder.query<ProductCategoryReference[], void>({
+      query: () => ({ url: '/api/v1/products/reference/categories', method: 'GET' }),
+      providesTags: [{ type: 'ProductCategory', id: 'REFERENCE_LIST' }],
+    }),
     createProduct: builder.mutation<number, ProductCreateRequest>({
       query: (body) => ({ url: '/api/v1/products', method: 'POST', data: body }),
-      invalidatesTags: [{ type: 'Product', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'Product', id: 'LIST' },
+        { type: 'Product', id: 'REFERENCE_LIST' },
+      ],
     }),
     updateProduct: builder.mutation<void, { id: number; body: ProductUpdateRequest }>({
       query: ({ id, body }) => ({ url: `/api/v1/products/${id}`, method: 'PUT', data: body }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Product', id },
         { type: 'Product', id: 'LIST' },
+        { type: 'Product', id: 'REFERENCE_LIST' },
       ],
     }),
     deleteProduct: builder.mutation<void, number>({
       query: (id) => ({ url: `/api/v1/products/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Product', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'Product', id: 'LIST' },
+        { type: 'Product', id: 'REFERENCE_LIST' },
+      ],
     }),
     deleteProducts: builder.mutation<void, number[]>({
       query: (ids) => ({ url: '/api/v1/products', method: 'DELETE', data: ids }),
-      invalidatesTags: [{ type: 'Product', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'Product', id: 'LIST' },
+        { type: 'Product', id: 'REFERENCE_LIST' },
+      ],
     }),
     getProductCategories: builder.query<ProductCategorySummary[], void>({
       query: () => ({ url: '/api/v1/products/categories', method: 'GET' }),
@@ -67,7 +101,9 @@ const productApi = api.injectEndpoints({
       query: ({ id, body }) => ({ url: `/api/v1/products/categories/${id}`, method: 'PUT', data: body }),
       invalidatesTags: [
         { type: 'ProductCategory', id: 'LIST' },
+        { type: 'ProductCategory', id: 'REFERENCE_LIST' },
         { type: 'Product', id: 'LIST' },
+        { type: 'Product', id: 'REFERENCE_LIST' },
       ],
     }),
     deleteProductCategory: builder.mutation<void, number>({
@@ -84,6 +120,9 @@ const productApi = api.injectEndpoints({
 export const {
   useGetProductsSummaryQuery,
   useGetProductQuery,
+  useGetProductReferencesQuery,
+  useGetProductReferenceQuery,
+  useGetProductReferenceCategoriesQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,

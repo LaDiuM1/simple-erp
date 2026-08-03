@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { StateResetKey } from '@/shared/hooks/useResettableState';
 import type {
   ColumnConfig,
   FilterConfig,
@@ -32,6 +33,13 @@ interface BaseProps<TRow, TFilters extends object> {
   onClose: () => void;
   title: string;
   api: CommonSearchModalApi<TRow, TFilters>;
+  /**
+   * 선택 문맥이 강제하는 서버 검색 조건. 화면 필터보다 나중에 병합되어 사용자가
+   * 다른 값으로 덮어쓸 수 없다 (예: 재직 직원, 선택 고객사의 설비).
+   */
+  fixedQueryParams?: Partial<TFilters>;
+  /** 고정 검색 문맥 식별자. 값이 바뀌면 필터/페이지/선택을 초기화한다. */
+  scopeKey?: StateResetKey;
   /** 리스트 필터바 (search / select / custom) — GenericList 와 동일 구성. 미지정 시 필터바 숨김. */
   searchFilter?: FilterConfig[];
   /** 행에 표시할 컬럼 — GenericList 와 동일 구성. */

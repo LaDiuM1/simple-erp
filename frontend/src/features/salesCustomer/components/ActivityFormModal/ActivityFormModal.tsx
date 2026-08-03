@@ -11,6 +11,10 @@ import TextField from '@mui/material/TextField';
 import EmployeeSelectField from '@/features/employee/components/EmployeeSelectField';
 import SalesContactSelectField from '@/features/salesContact/components/SalesContactSelectField';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import {
+  modalStateResetKey,
+  useResettableState,
+} from '@/shared/hooks/useResettableState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 import {
@@ -24,6 +28,7 @@ import {
   type SalesActivity,
   type SalesActivityType,
 } from '@/features/salesCustomer/types';
+import { clearActivityCustomerContact } from './activityFormState';
 
 interface FormValues {
   type: SalesActivityType;
@@ -63,23 +68,23 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
   const [updateMut, { isLoading: isUpdating }] = useUpdateSalesActivityMutation();
   const { data: myProfile } = useGetMyProfileQuery();
 
-  const [values, setValues] = useState<FormValues>(() =>
-    activity ? toFormValues(activity) : { ...EMPTY, activityDate: todayDateTimeLocal() },
+  const formEntityKey = activity?.id ?? `new:${myProfile?.id ?? 'profile-pending'}`;
+  const [values, setValues] = useResettableState<FormValues>(
+    modalStateResetKey(open, formEntityKey),
+    () => activity
+      ? toFormValues(activity)
+      : {
+          ...EMPTY,
+          activityDate: todayDateTimeLocal(),
+          ourEmployeeId: myProfile ? String(myProfile.id) : '',
+          ourEmployeeName: myProfile?.name ?? '',
+        },
   );
-
-  React.useEffect(() => {
-    if (!open) return;
-    if (activity) {
-      setValues(toFormValues(activity));
-    } else {
-      setValues({
-        ...EMPTY,
-        activityDate: todayDateTimeLocal(),
-        ourEmployeeId: myProfile ? String(myProfile.id) : '',
-        ourEmployeeName: myProfile ? myProfile.name : '',
-      });
-    }
-  }, [open, activity, myProfile]);
+  const [previousCustomerId, setPreviousCustomerId] = useState(customerId);
+  if (previousCustomerId !== customerId) {
+    setPreviousCustomerId(customerId);
+    setValues(clearActivityCustomerContact);
+  }
 
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: v }));
@@ -174,6 +179,7 @@ export default function ActivityFormModal({ open, onClose, customerId, activity 
             />
 
             <SalesContactSelectField
+              customerId={customerId}
               label="고객사 담당자 (영업 명부)"
               value={values.customerContactId}
               valueLabel={values.customerContactSelectedName}

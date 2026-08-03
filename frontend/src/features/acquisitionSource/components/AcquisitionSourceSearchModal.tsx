@@ -1,11 +1,10 @@
 import { useMemo } from 'react';
-import Typography from '@mui/material/Typography';
 import CommonSearchModal from '@/shared/ui/CommonSearchModal';
 import type { CommonSearchModalApi, CommonSearchSelectedItem } from '@/shared/ui/CommonSearchModal/types';
-import type { ColumnConfig, FilterConfig } from '@/shared/ui/GenericList';
+import type { FilterConfig } from '@/shared/ui/GenericList';
 import { useGetAcquisitionSourcesQuery } from '@/features/acquisitionSource/api/acquisitionSourceApi';
+import { acquisitionSourceModalColumns } from './acquisitionSourceModalColumns';
 import {
-  ACQUISITION_SOURCE_TYPE_LABELS,
   ACQUISITION_SOURCE_TYPE_OPTIONS,
   type AcquisitionSourceInfo,
   type AcquisitionSourceType,
@@ -26,25 +25,6 @@ interface Props {
   /** 확인 클릭 시 호출 — 선택된 sourceId 목록. */
   onConfirm: (ids: number[]) => void;
 }
-
-const COLUMNS: ColumnConfig<AcquisitionSourceInfo>[] = [
-  {
-    key: 'name',
-    label: '이름',
-    mobilePrimary: true,
-    render: (s) => (
-      <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
-        {s.name}
-      </Typography>
-    ),
-  },
-  {
-    key: 'type',
-    label: '분류',
-    render: (s) => ACQUISITION_SOURCE_TYPE_LABELS[s.type],
-  },
-  { key: 'description', label: '설명' },
-];
 
 const SEARCH_FILTER: FilterConfig[] = [
   { type: 'search', key: 'nameKeyword', placeholder: '이름 검색' },
@@ -123,7 +103,7 @@ export default function AcquisitionSourceSearchModal({
       selectionStyle="tray"
       api={adapterApi}
       searchFilter={SEARCH_FILTER}
-      column={COLUMNS}
+      column={acquisitionSourceModalColumns}
       initialSelected={initialSelected}
       onSelect={handleSelect}
       confirmLabel={context === 'filter' ? '검색' : '확인'}

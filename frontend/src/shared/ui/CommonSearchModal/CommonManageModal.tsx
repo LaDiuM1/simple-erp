@@ -19,6 +19,8 @@ export default function CommonManageModal<TRow, TFilters extends object>({
   onClose,
   title,
   api,
+  fixedQueryParams,
+  scopeKey,
   searchFilter,
   column,
   emptyMessage,
@@ -27,7 +29,7 @@ export default function CommonManageModal<TRow, TFilters extends object>({
   rowActions,
 }: CommonManageModalProps<TRow, TFilters>) {
   const { state, query, visibleRows } = useSearchModalQueryState({
-    api, searchFilter, column,
+    api, searchFilter, column, fixedQueryParams, scopeKey,
   });
   const { data, isFetching, isError, error, refetch } = query;
 

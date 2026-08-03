@@ -1,10 +1,10 @@
 import EntitySelectField, { type EntitySelectConfig } from '@/shared/ui/EntitySelectField';
-import { useGetCustomersQuery } from '@/features/customer/api/customerApi';
+import { useGetCustomerReferencesQuery } from '@/features/customer/api/customerApi';
 import {
   customerSelectColumns,
-  customerListFilters,
+  customerSelectFilters,
 } from '@/features/customer/config/customerListConfig';
-import type { CustomerSummary } from '@/features/customer/types';
+import type { CustomerListFilters, CustomerReference } from '@/features/customer/types';
 
 interface Props {
   label?: string;
@@ -21,13 +21,13 @@ interface Props {
   dense?: boolean;
 }
 
-const customerSelectConfig: EntitySelectConfig<CustomerSummary> = {
+const customerSelectConfig: EntitySelectConfig<CustomerReference, CustomerListFilters> = {
   modalTitle: '고객사 검색',
   searchAriaLabel: '고객사 검색',
-  useSearchList: useGetCustomersQuery,
+  useSearchList: useGetCustomerReferencesQuery,
   rowKey: (m) => m.id,
   rowLabel: (m) => m.name,
-  searchFilter: customerListFilters,
+  searchFilter: customerSelectFilters,
   column: customerSelectColumns,
 };
 

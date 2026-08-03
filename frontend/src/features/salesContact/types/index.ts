@@ -75,6 +75,8 @@ export interface SalesContactSearchParams {
   emailKeyword?: string | null;
   phoneKeyword?: string | null;
   sourceIds?: number[] | null;
+  /** 해당 고객사에 현재 재직 중인 담당자만 조회. */
+  customerId?: number | null;
   page: number;
   size?: number;
   sort?: string;

@@ -2,13 +2,30 @@ import type { FieldValidation } from '@/shared/hooks/useFieldValidation';
 import type { AfterServiceFormValues, Engineer } from '@/features/afterService/types';
 import type { WarrantySuggestion } from '@/features/afterService/validation/afterServiceFormValidation';
 
+type AfterServiceFormUpdate = <K extends keyof AfterServiceFormValues>(
+  key: K,
+  value: AfterServiceFormValues[K],
+) => void;
+
+/** 고객사가 바뀌면 이전 고객사 설비 참조를 같은 상태 변경 경계에서 제거한다. */
+export function changeAfterServiceCustomer(
+  update: AfterServiceFormUpdate,
+  id: string,
+  name: string,
+): void {
+  update('customerId', id);
+  update('customerName', name);
+  update('equipmentId', '');
+  update('equipmentLabel', '');
+}
+
 /**
  * AS 접수 / 수정 폼이 공통으로 가지는 최소 상태.
  * 양쪽 모드에서 재사용되는 섹션의 props 타입.
  */
 export interface AfterServiceFormStateBase {
   values: AfterServiceFormValues;
-  update: <K extends keyof AfterServiceFormValues>(key: K, v: AfterServiceFormValues[K]) => void;
+  update: AfterServiceFormUpdate;
   validation: FieldValidation<AfterServiceFormValues>;
   /** 고객사 변경 — 다른 고객사 설비가 남지 않도록 설비 선택을 함께 초기화. */
   handleCustomerChange: (id: string, name: string) => void;

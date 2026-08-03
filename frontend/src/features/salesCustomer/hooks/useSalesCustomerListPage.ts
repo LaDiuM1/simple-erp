@@ -7,7 +7,7 @@ import type {
   QueryState,
 } from '@/shared/ui/GenericList';
 import type { PageHeaderAction } from '@/shared/ui/layout/PageHeaderActions';
-import { useGetCustomersQuery } from '@/features/customer/api/customerApi';
+import { useGetSalesCustomerReferencesQuery } from '@/features/customer/api/customerApi';
 import {
   type CustomerListFilters,
 } from '@/features/customer/types';
@@ -21,7 +21,7 @@ import type { SalesCustomerListRow } from '@/features/salesCustomer/config/sales
 function useSalesCustomerListQuery(
   params: CustomerListFilters & ListQueryParamsBase,
 ): QueryState<SalesCustomerListRow> {
-  const customers = useGetCustomersQuery(params);
+  const customers = useGetSalesCustomerReferencesQuery(params);
   const customerIds = customers.data?.content.map((c) => c.id) ?? [];
   const aggregates = useGetSalesCustomerAggregatesQuery(customerIds, {
     skip: customerIds.length === 0,

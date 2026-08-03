@@ -1,5 +1,6 @@
 import CloseIcon from '@mui/icons-material/Close';
 import EmployeeSelectField from '@/features/employee/components/EmployeeSelectField/EmployeeSelectField';
+import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 import {
   ApproverName,
   EmptyHint,
@@ -30,10 +31,14 @@ interface Props {
  * 전자결재 기안 / 경비 청구 / 휴가 신청이 공용 사용.
  */
 export default function ApprovalLineField({ label = '결재선', value, onChange, disabled }: Props) {
+  const { data: myProfile } = useGetMyProfileQuery();
+
   const handleSelect = (id: string, name: string) => {
     if (!id) return;
 
     const employeeId = Number(id);
+    // 검색 결과 필터와 별개로 선택 직전에도 기안자 본인을 차단한다.
+    if (employeeId === myProfile?.id) return;
     // 중복 결재자는 무시
     if (value.some((entry) => entry.employeeId === employeeId)) return;
     onChange([...value, { employeeId, name }]);
@@ -53,6 +58,7 @@ export default function ApprovalLineField({ label = '결재선', value, onChange
             value=""
             valueLabel=""
             onChange={handleSelect}
+            excludeId={myProfile?.id}
             placeholder="결재자 검색"
           />
         </SelectRow>

@@ -117,6 +117,7 @@ export interface Engineer {
   affiliation: string | null;
   phone: string | null;
   employeeId: number | null;
+  employeeName: string | null;
   active: boolean;
 }
 

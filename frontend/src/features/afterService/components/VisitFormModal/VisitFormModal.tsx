@@ -21,6 +21,7 @@ import {
   useUpdateServiceVisitMutation,
 } from '@/features/afterService/api/afterServiceApi';
 import type { ServiceVisit, ServiceVisitRequest } from '@/features/afterService/types';
+import { eligibleEngineerOptions } from '@/features/afterService/utils/eligibleEngineerOptions';
 
 interface FormValues {
   visitDate: string;
@@ -53,9 +54,7 @@ export default function VisitFormModal({ open, onClose, afterServiceId, visit }:
   const [updateMut, { isLoading: isUpdating }] = useUpdateServiceVisitMutation();
   const [deleteMut, { isLoading: isDeleting }] = useDeleteServiceVisitMutation();
   const engineersQuery = useGetEngineersQuery();
-  const engineers = (engineersQuery.data ?? []).filter(
-    (e) => e.active || (visit != null && e.id === visit.engineerId),
-  );
+  const engineers = eligibleEngineerOptions(engineersQuery.data ?? [], visit?.engineerId);
 
   const resetKey = modalStateResetKey(open, visit?.id ?? `new:${afterServiceId}`);
   const [values, setValues] = useResettableState<FormValues>(

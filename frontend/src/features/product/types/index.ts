@@ -6,6 +6,11 @@ export interface ProductCategorySummary {
   productCount: number;
 }
 
+export interface ProductCategoryReference {
+  id: number;
+  name: string;
+}
+
 export interface ProductCategoryCreateRequest {
   name: string;
 }
@@ -22,6 +27,14 @@ export interface ProductSummary {
   categoryName: string | null;
   modelName: string;
   supplierId: number;
+  supplierName: string | null;
+  active: boolean;
+}
+
+export interface ProductReference {
+  id: number;
+  modelName: string;
+  categoryName: string | null;
   supplierName: string | null;
   active: boolean;
 }

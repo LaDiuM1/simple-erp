@@ -1,10 +1,10 @@
 import EntitySelectField, { type EntitySelectConfig } from '@/shared/ui/EntitySelectField';
 import { useGetDepartmentsSummaryQuery } from '@/features/department/api/departmentApi';
 import {
-  departmentListColumns,
   departmentListFilters,
+  departmentSelectColumns,
 } from '@/features/department/config/departmentListConfig';
-import type { DepartmentSummary } from '@/features/department/types';
+import type { DepartmentListFilters, DepartmentSummary } from '@/features/department/types';
 import { useGetDepartmentsQuery } from '@/features/reference/api/referenceApi';
 
 interface Props {
@@ -20,14 +20,14 @@ interface Props {
   excludeId?: number;
 }
 
-const departmentSelectConfig: EntitySelectConfig<DepartmentSummary> = {
+const departmentSelectConfig: EntitySelectConfig<DepartmentSummary, DepartmentListFilters> = {
   modalTitle: '부서 검색',
   searchAriaLabel: '부서 검색',
   useSearchList: useGetDepartmentsSummaryQuery,
   rowKey: (m) => m.id,
   rowLabel: (m) => m.name,
   searchFilter: departmentListFilters,
-  column: departmentListColumns,
+  column: departmentSelectColumns,
 };
 
 /**

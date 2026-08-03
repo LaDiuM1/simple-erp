@@ -8,7 +8,7 @@ import Muted from '@/shared/ui/atoms/Muted';
 import { formatKrw } from '@/shared/utils/formatKrw';
 import { useGetSuppliersQuery } from '@/features/reference/api/referenceApi';
 import type { SupplierInfo } from '@/features/reference/types';
-import EmployeeSelectFilter from '@/features/employee/components/EmployeeSelectFilter';
+import ContractEmployeeSelectFilter from '@/features/contract/components/ContractEmployeeSelectFilter';
 import CustomerSelectFilter from '@/features/customer/components/CustomerSelectFilter';
 import ContractStatusIndicator from '@/features/contract/components/ContractStatusIndicator';
 import {
@@ -130,7 +130,7 @@ export const contractListFilters: FilterConfig[] = [
     type: 'custom',
     key: 'employeeId',
     render: ({ value, onChange }) => (
-      <EmployeeSelectFilter value={value} onChange={onChange} label="계약자" />
+      <ContractEmployeeSelectFilter value={value} onChange={onChange} />
     ),
   },
   {

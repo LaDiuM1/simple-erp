@@ -97,6 +97,36 @@ export const salesContactListColumns: ColumnConfig<SalesContactSummary>[] = [
   },
 ];
 
+/**
+ * 영업 활동의 고객 담당자 선택용 컬럼.
+ * 최초 미팅일·컨택 경로는 명부 관리 정보이며 현재 담당자를 식별하는 데 필요하지 않다.
+ */
+export const salesContactSelectColumns: ColumnConfig<SalesContactSummary>[] = [
+  {
+    key: 'name',
+    label: '이름',
+    sortable: true,
+    sortDirection: 'asc',
+    mobilePrimary: true,
+    flex: 1,
+    render: (m) => (
+      <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+        {m.name}
+      </Typography>
+    ),
+  },
+  { key: 'currentCompanyName', label: '현재 소속', flex: 1.2 },
+  { key: 'currentPosition', label: '직책', flex: 0.8 },
+  { key: 'currentDepartment', label: '부서', hideOnMobile: true, flex: 1 },
+  { key: 'mobilePhone', label: '휴대폰', flex: 1.2 },
+  { key: 'email', label: '이메일', hideOnMobile: true, flex: 1.75 },
+];
+
+/** 고객사가 이미 고정된 활동 폼에서는 현재 소속 열도 중복이므로 제외한다. */
+export const customerScopedSalesContactSelectColumns = salesContactSelectColumns.filter(
+  (column) => column.key !== 'currentCompanyName',
+);
+
 export const salesContactListFilters: FilterConfig[] = [
   { type: 'search', key: 'nameKeyword', placeholder: '이름 검색' },
   { type: 'search', key: 'emailKeyword', placeholder: '이메일 검색' },
@@ -116,3 +146,6 @@ export const salesContactListFilters: FilterConfig[] = [
   },
 ];
 
+export const salesContactSelectFilters: FilterConfig[] = salesContactListFilters.filter(
+  (filter) => ['nameKeyword', 'emailKeyword', 'phoneKeyword'].includes(filter.key),
+);

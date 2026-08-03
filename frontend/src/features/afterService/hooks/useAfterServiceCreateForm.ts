@@ -7,7 +7,7 @@ import { useToggle } from '@/shared/hooks/useToggle';
 import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { trimStringValues } from '@/shared/utils/trimStringValues';
-import { useGetEquipmentQuery } from '@/features/equipment/api/equipmentApi';
+import { useGetEquipmentReferenceQuery } from '@/features/equipment/api/equipmentApi';
 import {
   useCreateAfterServiceMutation,
   useGetEngineersQuery,
@@ -22,7 +22,11 @@ import {
   afterServiceValidators,
   suggestWarrantyDecision,
 } from '@/features/afterService/validation/afterServiceFormValidation';
-import type { AfterServiceFormStateBase } from './afterServiceFormState';
+import { eligibleEngineerOptions } from '@/features/afterService/utils/eligibleEngineerOptions';
+import {
+  changeAfterServiceCustomer,
+  type AfterServiceFormStateBase,
+} from './afterServiceFormState';
 
 export interface AfterServiceCreateFormState extends AfterServiceFormStateBase {
   isSaving: boolean;
@@ -47,20 +51,20 @@ export function useAfterServiceCreateForm(): AfterServiceCreateFormState {
   const validation = useFieldValidation(values, afterServiceValidators);
 
   const engineersQuery = useGetEngineersQuery();
-  const engineers = (engineersQuery.data ?? []).filter((e) => e.active);
+  const engineers = eligibleEngineerOptions(engineersQuery.data ?? [], null);
 
   // 설비 연결 시 보증 만료일 조회 → 유상 / 무상 제안 (read-only 참조라 controlled input 오염 없음).
-  const equipmentQuery = useGetEquipmentQuery(Number(values.equipmentId), {
-    skip: values.equipmentId === '',
-  });
+  const equipmentQuery = useGetEquipmentReferenceQuery(
+    {
+      id: Number(values.equipmentId),
+      customerId: Number(values.customerId),
+    },
+    { skip: values.equipmentId === '' || values.customerId === '' },
+  );
   const warrantySuggestion = suggestWarrantyDecision(equipmentQuery.data, values.receivedDate);
 
   const handleCustomerChange = (id: string, name: string) => {
-    update('customerId', id);
-    update('customerName', name);
-    // 다른 고객사의 설비가 연결된 채 남지 않도록 초기화.
-    update('equipmentId', '');
-    update('equipmentLabel', '');
+    changeAfterServiceCustomer(update, id, name);
   };
 
   const handleWarrantyDecisionChange = (decision: string) => {

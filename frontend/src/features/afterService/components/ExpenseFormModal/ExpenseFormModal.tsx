@@ -29,6 +29,7 @@ import {
   type ServiceExpenseCategory,
   type ServiceExpenseRequest,
 } from '@/features/afterService/types';
+import { eligibleEngineerOptions } from '@/features/afterService/utils/eligibleEngineerOptions';
 
 interface FormValues {
   category: string;
@@ -65,9 +66,7 @@ export default function ExpenseFormModal({ open, onClose, afterServiceId, expens
   const [updateMut, { isLoading: isUpdating }] = useUpdateServiceExpenseMutation();
   const [deleteMut, { isLoading: isDeleting }] = useDeleteServiceExpenseMutation();
   const engineersQuery = useGetEngineersQuery();
-  const engineers = (engineersQuery.data ?? []).filter(
-    (e) => e.active || (expense?.engineerId != null && e.id === expense.engineerId),
-  );
+  const engineers = eligibleEngineerOptions(engineersQuery.data ?? [], expense?.engineerId);
 
   const resetKey = modalStateResetKey(open, expense?.id ?? `new:${afterServiceId}`);
   const [values, setValues] = useResettableState<FormValues>(

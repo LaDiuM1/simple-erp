@@ -10,28 +10,28 @@ import { SearchTextField } from '@/shared/ui/GenericList';
 import type {
   ColumnConfig,
   FilterConfig,
+  ListQueryParamsBase,
   QueryState,
 } from '@/shared/ui/GenericList';
+import type { StateResetKey } from '@/shared/hooks/useResettableState';
 
 /**
  * 도메인별로 한 번 정의하는 EntitySelectField 의 검색 모달 설정.
  * 모달 내부 filter / column / 검색 query 페어를 묶어 wrapper 가 외부로 노출.
- * 도메인마다 filter param 타입이 다르므로 TFilters 는 `any` 로 erase — 도메인 wrapper 가
- * config 와 그 wrapper 호출자의 짝을 보장해 런타임 안전.
+ * TFilters 를 검색 hook 과 고정 조건까지 그대로 보존해 wrapper 의 조건 오타를 컴파일 단계에서 막는다.
  */
-export interface EntitySelectConfig<TSummary> {
+export interface EntitySelectConfig<TSummary, TFilters extends object> {
   modalTitle: string;
   searchAriaLabel: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  useSearchList: (params: any) => QueryState<TSummary>;
+  useSearchList: (params: TFilters & ListQueryParamsBase) => QueryState<TSummary>;
   rowKey: (row: TSummary) => number;
   rowLabel: (row: TSummary) => string;
   searchFilter: FilterConfig[];
   column: ColumnConfig<TSummary>[];
 }
 
-interface Props<TSummary> {
-  config: EntitySelectConfig<TSummary>;
+interface Props<TSummary, TFilters extends object> {
+  config: EntitySelectConfig<TSummary, TFilters>;
   label: string;
   /** 선택된 entity id (string). 빈 문자열 = 미선택. */
   value: string;
@@ -49,6 +49,10 @@ interface Props<TSummary> {
   placeholder?: string;
   /** 결과 목록에서 제외할 id (예: 자기 자신을 상위로 못 고르도록). */
   excludeId?: number;
+  /** 선택 문맥이 강제하는 서버 검색 조건. 검색 필터에서 같은 키를 바꿔도 이 값이 우선한다. */
+  fixedQueryParams?: Partial<TFilters>;
+  /** 고정 검색 문맥 식별자. 값 변경 시 모달 검색/선택 상태를 초기화한다. */
+  scopeKey?: StateResetKey;
   /**
    * 필터바 배치용 dense 톤 — floating label 없이 height 36 의 SearchTextField 톤으로 렌더.
    * 다른 필터 컨트롤(FilterSelect / DateTextField / SearchField)과 박스 크기 / 라벨 스타일을 맞춘다.
@@ -64,7 +68,7 @@ interface Props<TSummary> {
  * - readOnly input + onMouseDown.preventDefault() 로 input focus 의 "편집 모드" 시각 효과 회피
  *   (키보드 tab focus 는 정상 — a11y 보존).
  */
-export default function EntitySelectField<TSummary>({
+export default function EntitySelectField<TSummary, TFilters extends object>({
   config,
   label,
   value,
@@ -75,8 +79,10 @@ export default function EntitySelectField<TSummary>({
   disabled,
   placeholder,
   excludeId,
+  fixedQueryParams,
+  scopeKey,
   dense,
-}: Props<TSummary>) {
+}: Props<TSummary, TFilters>) {
   const [open, setOpen] = useState(false);
   const openModal = () => {
     if (!disabled) setOpen(true);
@@ -174,7 +180,7 @@ export default function EntitySelectField<TSummary>({
   return (
     <>
       {trigger}
-      <CommonSearchModal<TSummary, never>
+      <CommonSearchModal<TSummary, TFilters>
         open={open}
         onClose={() => setOpen(false)}
         title={config.modalTitle}
@@ -183,6 +189,8 @@ export default function EntitySelectField<TSummary>({
           rowKey: config.rowKey,
           rowLabel: config.rowLabel,
         }}
+        fixedQueryParams={fixedQueryParams}
+        scopeKey={scopeKey}
         searchFilter={config.searchFilter}
         column={config.column}
         onSelect={(selected) => {

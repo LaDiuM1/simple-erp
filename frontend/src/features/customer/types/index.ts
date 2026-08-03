@@ -42,6 +42,23 @@ export interface CustomerSummary {
   tradeStartDate: string | null;
 }
 
+/** 관리 상세가 아닌 업무 참조 화면에서 사용하는 고객사 식별 정보. */
+export interface CustomerReference {
+  id: number;
+  code: string;
+  name: string;
+  representative: string | null;
+  phone: string | null;
+  type: CustomerType;
+  status: CustomerStatus;
+}
+
+export interface SalesCustomerReference extends CustomerReference {
+  zipCode: string | null;
+  roadAddress: string | null;
+  detailAddress: string | null;
+}
+
 export interface CustomerDetail {
   id: number;
   code: string;

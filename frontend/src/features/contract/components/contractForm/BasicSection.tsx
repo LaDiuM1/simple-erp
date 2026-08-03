@@ -4,7 +4,7 @@ import { FormSection } from '@/shared/ui/GenericForm';
 import CodeField from '@/features/codeRule/components/CodeField/CodeField';
 import { CODE_RULE_TARGET } from '@/features/codeRule/types';
 import CustomerSelectField from '@/features/customer/components/CustomerSelectField';
-import EmployeeSelectField from '@/features/employee/components/EmployeeSelectField/EmployeeSelectField';
+import ContractEmployeeSelectField from '@/features/contract/components/ContractEmployeeSelectField';
 import ProductSelectField from '@/features/product/components/ProductSelectField/ProductSelectField';
 import type { ContractFormStateBase } from '@/features/contract/hooks/contractFormState';
 import { FieldGrid } from './contractForm.styles';
@@ -51,7 +51,7 @@ export default function BasicSection({ form, mode }: Props) {
           }}
           helperText={validation.errorMessage('customerId')}
         />
-        <EmployeeSelectField
+        <ContractEmployeeSelectField
           label="계약자"
           required
           value={values.employeeId}

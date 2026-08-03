@@ -5,14 +5,14 @@ import {
 } from '@/shared/ui/GenericList';
 import {
   CUSTOMER_STATUS_OPTIONS,
-  type CustomerSummary,
+  type SalesCustomerReference,
 } from '@/features/customer/types';
 import CustomerStatusIndicator from '@/features/customer/components/CustomerStatusIndicator';
 
 /**
  * 영업 관리 목록 행 — customer 마스터 + 영업 집계 (현담당자 / 인원 / 활동수 / 마지막 활동일).
  */
-export type SalesCustomerListRow = CustomerSummary & {
+export type SalesCustomerListRow = SalesCustomerReference & {
   primaryAssigneeName: string | null;
   activeAssigneeCount: number;
   activityCount: number;

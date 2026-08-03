@@ -1,10 +1,13 @@
 import EntitySelectField, { type EntitySelectConfig } from '@/shared/ui/EntitySelectField';
-import { useGetEquipmentsQuery } from '@/features/equipment/api/equipmentApi';
+import { useGetEquipmentReferencesQuery } from '@/features/equipment/api/equipmentApi';
 import {
-  equipmentListFilters,
+  equipmentReferenceFilters,
   equipmentSelectColumns,
 } from '@/features/equipment/config/equipmentListConfig';
-import type { EquipmentSummary } from '@/features/equipment/types';
+import type {
+  EquipmentReference,
+  EquipmentReferenceListFilters,
+} from '@/features/equipment/types';
 
 interface Props {
   label?: string;
@@ -17,20 +20,39 @@ interface Props {
   helperText?: string;
   disabled?: boolean;
   placeholder?: string;
+  /** 신규 선택 후보를 제한하는 고객사 id. */
+  customerId: string | number;
 }
 
-const equipmentSelectConfig: EntitySelectConfig<EquipmentSummary> = {
+const equipmentSelectConfig: EntitySelectConfig<
+  EquipmentReference,
+  EquipmentReferenceListFilters
+> = {
   modalTitle: '설비 검색',
   searchAriaLabel: '설비 검색',
-  useSearchList: useGetEquipmentsQuery,
+  useSearchList: useGetEquipmentReferencesQuery,
   rowKey: (m) => m.id,
-  rowLabel: (m) =>
-    `${m.productModelName ?? '모델 미상'}${m.serialNo ? ` (${m.serialNo})` : ''}`,
-  searchFilter: equipmentListFilters,
+  rowLabel: (m) => {
+    const detail = m.serialNo
+      ? ` (${m.serialNo})`
+      : m.installAddress
+        ? ` · ${m.installAddress}`
+        : '';
+    return `${m.productModelName ?? '모델 미상'}${detail}`;
+  },
+  searchFilter: equipmentReferenceFilters,
   column: equipmentSelectColumns,
 };
 
-/** 설비 대장 검색 SelectField — CustomerSelectField 와 동일 패턴 (외부 valueLabel). */
-export default function EquipmentSelectField({ label = '설비', ...rest }: Props) {
-  return <EntitySelectField {...rest} label={label} config={equipmentSelectConfig} />;
+/** AS 접수용 고객사 범위 설비 검색. */
+export default function EquipmentSelectField({ label = '설비', customerId, ...rest }: Props) {
+  return (
+    <EntitySelectField
+      {...rest}
+      label={label}
+      config={equipmentSelectConfig}
+      fixedQueryParams={{ customerId: Number(customerId) }}
+      scopeKey={`customer:${customerId}`}
+    />
+  );
 }

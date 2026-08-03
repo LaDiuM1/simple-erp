@@ -7,7 +7,7 @@ import { useToggle } from '@/shared/hooks/useToggle';
 import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { trimStringValues } from '@/shared/utils/trimStringValues';
-import { useGetProductQuery } from '@/features/product/api/productApi';
+import { useGetProductReferenceQuery } from '@/features/product/api/productApi';
 import { useUpdateEquipmentMutation } from '@/features/equipment/api/equipmentApi';
 import {
   equipmentDetailToFormValues,
@@ -44,7 +44,7 @@ export function useEquipmentEditForm(id: number, detail: EquipmentDetail): Equip
 
   const validation = useFieldValidation(values, equipmentValidators);
 
-  const productQuery = useGetProductQuery(Number(values.productId), {
+  const productQuery = useGetProductReferenceQuery(Number(values.productId), {
     skip: values.productId === '',
   });
   const supplierName =

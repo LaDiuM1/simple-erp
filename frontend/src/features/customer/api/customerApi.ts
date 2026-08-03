@@ -8,6 +8,8 @@ import type { ExcelUploadResult } from '@/shared/ui/ExcelUpload';
 import type {
   CustomerCreateRequest,
   CustomerDetail,
+  CustomerReference,
+  SalesCustomerReference,
   CustomerSearchParams,
   CustomerSummary,
   CustomerUpdateRequest,
@@ -36,28 +38,74 @@ const customerApi = api.injectEndpoints({
       query: (id) => ({ url: `/api/v1/customers/${id}`, method: 'GET' }),
       providesTags: (_result, _error, id) => [{ type: 'Customer', id }],
     }),
+    getCustomerReferences: builder.query<PageResponse<CustomerReference>, CustomerSearchParams>({
+      query: (params) => ({
+        url: '/api/v1/customers/reference',
+        method: 'GET',
+        params: cleanParams(params),
+      }),
+      providesTags: (result) => [
+        { type: 'Customer', id: 'REFERENCE_LIST' },
+        ...(result?.content.map((c) => ({ type: 'Customer' as const, id: c.id })) ?? []),
+      ],
+    }),
+    getSalesCustomerReferences: builder.query<PageResponse<SalesCustomerReference>, CustomerSearchParams>({
+      query: (params) => ({
+        url: '/api/v1/customers/sales-reference',
+        method: 'GET',
+        params: cleanParams(params),
+      }),
+      providesTags: (result) => [
+        { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
+        ...(result?.content.map((c) => ({ type: 'Customer' as const, id: c.id })) ?? []),
+      ],
+    }),
+    getSalesCustomerReference: builder.query<SalesCustomerReference, number>({
+      query: (id) => ({ url: `/api/v1/customers/sales-reference/${id}`, method: 'GET' }),
+      providesTags: (_result, _error, id) => [{ type: 'Customer', id }],
+    }),
     createCustomer: builder.mutation<number, CustomerCreateRequest>({
       query: (body) => ({ url: '/api/v1/customers', method: 'POST', data: body }),
-      invalidatesTags: [{ type: 'Customer', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'Customer', id: 'LIST' },
+        { type: 'Customer', id: 'REFERENCE_LIST' },
+        { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
+      ],
     }),
     updateCustomer: builder.mutation<void, { id: number; body: CustomerUpdateRequest }>({
       query: ({ id, body }) => ({ url: `/api/v1/customers/${id}`, method: 'PUT', data: body }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Customer', id },
         { type: 'Customer', id: 'LIST' },
+        { type: 'Customer', id: 'REFERENCE_LIST' },
+        { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
       ],
     }),
     deleteCustomer: builder.mutation<void, number>({
       query: (id) => ({ url: `/api/v1/customers/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Customer', id: 'LIST' }],
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'Customer', id },
+        { type: 'Customer', id: 'LIST' },
+        { type: 'Customer', id: 'REFERENCE_LIST' },
+        { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
+      ],
     }),
     deleteCustomers: builder.mutation<void, number[]>({
       query: (ids) => ({ url: '/api/v1/customers', method: 'DELETE', data: ids }),
-      invalidatesTags: [{ type: 'Customer', id: 'LIST' }],
+      invalidatesTags: (_result, _error, ids) => [
+        { type: 'Customer', id: 'LIST' },
+        { type: 'Customer', id: 'REFERENCE_LIST' },
+        { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
+        ...ids.map((id) => ({ type: 'Customer' as const, id })),
+      ],
     }),
     uploadCustomersExcel: builder.mutation<ExcelUploadResult, FormData>({
       query: (form) => ({ url: '/api/v1/customers/excel/upload', method: 'POST', data: form }),
-      invalidatesTags: [{ type: 'Customer', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'Customer', id: 'LIST' },
+        { type: 'Customer', id: 'REFERENCE_LIST' },
+        { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
+      ],
     }),
     checkCustomerCodeAvailability: builder.query<{ available: boolean }, string>({
       query: (code) => ({
@@ -79,6 +127,9 @@ const customerApi = api.injectEndpoints({
 export const {
   useGetCustomersQuery,
   useGetCustomerQuery,
+  useGetCustomerReferencesQuery,
+  useGetSalesCustomerReferencesQuery,
+  useGetSalesCustomerReferenceQuery,
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,

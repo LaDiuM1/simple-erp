@@ -4,7 +4,7 @@ import {
   type AfterServiceFormValues,
   type WarrantyDecision,
 } from '@/features/afterService/types';
-import type { EquipmentDetail } from '@/features/equipment/types';
+import type { EquipmentReference } from '@/features/equipment/types';
 
 const AMOUNT_RE = /^\d+$/;
 
@@ -27,7 +27,7 @@ export interface WarrantySuggestion {
  * 설비 미연결 / 만료일 미입력이면 제안 없음.
  */
 export function suggestWarrantyDecision(
-  equipment: EquipmentDetail | undefined,
+  equipment: EquipmentReference | undefined,
   receivedDate: string,
 ): WarrantySuggestion | null {
   if (!equipment || receivedDate === '') return null;

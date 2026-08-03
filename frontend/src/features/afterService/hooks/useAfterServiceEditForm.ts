@@ -7,7 +7,7 @@ import { useToggle } from '@/shared/hooks/useToggle';
 import { useFormState } from '@/shared/ui/GenericForm/useFormState';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { trimStringValues } from '@/shared/utils/trimStringValues';
-import { useGetEquipmentQuery } from '@/features/equipment/api/equipmentApi';
+import { useGetEquipmentReferenceQuery } from '@/features/equipment/api/equipmentApi';
 import {
   useGetEngineersQuery,
   useUpdateAfterServiceMutation,
@@ -23,7 +23,11 @@ import {
   afterServiceValidators,
   suggestWarrantyDecision,
 } from '@/features/afterService/validation/afterServiceFormValidation';
-import type { AfterServiceFormStateBase } from './afterServiceFormState';
+import { eligibleEngineerOptions } from '@/features/afterService/utils/eligibleEngineerOptions';
+import {
+  changeAfterServiceCustomer,
+  type AfterServiceFormStateBase,
+} from './afterServiceFormState';
 
 export interface AfterServiceEditFormState extends AfterServiceFormStateBase {
   detail: AfterServiceDetail;
@@ -56,20 +60,22 @@ export function useAfterServiceEditForm(
 
   const engineersQuery = useGetEngineersQuery();
   // 활성 + 현재 배정된 엔지니어 (비활성 전환됐어도 기존 배정 유지 표시).
-  const engineers = (engineersQuery.data ?? []).filter(
-    (e) => e.active || String(e.id) === values.assignedEngineerId,
+  const engineers = eligibleEngineerOptions(
+    engineersQuery.data ?? [],
+    values.assignedEngineerId,
   );
 
-  const equipmentQuery = useGetEquipmentQuery(Number(values.equipmentId), {
-    skip: values.equipmentId === '',
-  });
+  const equipmentQuery = useGetEquipmentReferenceQuery(
+    {
+      id: Number(values.equipmentId),
+      customerId: Number(values.customerId),
+    },
+    { skip: values.equipmentId === '' || values.customerId === '' },
+  );
   const warrantySuggestion = suggestWarrantyDecision(equipmentQuery.data, values.receivedDate);
 
   const handleCustomerChange = (id2: string, name: string) => {
-    update('customerId', id2);
-    update('customerName', name);
-    update('equipmentId', '');
-    update('equipmentLabel', '');
+    changeAfterServiceCustomer(update, id2, name);
   };
 
   const handleWarrantyDecisionChange = (decision: string) => {

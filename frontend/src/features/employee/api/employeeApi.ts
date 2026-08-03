@@ -7,6 +7,8 @@ import type {
   EmployeeCreateRequest,
   EmployeeDetail,
   EmployeeProfileResponse,
+  EmployeeReference,
+  EmployeeReferenceSearchParams,
   EmployeeSearchParams,
   EmployeeSummary,
   EmployeeUpdateRequest,
@@ -18,7 +20,7 @@ function cleanParams<T extends object>(params: T): Partial<T> {
   ) as Partial<T>;
 }
 
-const employeeApi = api.injectEndpoints({
+export const employeeApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getMyProfile: builder.query<EmployeeProfileResponse, void>({
       query: () => ({ url: '/api/v1/employees/me', method: 'GET' }),
@@ -34,28 +36,72 @@ const employeeApi = api.injectEndpoints({
         ...(result?.content.map((m) => ({ type: 'Employee' as const, id: m.id })) ?? []),
       ],
     }),
+    getEmployeeReferences: builder.query<
+      PageResponse<EmployeeReference>,
+      EmployeeReferenceSearchParams
+    >({
+      query: (params) => ({
+        url: '/api/v1/employees/reference',
+        method: 'GET',
+        params: cleanParams(params),
+      }),
+      providesTags: (result) => [
+        { type: 'Employee', id: 'REFERENCE_LIST' },
+        ...(result?.content.map((employee) => ({
+          type: 'Employee' as const,
+          id: employee.id,
+        })) ?? []),
+      ],
+    }),
+    getContractEmployeeReferences: builder.query<
+      PageResponse<EmployeeReference>,
+      EmployeeReferenceSearchParams
+    >({
+      query: (params) => ({
+        url: '/api/v1/employees/contract-reference',
+        method: 'GET',
+        params: cleanParams(params),
+      }),
+      providesTags: (result) => [
+        { type: 'Employee', id: 'CONTRACT_REFERENCE_LIST' },
+        ...(result?.content.map((employee) => ({
+          type: 'Employee' as const,
+          id: employee.id,
+        })) ?? []),
+      ],
+    }),
     getEmployee: builder.query<EmployeeDetail, number>({
       query: (id) => ({ url: `/api/v1/employees/${id}`, method: 'GET' }),
       providesTags: (_result, _error, id) => [{ type: 'Employee', id }],
     }),
     createEmployee: builder.mutation<number, EmployeeCreateRequest>({
       query: (body) => ({ url: '/api/v1/employees', method: 'POST', data: body }),
-      invalidatesTags: [{ type: 'Employee', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'Employee', id: 'LIST' },
+        { type: 'Employee', id: 'REFERENCE_LIST' },
+      ],
     }),
     updateEmployee: builder.mutation<void, { id: number; body: EmployeeUpdateRequest }>({
       query: ({ id, body }) => ({ url: `/api/v1/employees/${id}`, method: 'PUT', data: body }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Employee', id },
         { type: 'Employee', id: 'LIST' },
+        { type: 'Employee', id: 'REFERENCE_LIST' },
       ],
     }),
     deleteEmployee: builder.mutation<void, number>({
       query: (id) => ({ url: `/api/v1/employees/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Employee', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'Employee', id: 'LIST' },
+        { type: 'Employee', id: 'REFERENCE_LIST' },
+      ],
     }),
     deleteEmployees: builder.mutation<void, number[]>({
       query: (ids) => ({ url: '/api/v1/employees', method: 'DELETE', data: ids }),
-      invalidatesTags: [{ type: 'Employee', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'Employee', id: 'LIST' },
+        { type: 'Employee', id: 'REFERENCE_LIST' },
+      ],
     }),
     checkLoginIdAvailability: builder.query<{ available: boolean }, string>({
       query: (loginId) => ({
@@ -70,6 +116,8 @@ const employeeApi = api.injectEndpoints({
 export const {
   useGetMyProfileQuery,
   useGetEmployeesQuery,
+  useGetEmployeeReferencesQuery,
+  useGetContractEmployeeReferencesQuery,
   useGetEmployeeQuery,
   useCreateEmployeeMutation,
   useUpdateEmployeeMutation,

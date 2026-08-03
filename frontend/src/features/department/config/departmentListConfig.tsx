@@ -23,6 +23,24 @@ export const departmentListColumns: ColumnConfig<DepartmentSummary>[] = [
   { key: 'parentName', label: '상위 부서' },
 ];
 
+export const departmentSelectColumns: ColumnConfig<DepartmentSummary>[] = [
+  {
+    key: 'name',
+    label: '부서명',
+    sortable: true,
+    sortDirection: 'asc',
+    mobilePrimary: true,
+    flex: 1.2,
+    render: (m) => (
+      <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+        {m.name}
+      </Typography>
+    ),
+  },
+  { key: 'code', label: '부서 코드', sortable: true, sortDirection: 'asc', flex: 1 },
+  { key: 'parentName', label: '상위 부서', flex: 1.2 },
+];
+
 export const departmentListFilters: FilterConfig[] = [
   { type: 'search', key: 'codeKeyword', placeholder: '부서 코드 검색' },
   { type: 'search', key: 'nameKeyword', placeholder: '부서명 검색' },

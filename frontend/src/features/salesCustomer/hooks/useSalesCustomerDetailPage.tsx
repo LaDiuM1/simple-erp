@@ -5,11 +5,11 @@ import type { PageHeaderAction } from '@/shared/ui/layout/PageHeaderActions';
 import type { HeaderDetailField } from '@/shared/ui/GenericHeaderDetails';
 import { useGetSalesCustomerDetailQuery } from '@/features/salesCustomer/api/salesCustomerApi';
 import { useGetSalesContactEmploymentsByCustomerIdQuery } from '@/features/salesContact/api/salesContactApi';
-import { useGetCustomerQuery } from '@/features/customer/api/customerApi';
+import { useGetSalesCustomerReferenceQuery } from '@/features/customer/api/customerApi';
 import {
   CUSTOMER_STATUS_LABELS,
   CUSTOMER_TYPE_LABELS,
-  type CustomerDetail,
+  type SalesCustomerReference,
 } from '@/features/customer/types';
 import { useActivityTab } from './useActivityTab';
 import { useAssignmentTab } from './useAssignmentTab';
@@ -24,7 +24,7 @@ export function useSalesCustomerDetailPage(customerId: number) {
   const navigate = useNavigate();
 
   const salesQuery = useGetSalesCustomerDetailQuery(customerId, { skip: !customerId });
-  const customerQuery = useGetCustomerQuery(customerId, { skip: !customerId });
+  const customerQuery = useGetSalesCustomerReferenceQuery(customerId, { skip: !customerId });
   const employmentsQuery = useGetSalesContactEmploymentsByCustomerIdQuery(customerId, {
     skip: !customerId,
   });
@@ -53,7 +53,7 @@ export function useSalesCustomerDetailPage(customerId: number) {
   };
 }
 
-export function customerInfoFields(c: CustomerDetail): HeaderDetailField[] {
+export function customerInfoFields(c: SalesCustomerReference): HeaderDetailField[] {
   const fullAddress = [c.zipCode ? `(${c.zipCode})` : null, c.roadAddress, c.detailAddress]
     .filter(Boolean)
     .join(' ');

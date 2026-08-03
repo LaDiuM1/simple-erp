@@ -1,10 +1,10 @@
 import EntitySelectField, { type EntitySelectConfig } from '@/shared/ui/EntitySelectField';
 import { useGetPositionsSummaryQuery } from '@/features/position/api/positionApi';
 import {
-  positionListColumns,
   positionListFilters,
+  positionSelectColumns,
 } from '@/features/position/config/positionListConfig';
-import type { PositionSummary } from '@/features/position/types';
+import type { PositionListFilters, PositionSummary } from '@/features/position/types';
 import { useGetPositionsQuery } from '@/features/reference/api/referenceApi';
 
 interface Props {
@@ -20,14 +20,14 @@ interface Props {
   excludeId?: number;
 }
 
-const positionSelectConfig: EntitySelectConfig<PositionSummary> = {
+const positionSelectConfig: EntitySelectConfig<PositionSummary, PositionListFilters> = {
   modalTitle: '직책 검색',
   searchAriaLabel: '직책 검색',
   useSearchList: useGetPositionsSummaryQuery,
   rowKey: (m) => m.id,
   rowLabel: (m) => m.name,
   searchFilter: positionListFilters,
-  column: positionListColumns,
+  column: positionSelectColumns,
 };
 
 /** 직책 검색 SelectField — 표시 라벨은 reference 캐시 (`useGetPositionsQuery`) 로 lookup. */

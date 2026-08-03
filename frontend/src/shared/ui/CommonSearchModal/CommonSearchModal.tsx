@@ -26,6 +26,8 @@ export default function CommonSearchModal<TRow, TFilters extends object>({
   onClose,
   title,
   api,
+  fixedQueryParams,
+  scopeKey,
   searchFilter,
   column,
   emptyMessage,
@@ -40,13 +42,13 @@ export default function CommonSearchModal<TRow, TFilters extends object>({
   renderTrayItem,
 }: CommonSearchModalProps<TRow, TFilters>) {
   const { state, query, visibleRows } = useSearchModalQueryState({
-    api, searchFilter, column, excludeIds,
+    api, searchFilter, column, excludeIds, fixedQueryParams, scopeKey,
   });
   const { data, isFetching, isError, error, refetch } = query;
 
   const isTray = selectionStyle === 'tray';
   const [selectedMap, setSelectedMap] = useResettableState(
-    modalStateResetKey(open, undefined),
+    modalStateResetKey(open, scopeKey),
     () => new Map(initialSelected.map((item) => [item.id, item])),
   );
 

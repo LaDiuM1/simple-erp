@@ -20,6 +20,7 @@ export default function EmployeeSelectFilter({ value, onChange, label = '직원'
 
   return (
     <EmployeeSelectField
+      activeOnly={false}
       dense
       label={label}
       value={id}

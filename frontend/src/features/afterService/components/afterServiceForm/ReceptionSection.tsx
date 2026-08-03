@@ -54,8 +54,10 @@ export default function ReceptionSection({ form, mode }: Props) {
           helperText={validation.errorMessage('customerId')}
         />
         <EquipmentSelectField
+          customerId={values.customerId}
           value={values.equipmentId}
           valueLabel={values.equipmentLabel}
+          disabled={values.customerId === ''}
           onChange={(id, name) => {
             update('equipmentId', id);
             update('equipmentLabel', name);

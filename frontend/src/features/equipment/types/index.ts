@@ -64,6 +64,17 @@ export interface EquipmentSummary {
   warrantyInsurance: boolean;
 }
 
+export interface EquipmentReference {
+  id: number;
+  customerId: number;
+  productModelName: string | null;
+  serialNo: string | null;
+  installAddress: string | null;
+  installedDate: string | null;
+  oscillatorWarrantyEndDate: string | null;
+  generalWarrantyEndDate: string | null;
+}
+
 export interface EquipmentDetail {
   id: number;
   customerId: number;
@@ -119,8 +130,23 @@ export interface EquipmentSearchParams {
   sort?: string;
 }
 
+export interface EquipmentReferenceSearchParams {
+  customerId: number;
+  serialKeyword?: string | null;
+  addressKeyword?: string | null;
+  warranty?: string | null;
+  page: number;
+  size?: number;
+  sort?: string;
+}
+
 /** 목록 페이지 필터 state. page/size/sort 는 GenericList 가 관리하므로 제외. */
 export type EquipmentListFilters = Omit<EquipmentSearchParams, 'page' | 'size' | 'sort'>;
+
+export type EquipmentReferenceListFilters = Omit<
+  EquipmentReferenceSearchParams,
+  'page' | 'size' | 'sort'
+>;
 
 export interface EquipmentFormValues {
   /** 빈 문자열 = 미선택 */

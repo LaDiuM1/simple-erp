@@ -43,6 +43,14 @@ export interface EmployeeSummary {
   status: EmployeeStatus;
 }
 
+export interface EmployeeReference {
+  id: number;
+  name: string;
+  departmentName: string | null;
+  positionName: string | null;
+  status: EmployeeStatus;
+}
+
 export interface EmployeeDetail {
   id: number;
   loginId: string;
@@ -109,8 +117,23 @@ export interface EmployeeSearchParams {
   sort?: string;
 }
 
+export interface EmployeeReferenceSearchParams {
+  nameKeyword?: string | null;
+  departmentId?: number | null;
+  positionId?: number | null;
+  status?: EmployeeStatus | null;
+  page: number;
+  size?: number;
+  sort?: string;
+}
+
 /** 목록 페이지 필터 state. page/size/sort 는 GenericList 가 관리하므로 제외. */
 export type EmployeeListFilters = Omit<EmployeeSearchParams, 'page' | 'size' | 'sort'>;
+
+export type EmployeeReferenceListFilters = Omit<
+  EmployeeReferenceSearchParams,
+  'page' | 'size' | 'sort'
+>;
 
 export interface EmployeeFormValues {
   loginId: string;

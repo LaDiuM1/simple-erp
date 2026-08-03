@@ -1,10 +1,10 @@
 import EntitySelectField, { type EntitySelectConfig } from '@/shared/ui/EntitySelectField';
-import { useGetProductsSummaryQuery } from '@/features/product/api/productApi';
+import { useGetProductReferencesQuery } from '@/features/product/api/productApi';
 import {
-  productListFilters,
+  productReferenceFilters,
   productSelectColumns,
 } from '@/features/product/config/productListConfig';
-import type { ProductSummary } from '@/features/product/types';
+import type { ProductListFilters, ProductReference } from '@/features/product/types';
 
 interface Props {
   label?: string;
@@ -19,17 +19,24 @@ interface Props {
   placeholder?: string;
 }
 
-const productSelectConfig: EntitySelectConfig<ProductSummary> = {
+const productSelectConfig: EntitySelectConfig<ProductReference, ProductListFilters> = {
   modalTitle: '제품 모델 검색',
   searchAriaLabel: '제품 모델 검색',
-  useSearchList: useGetProductsSummaryQuery,
+  useSearchList: useGetProductReferencesQuery,
   rowKey: (m) => m.id,
   rowLabel: (m) => m.modelName,
-  searchFilter: productListFilters,
+  searchFilter: productReferenceFilters,
   column: productSelectColumns,
 };
 
 /** 제품 모델 검색 SelectField — CustomerSelectField 와 동일 패턴 (외부 valueLabel). */
 export default function ProductSelectField({ label = '제품 모델', ...rest }: Props) {
-  return <EntitySelectField {...rest} label={label} config={productSelectConfig} />;
+  return (
+    <EntitySelectField
+      {...rest}
+      label={label}
+      config={productSelectConfig}
+      fixedQueryParams={{ active: 'true' }}
+    />
+  );
 }

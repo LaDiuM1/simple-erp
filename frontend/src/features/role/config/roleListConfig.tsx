@@ -28,6 +28,45 @@ export const roleListColumns: ColumnConfig<RoleSummary>[] = [
   { key: 'description', label: '설명', flex: 2.5 },
 ];
 
+export const roleSelectColumns: ColumnConfig<RoleSummary>[] = [
+  {
+    key: 'name',
+    label: '권한명',
+    sortable: true,
+    sortDirection: 'asc',
+    mobilePrimary: true,
+    flex: 1.2,
+    render: (m) => (
+      <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+        {m.name}
+      </Typography>
+    ),
+  },
+  {
+    key: 'code',
+    label: '권한 코드',
+    sortable: true,
+    sortDirection: 'asc',
+    flex: 1,
+    render: (m) => (
+      <Typography
+        sx={{
+          fontSize: '0.875rem',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.375rem',
+        }}
+      >
+        {m.code}
+        {m.system && (
+          <LockRoundedIcon sx={{ fontSize: 14, color: 'text.disabled' }} titleAccess="시스템 권한" />
+        )}
+      </Typography>
+    ),
+  },
+  { key: 'description', label: '설명', flex: 2.5 },
+];
+
 export const roleListFilters: FilterConfig[] = [
   { type: 'search', key: 'codeKeyword', placeholder: '권한 코드 검색' },
   { type: 'search', key: 'nameKeyword', placeholder: '권한명 검색' },

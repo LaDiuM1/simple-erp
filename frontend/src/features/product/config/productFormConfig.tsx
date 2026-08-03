@@ -7,8 +7,7 @@ import {
   useGetProductQuery,
   useUpdateProductMutation,
 } from '@/features/product/api/productApi';
-import { useGetSuppliersQuery } from '@/features/reference/api/referenceApi';
-import type { SupplierInfo } from '@/features/reference/types';
+import ProductSupplierField from '@/features/product/components/ProductSupplierField/ProductSupplierField';
 import { ACTIVE_FILTER_OPTIONS } from '@/features/supplier/types';
 import {
   EMPTY_PRODUCT_FORM,
@@ -20,14 +19,6 @@ import {
   type ProductFormValues,
   type ProductUpdateRequest,
 } from '@/features/product/types';
-
-/** 공급사 드롭다운 옵션 — 영문 표기 (+ 한글 표기) 함께 노출. */
-function mapSupplierOptions(data: unknown): FieldOption[] {
-  return (data as SupplierInfo[]).map((s) => ({
-    value: s.id,
-    label: s.nameKo ? `${s.name} (${s.nameKo})` : s.name,
-  }));
-}
 
 /** 카테고리 드롭다운 옵션 — 카테고리 관리 화면의 노출 순서 그대로. */
 function mapCategoryOptions(data: unknown): FieldOption[] {
@@ -56,10 +47,16 @@ export const productFormFields: FieldConfig<ProductFormValues>[] = [
   {
     key: 'supplierId',
     label: '공급사',
-    type: 'select',
+    type: 'custom',
     required: true,
-    useOptions: useGetSuppliersQuery,
-    mapOptions: mapSupplierOptions,
+    render: ({ value, onChange, mode, disabled }) => (
+      <ProductSupplierField
+        value={value}
+        onChange={onChange}
+        mode={mode}
+        disabled={disabled}
+      />
+    ),
   },
   {
     key: 'active',

@@ -94,6 +94,7 @@ export const api = createApi({
     'LeaveBalance',
     'Post',
     'Drive',
+    'Dashboard',
   ],
   endpoints: () => ({}),
 });

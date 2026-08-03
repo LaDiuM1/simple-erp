@@ -9,8 +9,15 @@ import Muted from '@/shared/ui/atoms/Muted';
 import { useGetSuppliersQuery } from '@/features/reference/api/referenceApi';
 import type { SupplierInfo } from '@/features/reference/types';
 import { ACTIVE_FILTER_OPTIONS } from '@/features/supplier/types';
-import { useGetProductCategoriesQuery } from '@/features/product/api/productApi';
-import type { ProductCategorySummary, ProductSummary } from '@/features/product/types';
+import {
+  useGetProductCategoriesQuery,
+  useGetProductReferenceCategoriesQuery,
+} from '@/features/product/api/productApi';
+import type {
+  ProductCategoryReference,
+  ProductReference,
+  ProductSummary,
+} from '@/features/product/types';
 
 /** 공급사 필터 옵션 — 영문 표기 (+ 한글 표기) 함께 노출. */
 function mapSupplierOptions(data: unknown): FilterOption[] {
@@ -22,7 +29,7 @@ function mapSupplierOptions(data: unknown): FilterOption[] {
 
 /** 카테고리 필터 옵션 — 관리 화면의 노출 순서 그대로. */
 function mapCategoryOptions(data: unknown): FilterOption[] {
-  return (data as ProductCategorySummary[]).map((c) => ({ value: c.id, label: c.name }));
+  return (data as ProductCategoryReference[]).map((c) => ({ value: c.id, label: c.name }));
 }
 
 export const productListColumns: ColumnConfig<ProductSummary>[] = [
@@ -64,7 +71,7 @@ export const productListColumns: ColumnConfig<ProductSummary>[] = [
  * 검색 모달용 컬럼 — 계약 폼의 제품 모델 SelectField 등 선택용이라 식별 정보만 노출.
  * 목록 페이지(`productListColumns`)와 의도적으로 분리 (customerSelectColumns 와 동일 정책).
  */
-export const productSelectColumns: ColumnConfig<ProductSummary>[] = [
+export const productSelectColumns: ColumnConfig<ProductReference>[] = [
   {
     key: 'modelName',
     label: '모델명',
@@ -87,12 +94,12 @@ export const productSelectColumns: ColumnConfig<ProductSummary>[] = [
     key: 'supplierName',
     label: '공급사',
     hideOnMobile: true,
+    flex: 1.3,
     render: (m) => m.supplierName ?? <Muted />,
   },
   {
     key: 'active',
     label: '사용 여부',
-    hideOnMobile: true,
     width: 100,
     render: (m) => <ActiveStatusIndicator active={m.active} />,
   },
@@ -105,6 +112,27 @@ export const productListFilters: FilterConfig[] = [
     key: 'categoryId',
     label: '카테고리',
     useOptions: useGetProductCategoriesQuery,
+    mapOptions: mapCategoryOptions,
+    minWidth: 140,
+  },
+  {
+    type: 'select',
+    key: 'supplierId',
+    label: '공급사',
+    useOptions: useGetSuppliersQuery,
+    mapOptions: mapSupplierOptions,
+    minWidth: 160,
+  },
+  { type: 'select', key: 'active', label: '사용 여부', options: ACTIVE_FILTER_OPTIONS, minWidth: 120 },
+];
+
+export const productReferenceFilters: FilterConfig[] = [
+  { type: 'search', key: 'modelNameKeyword', placeholder: '모델명 검색' },
+  {
+    type: 'select',
+    key: 'categoryId',
+    label: '카테고리',
+    useOptions: useGetProductReferenceCategoriesQuery,
     mapOptions: mapCategoryOptions,
     minWidth: 140,
   },
