@@ -2,6 +2,7 @@ package io.github.ladium1.erp.customer.internal.web;
 
 import io.github.ladium1.erp.customer.internal.dto.CustomerCreateRequest;
 import io.github.ladium1.erp.customer.internal.dto.CustomerDetailResponse;
+import io.github.ladium1.erp.customer.internal.dto.CustomerReferenceResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerSummaryResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerUpdateRequest;
 import io.github.ladium1.erp.customer.internal.entity.CustomerStatus;
@@ -75,6 +76,28 @@ class CustomerControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].code").value("C0001"))
                 .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
+    @DisplayName("고객사 참조 응답은 관리 전용 정보를 포함하지 않는다")
+    void reference_response_excludes_management_fields() throws Exception {
+        CustomerReferenceResponse reference = CustomerReferenceResponse.builder()
+                .id(1L)
+                .code("C0001")
+                .name("대성상사")
+                .type(CustomerType.GENERAL)
+                .status(CustomerStatus.ACTIVE)
+                .build();
+        given(customerService.searchReference(any(), any())).willReturn(new PageResponse<>(
+                List.of(reference), 0, 20, 1, 1, false
+        ));
+
+        mockMvc.perform(get("/api/v1/customers/reference"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].name").value("대성상사"))
+                .andExpect(jsonPath("$.data.content[0].bizRegNo").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].email").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].tradeStartDate").doesNotExist());
     }
 
     @Test

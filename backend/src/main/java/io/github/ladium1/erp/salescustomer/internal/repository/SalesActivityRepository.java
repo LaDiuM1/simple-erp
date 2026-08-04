@@ -18,7 +18,17 @@ public interface SalesActivityRepository extends JpaRepository<SalesActivity, Lo
 
     long countByActivityDateGreaterThanEqual(LocalDateTime since);
 
+    long countByCustomerIdInAndActivityDateGreaterThanEqual(
+            Collection<Long> customerIds,
+            LocalDateTime since
+    );
+
     List<SalesActivity> findAllByOrderByActivityDateDesc(Pageable pageable);
+
+    List<SalesActivity> findByCustomerIdInOrderByActivityDateDesc(
+            Collection<Long> customerIds,
+            Pageable pageable
+    );
 
     /**
      * 여러 고객사의 활동 카운트를 한 번에 집계 — 목록 페이지 보강용.

@@ -38,12 +38,11 @@ public class ExpenseController {
 
     private static final String MENU_CODE = "EXPENSES";
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
-    private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
     private final ExpenseService expenseService;
 
     @PostMapping
-    @PreAuthorize(CAN_WRITE)
+    @PreAuthorize(CAN_READ)
     public Long create(@AuthenticationPrincipal User user, @Valid @RequestBody ExpenseCreateRequest request) {
         return expenseService.create(user.getUsername(), request);
     }

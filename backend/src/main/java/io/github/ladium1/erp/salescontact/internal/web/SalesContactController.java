@@ -54,20 +54,24 @@ public class SalesContactController {
     private static final String CAN_READ_REFERENCE =
             "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
             + "or @menuPermissionEvaluator.canRead(authentication, 'SALES_CUSTOMERS')";
+    private static final String CAN_READ_FILTERED_REFERENCE =
+            "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
+            + "or (#customerId != null and @menuPermissionEvaluator.canRead(authentication, 'SALES_CUSTOMERS'))";
 
     private final SalesContactService salesContactService;
 
     @GetMapping
-    @PreAuthorize(CAN_READ)
+    @PreAuthorize(CAN_READ_FILTERED_REFERENCE)
     public PageResponse<SalesContactSummaryResponse> search(
             @RequestParam(required = false) String nameKeyword,
             @RequestParam(required = false) String emailKeyword,
             @RequestParam(required = false) String phoneKeyword,
             @RequestParam(required = false) List<Long> sourceIds,
+            @RequestParam(required = false) Long customerId,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return salesContactService.search(
-                new SalesContactSearchCondition(nameKeyword, emailKeyword, phoneKeyword, sourceIds),
+                new SalesContactSearchCondition(nameKeyword, emailKeyword, phoneKeyword, sourceIds, customerId),
                 pageable
         );
     }
@@ -97,7 +101,7 @@ public class SalesContactController {
             @SortDefault(sort = "id", direction = Sort.Direction.DESC) Sort sort
     ) {
         byte[] bytes = salesContactService.exportExcel(
-                new SalesContactSearchCondition(nameKeyword, emailKeyword, phoneKeyword, sourceIds),
+                new SalesContactSearchCondition(nameKeyword, emailKeyword, phoneKeyword, sourceIds, null),
                 sort
         );
         String filename = "sales-contacts_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".xlsx";

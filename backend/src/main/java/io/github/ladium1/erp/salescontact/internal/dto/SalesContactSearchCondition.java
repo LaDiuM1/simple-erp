@@ -6,6 +6,7 @@ public record SalesContactSearchCondition(
         String nameKeyword,
         String emailKeyword,
         String phoneKeyword,
-        List<Long> sourceIds
+        List<Long> sourceIds,
+        Long customerId
 ) {
 }

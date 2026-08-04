@@ -9,6 +9,10 @@ import io.github.ladium1.erp.customer.api.CustomerDeletingEvent;
 import io.github.ladium1.erp.customer.api.CustomerVisibilityContributor;
 import io.github.ladium1.erp.customer.internal.dto.CustomerCreateRequest;
 import io.github.ladium1.erp.customer.internal.dto.CustomerDetailResponse;
+import io.github.ladium1.erp.customer.internal.dto.CustomerReferenceResponse;
+import io.github.ladium1.erp.customer.internal.dto.SalesCustomerReferenceResponse;
+import io.github.ladium1.erp.customer.internal.dto.CustomerSearchCondition;
+import io.github.ladium1.erp.customer.internal.dto.CustomerSummaryResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerUpdateRequest;
 import io.github.ladium1.erp.customer.internal.entity.Customer;
 import io.github.ladium1.erp.customer.internal.entity.CustomerStatus;
@@ -20,6 +24,7 @@ import io.github.ladium1.erp.customer.internal.repository.CustomerRepository;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.DataScope;
+import io.github.ladium1.erp.global.security.DataScopeContext;
 import io.github.ladium1.erp.global.security.DataScopeContextProvider;
 import io.github.ladium1.erp.global.security.DataScopeResolver;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,11 +36,14 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -94,6 +102,99 @@ class CustomerServiceTest {
         assertThatThrownBy(() -> customerService.getDetail(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("고객사 관리 목록은 다른 메뉴의 데이터 범위와 결합하지 않는다")
+    void management_search_does_not_combine_other_menu_scope() {
+        CustomerSearchCondition condition = new CustomerSearchCondition(null, null, null, null, null, null);
+        PageRequest pageable = PageRequest.of(0, 20);
+        Customer customer = mockCustomer("C0001", "대성상사");
+        CustomerSummaryResponse summary = CustomerSummaryResponse.builder()
+                .id(1L).code("C0001").name("대성상사").build();
+        given(customerRepository.search(condition, pageable)).willReturn(new PageImpl<>(List.of(customer)));
+        given(customerMapper.toSummaryResponse(customer)).willReturn(summary);
+
+        assertThat(customerService.search(condition, pageable).content())
+                .containsExactly(summary);
+        verify(dataScopeResolver, never()).resolveMostPermissive(any(Menu[].class));
+    }
+
+    @Test
+    @DisplayName("영업 고객 참조 목록은 영업 메뉴의 데이터 범위를 적용한다")
+    void sales_reference_search_uses_sales_customer_scope() {
+        CustomerSearchCondition condition = new CustomerSearchCondition(null, null, null, null, null, null);
+        PageRequest pageable = PageRequest.of(0, 20);
+        Customer customer = mockCustomer("C0001", "대성상사");
+        SalesCustomerReferenceResponse reference = SalesCustomerReferenceResponse.builder()
+                .id(1L).code("C0001").name("대성상사").build();
+        DataScopeContext context = new DataScopeContext(10L, 20L, Set.of(20L));
+        given(dataScopeResolver.resolveMostPermissive(Menu.SALES_CUSTOMERS)).willReturn(DataScope.SELF);
+        given(dataScopeContextProvider.current()).willReturn(context);
+        visibilityContributors.add((scope, actualContext) -> Set.of(1L));
+        CustomerSearchCondition scoped = condition.withIdScope(Set.of(1L));
+        given(customerRepository.search(scoped, pageable)).willReturn(new PageImpl<>(List.of(customer)));
+        given(customerMapper.toSalesReferenceResponse(customer)).willReturn(reference);
+
+        assertThat(customerService.searchSalesReference(condition, pageable).content())
+                .containsExactly(reference);
+        verify(dataScopeResolver).resolveMostPermissive(Menu.SALES_CUSTOMERS);
+    }
+
+    @Test
+    @DisplayName("고객 자체 조회는 통합 메뉴 범위를 적용해 숨은 고객을 NOT_FOUND로 은닉")
+    void current_viewer_visibility_boundary() {
+        DataScopeContext context = new DataScopeContext(10L, 20L, Set.of(20L));
+        given(dataScopeResolver.resolveMostPermissive(Menu.SALES_CUSTOMERS)).willReturn(DataScope.SELF);
+        given(dataScopeContextProvider.current()).willReturn(context);
+        visibilityContributors.add((scope, actualContext) -> Set.of(1L, 3L));
+
+        assertThatThrownBy(() -> customerService.getSalesReference(2L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        verify(customerRepository, never()).findById(2L);
+    }
+
+    @Test
+    @DisplayName("메뉴별 가시성 경계 — CUSTOMERS ALL이 SALES_CUSTOMERS SELF를 넓히지 않음")
+    void menu_specific_visibility_does_not_use_combined_scope() {
+        DataScopeContext context = new DataScopeContext(10L, 20L, Set.of(20L));
+        given(dataScopeResolver.resolveMostPermissive(Menu.SALES_CUSTOMERS))
+                .willReturn(DataScope.SELF);
+        given(dataScopeContextProvider.current()).willReturn(context);
+        visibilityContributors.add((scope, actualContext) -> Set.of(1L, 3L));
+
+        assertThat(customerService.currentViewerIdRestriction(Menu.SALES_CUSTOMERS))
+                .contains(Set.of(1L, 3L));
+        assertThat(customerService.filterVisibleIdsForCurrentViewer(
+                Menu.SALES_CUSTOMERS,
+                List.of(3L, 2L, 1L)
+        )).containsExactly(3L, 1L);
+        assertThatThrownBy(() -> customerService.assertVisibleToCurrentViewer(
+                Menu.SALES_CUSTOMERS,
+                2L
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        verify(dataScopeResolver, org.mockito.Mockito.atLeastOnce())
+                .resolveMostPermissive(Menu.SALES_CUSTOMERS);
+    }
+
+    @Test
+    @DisplayName("대시보드 고객 KPI와 최근 고객은 현재 조회자의 허용 ID만 조회")
+    void dashboard_customer_reads_use_current_viewer_scope() {
+        given(customerRepository.count()).willReturn(2L);
+        given(customerRepository.findAll(any(org.springframework.data.domain.Pageable.class)))
+                .willReturn(new org.springframework.data.domain.PageImpl<>(
+                        List.of(mockCustomer("C0001", "보이는 고객"))
+                ));
+
+        assertThat(customerService.countVisibleToCurrentViewer()).isEqualTo(2L);
+        assertThat(customerService.findRecentVisibleToCurrentViewer(5))
+                .extracting("code")
+                .containsExactly("C0001");
+        verify(customerRepository).count();
+        verify(customerRepository).findAll(any(org.springframework.data.domain.Pageable.class));
     }
 
     @Test

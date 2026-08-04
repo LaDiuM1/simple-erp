@@ -6,6 +6,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.ladium1.erp.global.jpa.QuerydslSortUtils;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactSearchCondition;
 import io.github.ladium1.erp.salescontact.internal.entity.QSalesContact;
+import io.github.ladium1.erp.salescontact.internal.entity.QSalesContactEmployment;
 import io.github.ladium1.erp.salescontact.internal.entity.QSalesContactSource;
 import io.github.ladium1.erp.salescontact.internal.entity.SalesContact;
 import lombok.RequiredArgsConstructor;
@@ -76,6 +77,17 @@ public class SalesContactRepositoryImpl implements SalesContactRepositoryCustom 
                     JPAExpressions.select(cs.contactId)
                             .from(cs)
                             .where(cs.sourceId.in(condition.sourceIds()))
+            ));
+        }
+        if (condition.customerId() != null) {
+            QSalesContactEmployment employment = QSalesContactEmployment.salesContactEmployment;
+            where.and(c.id.in(
+                    JPAExpressions.select(employment.contactId)
+                            .from(employment)
+                            .where(
+                                    employment.customerId.eq(condition.customerId()),
+                                    employment.endDate.isNull()
+                            )
             ));
         }
         return where;

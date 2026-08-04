@@ -2,6 +2,8 @@ package io.github.ladium1.erp.customer.internal.mapper;
 
 import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.customer.internal.dto.CustomerDetailResponse;
+import io.github.ladium1.erp.customer.internal.dto.CustomerReferenceResponse;
+import io.github.ladium1.erp.customer.internal.dto.SalesCustomerReferenceResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerSummaryResponse;
 import io.github.ladium1.erp.customer.internal.entity.Customer;
 import org.mapstruct.Mapper;
@@ -18,6 +20,13 @@ public interface CustomerMapper {
 
     @Mapping(source = "address.roadAddress", target = "roadAddress")
     CustomerSummaryResponse toSummaryResponse(Customer customer);
+
+    CustomerReferenceResponse toReferenceResponse(Customer customer);
+
+    @Mapping(source = "address.zipCode", target = "zipCode")
+    @Mapping(source = "address.roadAddress", target = "roadAddress")
+    @Mapping(source = "address.detailAddress", target = "detailAddress")
+    SalesCustomerReferenceResponse toSalesReferenceResponse(Customer customer);
 
     @Mapping(source = "address.zipCode", target = "zipCode")
     @Mapping(source = "address.roadAddress", target = "roadAddress")

@@ -119,7 +119,7 @@ public class ExpenseService {
     }
 
     /**
-     * 경비 청구 상세 — 청구자 본인 / 결재 관련자 / 정산 관리자만 접근, 그 외에는 CLAIM_NOT_FOUND 로 존재 은닉.
+     * 경비 청구 상세 — 청구자 본인 또는 정산 관리자만 접근하고, 그 외에는 존재를 숨긴다.
      */
     public ExpenseDetailResponse getDetail(String loginId, Long id) {
         ExpenseClaim claim = getAccessibleClaim(loginId, id);
@@ -145,8 +145,6 @@ public class ExpenseService {
         ExpenseClaim claim = expenseClaimRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ExpenseErrorCode.CLAIM_NOT_FOUND));
         boolean accessible = claim.getClaimantId().equals(employeeId)
-                || (claim.getApprovalDocumentId() != null
-                        && approvalApi.involves(claim.getApprovalDocumentId(), employeeId))
                 || canManageSettlement();
         if (!accessible) {
             throw new BusinessException(ExpenseErrorCode.CLAIM_NOT_FOUND);

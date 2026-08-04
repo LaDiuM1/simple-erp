@@ -16,8 +16,10 @@ import io.github.ladium1.erp.product.api.ProductApi;
 import io.github.ladium1.erp.product.api.dto.ProductInfo;
 import io.github.ladium1.erp.salescontact.api.SalesContactApi;
 import io.github.ladium1.erp.salescustomer.api.SalesCustomerApi;
+import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -50,22 +52,37 @@ public class DashboardService {
     private final AfterServiceApi afterServiceApi;
     private final EquipmentApi equipmentApi;
     private final ProductApi productApi;
+    private final MenuPermissionEvaluator menuPermissionEvaluator;
 
-    public DashboardSummaryResponse getSummary() {
+    public DashboardSummaryResponse getSummary(Authentication authentication) {
         LocalDateTime startOfMonth = YearMonth.now().atDay(1).atStartOfDay();
+        boolean canReadCustomers = canRead(authentication, "CUSTOMERS");
+        boolean canReadSalesContacts = canRead(authentication, "SALES_CONTACTS");
+        boolean canReadEmployees = canRead(authentication, "EMPLOYEES");
+        boolean canReadSalesCustomers = canRead(authentication, "SALES_CUSTOMERS");
 
         DashboardKpiResponse kpi = DashboardKpiResponse.builder()
-                .totalCustomers(customerApi.count())
-                .totalSalesContacts(salesContactApi.count())
-                .activeEmployees(employeeApi.countCurrentlyEmployed())
-                .monthlySalesActivities(salesCustomerApi.countActivitiesSince(startOfMonth))
+                .totalCustomers(canReadCustomers ? customerApi.countVisibleToCurrentViewer() : null)
+                .totalSalesContacts(canReadSalesContacts ? salesContactApi.count() : null)
+                .activeEmployees(canReadEmployees ? employeeApi.countCurrentlyEmployed() : null)
+                .monthlySalesActivities(canReadSalesCustomers
+                        ? salesCustomerApi.countVisibleActivitiesSince(startOfMonth)
+                        : null)
                 .build();
 
         return DashboardSummaryResponse.builder()
                 .kpi(kpi)
-                .recentCustomers(customerApi.findRecent(RECENT_LIMIT))
-                .recentActivities(salesCustomerApi.findRecentActivities(RECENT_LIMIT))
+                .recentCustomers(canReadCustomers
+                        ? customerApi.findRecentVisibleToCurrentViewer(RECENT_LIMIT)
+                        : null)
+                .recentActivities(canReadSalesCustomers
+                        ? salesCustomerApi.findRecentVisibleActivities(RECENT_LIMIT)
+                        : null)
                 .build();
+    }
+
+    private boolean canRead(Authentication authentication, String menuCode) {
+        return menuPermissionEvaluator.canRead(authentication, menuCode);
     }
 
     /**

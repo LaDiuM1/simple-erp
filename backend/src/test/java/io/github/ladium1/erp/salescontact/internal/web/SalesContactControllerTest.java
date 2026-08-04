@@ -3,18 +3,22 @@ package io.github.ladium1.erp.salescontact.internal.web;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
 import io.github.ladium1.erp.global.web.PageResponse;
+import io.github.ladium1.erp.customer.internal.exception.CustomerErrorCode;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactCreateRequest;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactDetailResponse;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactEmploymentCreateRequest;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactEmploymentResponse;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactEmploymentTerminateRequest;
+import io.github.ladium1.erp.salescontact.internal.dto.SalesContactSearchCondition;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactSummaryResponse;
+import io.github.ladium1.erp.salescontact.internal.dto.SalesContactUpdateRequest;
 import io.github.ladium1.erp.salescontact.internal.entity.DepartureType;
 import io.github.ladium1.erp.salescontact.internal.exception.SalesContactErrorCode;
 import io.github.ladium1.erp.salescontact.internal.service.SalesContactService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -25,12 +29,15 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.LongStream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -81,6 +88,31 @@ class SalesContactControllerTest {
     }
 
     @Test
+    @DisplayName("고객사 필터는 현재 재직 명함 검색 조건으로 전달")
+    void search_filters_active_contacts_by_customer() throws Exception {
+        given(salesContactService.search(any(), any())).willReturn(
+                new PageResponse<>(List.of(), 0, 20, 0, 0, false));
+
+        mockMvc.perform(get("/api/v1/sales-contacts").param("customerId", "10"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<SalesContactSearchCondition> captor =
+                ArgumentCaptor.forClass(SalesContactSearchCondition.class);
+        verify(salesContactService).search(captor.capture(), any());
+        assertThat(captor.getValue().customerId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("범위 밖 고객의 명부 검색은 NOT_FOUND")
+    void search_customer_filter_fail_invisible_customer() throws Exception {
+        given(salesContactService.search(any(), any()))
+                .willThrow(new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND));
+
+        mockMvc.perform(get("/api/v1/sales-contacts").param("customerId", "10"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("명부 상세 조회 성공")
     void get_detail_success() throws Exception {
         // given
@@ -123,6 +155,16 @@ class SalesContactControllerTest {
     }
 
     @Test
+    @DisplayName("범위 밖 고객의 재직 이력 조회는 NOT_FOUND")
+    void find_employments_by_customer_fail_invisible_customer() throws Exception {
+        given(salesContactService.findEmploymentsByCustomerId(10L))
+                .willThrow(new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND));
+
+        mockMvc.perform(get("/api/v1/sales-contacts/employments").param("customerId", "10"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("명부 등록 성공")
     void create_success() throws Exception {
         // given
@@ -138,6 +180,34 @@ class SalesContactControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(42));
+    }
+
+    @Test
+    @DisplayName("명부 등록은 컨택 경로 20개를 넘으면 400")
+    void create_fail_too_many_sources() throws Exception {
+        SalesContactCreateRequest request = new SalesContactCreateRequest(
+                "정대성", null, null, null, null, null, null,
+                LongStream.rangeClosed(1, 21).boxed().toList(), null);
+
+        mockMvc.perform(post("/api/v1/sales-contacts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(salesContactService, never()).create(any());
+    }
+
+    @Test
+    @DisplayName("명부 수정은 null 컨택 경로 식별자가 있으면 400")
+    void update_fail_null_source_id() throws Exception {
+        SalesContactUpdateRequest request = new SalesContactUpdateRequest(
+                "정대성", null, null, null, null, null, null,
+                java.util.Arrays.asList(1L, null), null);
+
+        mockMvc.perform(put("/api/v1/sales-contacts/{id}", 7L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(salesContactService, never()).update(eq(7L), any());
     }
 
     @Test

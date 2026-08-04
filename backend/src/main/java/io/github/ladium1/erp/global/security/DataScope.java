@@ -9,8 +9,8 @@ import lombok.RequiredArgsConstructor;
  * 메뉴 권한 (canRead / canWrite) 과 직교하는 차원 — 사용자가 메뉴 진입 권한이 있더라도
  * 어떤 행을 볼 수 있는지를 별도로 제한.
  *
- * <p>도메인이 SELF / DEPARTMENT(_TREE) 를 적용하려면 자기 모듈에서 가시성 contributor 빈을
- * 등록한다. contributor 가 없는 메뉴에 ALL 외 스코프가 걸리면 빈 결과가 반환된다 (안전 우선).
+ * <p>행 단위 범위는 {@link DataScopePolicy}가 지원한다고 선언한 메뉴에서만 저장·적용한다.
+ * 지원하지 않는 메뉴는 {@link DataScope#ALL}로 정규화해 화면의 설정과 실제 조회 범위가 어긋나지 않게 한다.
  */
 @Getter
 @RequiredArgsConstructor

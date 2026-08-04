@@ -22,6 +22,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -59,6 +60,7 @@ class ExpenseControllerTest {
      * 본 테스트에서만 resolver 를 직접 등록.
      */
     @TestConfiguration
+    @EnableMethodSecurity
     static class TestWebMvcConfig implements WebMvcConfigurer {
         @Override
         public void addArgumentResolvers(java.util.List<HandlerMethodArgumentResolver> resolvers) {
@@ -77,7 +79,7 @@ class ExpenseControllerTest {
     @MockitoBean
     private ExpenseService expenseService;
 
-    @MockitoBean
+    @MockitoBean(name = "menuPermissionEvaluator")
     private MenuPermissionEvaluator menuPermissionEvaluator;
 
     @BeforeEach
@@ -112,6 +114,41 @@ class ExpenseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(42));
         verify(expenseService).create(eq(LOGIN_ID), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("경비 읽기 권한만 있어도 본인 청구 등록 가능")
+    void create_success_with_read_permission_only() throws Exception {
+        given(menuPermissionEvaluator.canRead(any(), eq("EXPENSES"))).willReturn(true);
+        given(menuPermissionEvaluator.canWrite(any(), eq("EXPENSES"))).willReturn(false);
+        given(expenseService.create(any(), any())).willReturn(42L);
+
+        mockMvc.perform(post("/api/v1/expenses")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                createRequest("6월 출장 경비", List.of(item())))))
+                .andExpect(status().isOk());
+
+        verify(menuPermissionEvaluator).canRead(any(), eq("EXPENSES"));
+        verify(menuPermissionEvaluator, never()).canWrite(any(), eq("EXPENSES"));
+        verify(expenseService).create(eq(LOGIN_ID), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("쓰기 권한이 있어도 읽기 권한이 없으면 경비 청구 등록 불가")
+    void create_forbidden_without_read_permission() throws Exception {
+        given(menuPermissionEvaluator.canRead(any(), eq("EXPENSES"))).willReturn(false);
+        given(menuPermissionEvaluator.canWrite(any(), eq("EXPENSES"))).willReturn(true);
+
+        mockMvc.perform(post("/api/v1/expenses")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                createRequest("6월 출장 경비", List.of(item())))))
+                .andExpect(status().isForbidden());
+
+        verify(expenseService, never()).create(any(), any());
     }
 
     @Test

@@ -1,6 +1,5 @@
 package io.github.ladium1.erp.global.security;
 
-import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.role.api.RoleApi;
 import io.github.ladium1.erp.role.api.dto.MenuPermission;
@@ -21,7 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DataScopeResolver {
 
-    private final EmployeeApi employeeApi;
+    private final DataScopePrincipalReader principalReader;
     private final RoleApi roleApi;
 
     public DataScope resolve(Menu menu) {
@@ -49,7 +48,7 @@ public class DataScopeResolver {
         for (Menu m : menus) {
             MenuPermission p = permissions.stream().filter(x -> x.menuCode() == m && x.canRead()).findFirst().orElse(null);
             if (p == null) continue;
-            DataScope s = p.dataScope() == null ? DataScope.ALL : p.dataScope();
+            DataScope s = DataScopePolicy.normalize(m, p.dataScope());
             if (s == DataScope.ALL) return DataScope.ALL;
             if (effective == null || s.isMorePermissiveThan(effective)) effective = s;
         }
@@ -58,7 +57,7 @@ public class DataScopeResolver {
     }
 
     private List<MenuPermission> loadPermissions(Authentication authentication) {
-        Long roleId = employeeApi.getRoleIdByLoginId(authentication.getName());
+        Long roleId = principalReader.getRequiredByLoginId(authentication.getName()).roleId();
         return roleApi.getMenuPermissionsByRoleId(roleId);
     }
 
@@ -66,7 +65,7 @@ public class DataScopeResolver {
         return permissions.stream()
                 .filter(p -> p.menuCode() == menu)
                 .findFirst()
-                .map(p -> p.dataScope() == null ? DataScope.ALL : p.dataScope())
+                .map(p -> DataScopePolicy.normalize(menu, p.dataScope()))
                 .orElse(DataScope.ALL);
     }
 }

@@ -43,6 +43,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toMap;
@@ -64,14 +66,26 @@ public class SalesCustomerService implements SalesCustomerApi {
     private final SalesContactApi salesContactApi;
 
     @Override
-    public long countActivitiesSince(LocalDateTime since) {
-        return activityRepository.countByActivityDateGreaterThanEqual(since);
+    public long countVisibleActivitiesSince(LocalDateTime since) {
+        Optional<Set<Long>> visible = customerApi.currentViewerIdRestriction(Menu.SALES_CUSTOMERS);
+        if (visible.isEmpty()) {
+            return activityRepository.countByActivityDateGreaterThanEqual(since);
+        }
+        return visible.get().isEmpty()
+                ? 0L
+                : activityRepository.countByCustomerIdInAndActivityDateGreaterThanEqual(visible.get(), since);
     }
 
     @Override
-    public List<RecentSalesActivityInfo> findRecentActivities(int limit) {
+    public List<RecentSalesActivityInfo> findRecentVisibleActivities(int limit) {
         Pageable pageable = PageRequest.of(0, limit);
-        List<SalesActivity> activities = activityRepository.findAllByOrderByActivityDateDesc(pageable);
+        Optional<Set<Long>> visible = customerApi.currentViewerIdRestriction(Menu.SALES_CUSTOMERS);
+        if (visible.isPresent() && visible.get().isEmpty()) {
+            return List.of();
+        }
+        List<SalesActivity> activities = visible.isEmpty()
+                ? activityRepository.findAllByOrderByActivityDateDesc(pageable)
+                : activityRepository.findByCustomerIdInOrderByActivityDateDesc(visible.get(), pageable);
         if (activities.isEmpty()) {
             return List.of();
         }
@@ -104,6 +118,7 @@ public class SalesCustomerService implements SalesCustomerApi {
     }
 
     public SalesCustomerDetailResponse getDetail(Long customerId) {
+        customerApi.assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, customerId);
         CustomerInfo customer = customerApi.getById(customerId);
 
         List<SalesActivity> activities = activityRepository.findByCustomerIdOrderByActivityDateDesc(customerId);
@@ -153,14 +168,25 @@ public class SalesCustomerService implements SalesCustomerApi {
         }
 
         List<Long> customerIds = activities.stream().map(SalesActivity::getCustomerId).distinct().toList();
-        Map<Long, CustomerInfo> customerMap = customerApi.findByIds(customerIds).stream()
+        List<Long> visibleCustomerIds = customerApi.filterVisibleIdsForCurrentViewer(
+                Menu.SALES_CUSTOMERS,
+                customerIds
+        );
+        if (visibleCustomerIds.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> visibleCustomerIdSet = Set.copyOf(visibleCustomerIds);
+        List<SalesActivity> visibleActivities = activities.stream()
+                .filter(activity -> visibleCustomerIdSet.contains(activity.getCustomerId()))
+                .toList();
+        Map<Long, CustomerInfo> customerMap = customerApi.findByIds(visibleCustomerIds).stream()
                 .collect(toMap(CustomerInfo::id, c -> c));
 
-        List<Long> employeeIds = activities.stream().map(SalesActivity::getOurEmployeeId).distinct().toList();
+        List<Long> employeeIds = visibleActivities.stream().map(SalesActivity::getOurEmployeeId).distinct().toList();
         Map<Long, EmployeeInfo> employeeMap = employeeApi.findByIds(employeeIds).stream()
                 .collect(toMap(EmployeeInfo::id, e -> e));
 
-        return activities.stream()
+        return visibleActivities.stream()
                 .map(a -> salesCustomerMapper.toActivityResponse(
                         a,
                         customerMap.get(a.getCustomerId()),
@@ -177,13 +203,20 @@ public class SalesCustomerService implements SalesCustomerApi {
         if (customerIds == null || customerIds.isEmpty()) {
             return List.of();
         }
+        List<Long> visibleCustomerIds = customerApi.filterVisibleIdsForCurrentViewer(
+                Menu.SALES_CUSTOMERS,
+                customerIds
+        );
+        if (visibleCustomerIds.isEmpty()) {
+            return List.of();
+        }
 
         // 활동 카운트 + 마지막 활동일
-        Map<Long, AggregatedActivityCount> activityMap = activityRepository.aggregateByCustomerIds(customerIds).stream()
+        Map<Long, AggregatedActivityCount> activityMap = activityRepository.aggregateByCustomerIds(visibleCustomerIds).stream()
                 .collect(toMap(AggregatedActivityCount::customerId, a -> a));
 
         // 활성 배정
-        List<SalesAssignment> activeAssignments = assignmentRepository.findByCustomerIdInAndEndDateIsNull(customerIds);
+        List<SalesAssignment> activeAssignments = assignmentRepository.findByCustomerIdInAndEndDateIsNull(visibleCustomerIds);
         Map<Long, List<SalesAssignment>> assignmentsByCustomer = activeAssignments.stream()
                 .collect(Collectors.groupingBy(SalesAssignment::getCustomerId));
 
@@ -195,7 +228,7 @@ public class SalesCustomerService implements SalesCustomerApi {
         Map<Long, EmployeeInfo> employeeMap = employeeApi.findByIds(employeeIds).stream()
                 .collect(toMap(EmployeeInfo::id, e -> e));
 
-        return customerIds.stream()
+        return visibleCustomerIds.stream()
                 .map(cid -> {
                     AggregatedActivityCount act = activityMap.get(cid);
                     List<SalesAssignment> assignments = assignmentsByCustomer.getOrDefault(cid, List.of());
@@ -220,6 +253,7 @@ public class SalesCustomerService implements SalesCustomerApi {
     @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.CREATE, targetType = "SalesActivity", targetIdFromReturn = true)
     @Transactional
     public Long createActivity(SalesActivityCreateRequest request) {
+        customerApi.assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, request.customerId());
         customerApi.getById(request.customerId());
         requireActiveEmployee(request.ourEmployeeId());
         validateCustomerContact(request.customerId(), request.customerContactId());
@@ -241,6 +275,7 @@ public class SalesCustomerService implements SalesCustomerApi {
     public void updateActivity(Long id, SalesActivityUpdateRequest request) {
         SalesActivity activity = activityRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(SalesCustomerErrorCode.ACTIVITY_NOT_FOUND));
+        customerApi.assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, activity.getCustomerId());
         if (!Objects.equals(activity.getOurEmployeeId(), request.ourEmployeeId())) {
             requireActiveEmployee(request.ourEmployeeId());
         }
@@ -259,15 +294,16 @@ public class SalesCustomerService implements SalesCustomerApi {
     @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.DELETE, targetType = "SalesActivity", targetIdParam = "id")
     @Transactional
     public void deleteActivity(Long id) {
-        if (!activityRepository.existsById(id)) {
-            throw new BusinessException(SalesCustomerErrorCode.ACTIVITY_NOT_FOUND);
-        }
+        SalesActivity activity = activityRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(SalesCustomerErrorCode.ACTIVITY_NOT_FOUND));
+        customerApi.assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, activity.getCustomerId());
         activityRepository.deleteById(id);
     }
 
     @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.CREATE, targetType = "SalesAssignment", targetIdFromReturn = true)
     @Transactional
     public Long createAssignment(SalesAssignmentCreateRequest request) {
+        customerApi.assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, request.customerId());
         customerApi.getById(request.customerId());
         requireActiveEmployee(request.employeeId());
         if (assignmentRepository.existsByCustomerIdAndEmployeeIdAndEndDateIsNull(
@@ -304,6 +340,7 @@ public class SalesCustomerService implements SalesCustomerApi {
     public void updateAssignment(Long id, SalesAssignmentUpdateRequest request) {
         SalesAssignment assignment = assignmentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(SalesCustomerErrorCode.ASSIGNMENT_NOT_FOUND));
+        customerApi.assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, assignment.getCustomerId());
         if (!assignment.isActive()) {
             throw new BusinessException(SalesCustomerErrorCode.ASSIGNMENT_ALREADY_TERMINATED);
         }
@@ -323,6 +360,7 @@ public class SalesCustomerService implements SalesCustomerApi {
     public void terminateAssignment(Long id, SalesAssignmentTerminateRequest request) {
         SalesAssignment assignment = assignmentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(SalesCustomerErrorCode.ASSIGNMENT_NOT_FOUND));
+        customerApi.assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, assignment.getCustomerId());
         if (!assignment.isActive()) {
             throw new BusinessException(SalesCustomerErrorCode.ASSIGNMENT_ALREADY_TERMINATED);
         }
@@ -335,9 +373,9 @@ public class SalesCustomerService implements SalesCustomerApi {
     @Auditable(menu = Menu.SALES_CUSTOMERS, action = AuditAction.DELETE, targetType = "SalesAssignment", targetIdParam = "id")
     @Transactional
     public void deleteAssignment(Long id) {
-        if (!assignmentRepository.existsById(id)) {
-            throw new BusinessException(SalesCustomerErrorCode.ASSIGNMENT_NOT_FOUND);
-        }
+        SalesAssignment assignment = assignmentRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(SalesCustomerErrorCode.ASSIGNMENT_NOT_FOUND));
+        customerApi.assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, assignment.getCustomerId());
         assignmentRepository.deleteById(id);
     }
 

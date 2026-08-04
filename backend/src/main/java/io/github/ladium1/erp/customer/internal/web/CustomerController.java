@@ -3,6 +3,8 @@ package io.github.ladium1.erp.customer.internal.web;
 import io.github.ladium1.erp.customer.internal.dto.AvailabilityResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerCreateRequest;
 import io.github.ladium1.erp.customer.internal.dto.CustomerDetailResponse;
+import io.github.ladium1.erp.customer.internal.dto.CustomerReferenceResponse;
+import io.github.ladium1.erp.customer.internal.dto.SalesCustomerReferenceResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerSearchCondition;
 import io.github.ladium1.erp.customer.internal.dto.CustomerSummaryResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerUpdateRequest;
@@ -46,21 +48,20 @@ public class CustomerController {
     private static final String CAN_READ = "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "')";
     private static final String CAN_WRITE = "@menuPermissionEvaluator.canWrite(authentication, '" + MENU_CODE + "')";
 
-    /**
-     * 영업 관리 / 계약 관리 / 설비 대장 / AS 관리 페이지가 고객사 검색 / 상세 조회를 그대로 사용하므로,
-     * 이 중 한쪽 메뉴 read 권한이 있으면 허용. (Department 의 reference 권한과 동일 패턴)
-     */
+    /** 관리 상세가 아닌 고객사 식별 정보가 필요한 업무 메뉴의 참조 조회 권한. */
     private static final String CAN_READ_REFERENCE =
             "@menuPermissionEvaluator.canRead(authentication, '" + MENU_CODE + "') "
-            + "or @menuPermissionEvaluator.canRead(authentication, 'SALES_CUSTOMERS') "
+            + "or @menuPermissionEvaluator.canRead(authentication, 'SALES_CONTACTS') "
             + "or @menuPermissionEvaluator.canRead(authentication, 'CONTRACTS') "
             + "or @menuPermissionEvaluator.canRead(authentication, 'EQUIPMENTS') "
             + "or @menuPermissionEvaluator.canRead(authentication, 'AFTER_SERVICES')";
+    private static final String CAN_READ_SALES =
+            "@menuPermissionEvaluator.canRead(authentication, 'SALES_CUSTOMERS')";
 
     private final CustomerService customerService;
 
     @GetMapping
-    @PreAuthorize(CAN_READ_REFERENCE)
+    @PreAuthorize(CAN_READ)
     public PageResponse<CustomerSummaryResponse> search(
             @RequestParam(required = false) String codeKeyword,
             @RequestParam(required = false) String nameKeyword,
@@ -73,8 +74,48 @@ public class CustomerController {
         return customerService.search(toCondition(codeKeyword, nameKeyword, addressKeyword, phoneKeyword, type, status), pageable);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/reference")
     @PreAuthorize(CAN_READ_REFERENCE)
+    public PageResponse<CustomerReferenceResponse> searchReference(
+            @RequestParam(required = false) String codeKeyword,
+            @RequestParam(required = false) String nameKeyword,
+            @RequestParam(required = false) String addressKeyword,
+            @RequestParam(required = false) String phoneKeyword,
+            @RequestParam(required = false) CustomerType type,
+            @RequestParam(required = false) CustomerStatus status,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return customerService.searchReference(
+                toCondition(codeKeyword, nameKeyword, addressKeyword, phoneKeyword, type, status),
+                pageable
+        );
+    }
+
+    @GetMapping("/sales-reference")
+    @PreAuthorize(CAN_READ_SALES)
+    public PageResponse<SalesCustomerReferenceResponse> searchSalesReference(
+            @RequestParam(required = false) String codeKeyword,
+            @RequestParam(required = false) String nameKeyword,
+            @RequestParam(required = false) String addressKeyword,
+            @RequestParam(required = false) String phoneKeyword,
+            @RequestParam(required = false) CustomerType type,
+            @RequestParam(required = false) CustomerStatus status,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return customerService.searchSalesReference(
+                toCondition(codeKeyword, nameKeyword, addressKeyword, phoneKeyword, type, status),
+                pageable
+        );
+    }
+
+    @GetMapping("/sales-reference/{id}")
+    @PreAuthorize(CAN_READ_SALES)
+    public SalesCustomerReferenceResponse getSalesReference(@PathVariable Long id) {
+        return customerService.getSalesReference(id);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize(CAN_READ)
     public CustomerDetailResponse getDetail(@PathVariable Long id) {
         return customerService.getDetail(id);
     }

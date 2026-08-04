@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.salescustomer.internal.web;
 
+import io.github.ladium1.erp.customer.internal.exception.CustomerErrorCode;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityCreateRequest;
@@ -86,6 +87,18 @@ class SalesCustomerControllerTest {
     }
 
     @Test
+    @DisplayName("숨은 고객만 요청한 aggregates는 빈 목록")
+    void aggregates_hidden_customer_returns_empty() throws Exception {
+        given(salesCustomerService.aggregateByCustomerIds(List.of(2L))).willReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/sales-customers/aggregates")
+                        .param("customerIds", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    @Test
     @DisplayName("상세 조회 성공")
     void get_detail_success() throws Exception {
         // given
@@ -102,6 +115,27 @@ class SalesCustomerControllerTest {
         mockMvc.perform(get("/api/v1/sales-customers/{customerId}", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.customerName").value("대성상사"));
+    }
+
+    @Test
+    @DisplayName("현재 조회자에게 숨은 고객 상세는 404")
+    void get_detail_hidden_customer_returns_not_found() throws Exception {
+        given(salesCustomerService.getDetail(2L))
+                .willThrow(new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND));
+
+        mockMvc.perform(get("/api/v1/sales-customers/{customerId}", 2L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("숨은 고객에 속한 contact 활동은 빈 목록")
+    void contact_activities_hidden_customer_returns_empty() throws Exception {
+        given(salesCustomerService.findActivitiesByContactId(20L)).willReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/sales-customers/contacts/{contactId}/activities", 20L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data").isEmpty());
     }
 
     @Test

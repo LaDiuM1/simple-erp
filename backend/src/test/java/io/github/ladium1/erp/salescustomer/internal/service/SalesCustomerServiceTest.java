@@ -2,10 +2,13 @@ package io.github.ladium1.erp.salescustomer.internal.service;
 
 import io.github.ladium1.erp.customer.api.CustomerApi;
 import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
+import io.github.ladium1.erp.customer.internal.exception.CustomerErrorCode;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.salescontact.api.SalesContactApi;
+import io.github.ladium1.erp.salescontact.api.dto.SalesContactInfo;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityCreateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesActivityUpdateRequest;
 import io.github.ladium1.erp.salescustomer.internal.dto.SalesAssignmentCreateRequest;
@@ -22,13 +25,13 @@ import io.github.ladium1.erp.salescustomer.internal.repository.AggregatedActivit
 import io.github.ladium1.erp.salescustomer.internal.repository.SalesActivityRepository;
 import io.github.ladium1.erp.salescustomer.internal.repository.SalesAssignmentRepository;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.sql.SQLIntegrityConstraintViolationException;
@@ -36,13 +39,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,12 +63,6 @@ class SalesCustomerServiceTest {
     @Mock private CustomerApi customerApi;
     @Mock private EmployeeApi employeeApi;
     @Mock private SalesContactApi salesContactApi;
-
-    @BeforeEach
-    void setupEligibleReferences() {
-        lenient().when(employeeApi.isEligibleForNewWorkReference(any())).thenReturn(true);
-        lenient().when(salesContactApi.hasActiveEmploymentAtCustomer(any(), any())).thenReturn(true);
-    }
 
     @Test
     @DisplayName("getDetail 성공 — customer + activities + assignments 통합 반환")
@@ -84,6 +84,21 @@ class SalesCustomerServiceTest {
         assertThat(detail.customerName()).isEqualTo("대성상사");
         assertThat(detail.activities()).isEmpty();
         assertThat(detail.assignments()).isEmpty();
+        verify(customerApi).assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, 1L);
+    }
+
+    @Test
+    @DisplayName("getDetail 실패 — 현재 조회자에게 숨은 고객은 CUSTOMER_NOT_FOUND")
+    void get_detail_rejects_customer_hidden_from_current_viewer() {
+        willThrow(new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND))
+                .given(customerApi).assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, 2L);
+
+        assertThatThrownBy(() -> salesCustomerService.getDetail(2L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        verifySalesCustomerVisibilityChecked(2L);
+        verify(customerApi, never()).getById(any());
+        verify(activityRepository, never()).findByCustomerIdOrderByActivityDateDesc(any());
     }
 
     @Test
@@ -99,6 +114,8 @@ class SalesCustomerServiceTest {
     void aggregate_success() {
         // given
         Long customerId = 1L;
+        given(customerApi.filterVisibleIdsForCurrentViewer(Menu.SALES_CUSTOMERS, List.of(customerId)))
+                .willReturn(List.of(customerId));
         AggregatedActivityCount activityCount = new AggregatedActivityCount(
                 customerId, 5L, LocalDateTime.of(2026, 4, 20, 10, 0));
         given(activityRepository.aggregateByCustomerIds(List.of(customerId)))
@@ -131,6 +148,75 @@ class SalesCustomerServiceTest {
     }
 
     @Test
+    @DisplayName("aggregateByCustomerIds — 현재 조회자에게 숨은 고객은 집계와 DB 조회에서 제거")
+    void aggregate_filters_customers_hidden_from_current_viewer() {
+        given(customerApi.filterVisibleIdsForCurrentViewer(Menu.SALES_CUSTOMERS, List.of(1L, 2L)))
+                .willReturn(List.of(1L));
+        given(activityRepository.aggregateByCustomerIds(List.of(1L))).willReturn(List.of());
+        given(assignmentRepository.findByCustomerIdInAndEndDateIsNull(List.of(1L)))
+                .willReturn(List.of());
+        given(employeeApi.findByIds(List.of())).willReturn(List.of());
+
+        assertThat(salesCustomerService.aggregateByCustomerIds(List.of(1L, 2L)))
+                .extracting(SalesCustomerAggregate::customerId)
+                .containsExactly(1L);
+        verify(activityRepository).aggregateByCustomerIds(List.of(1L));
+        verify(assignmentRepository).findByCustomerIdInAndEndDateIsNull(List.of(1L));
+        verify(customerApi).filterVisibleIdsForCurrentViewer(
+                Menu.SALES_CUSTOMERS,
+                List.of(1L, 2L)
+        );
+    }
+
+    @Test
+    @DisplayName("contact 활동 — 현재 조회자에게 숨은 고객의 활동은 빈 목록으로 처리")
+    void contact_activities_hide_customers_outside_current_viewer_scope() {
+        SalesContactInfo contact = SalesContactInfo.builder().id(20L).name("고객 담당자").build();
+        SalesActivity hidden = SalesActivity.builder()
+                .customerId(2L)
+                .type(SalesActivityType.CALL)
+                .activityDate(LocalDateTime.now())
+                .subject("숨은 활동")
+                .ourEmployeeId(10L)
+                .customerContactId(20L)
+                .build();
+        given(salesContactApi.getById(20L)).willReturn(contact);
+        given(activityRepository.findByCustomerContactIdOrderByActivityDateDesc(20L))
+                .willReturn(List.of(hidden));
+        given(customerApi.filterVisibleIdsForCurrentViewer(Menu.SALES_CUSTOMERS, List.of(2L)))
+                .willReturn(List.of());
+
+        assertThat(salesCustomerService.findActivitiesByContactId(20L)).isEmpty();
+        verify(customerApi).filterVisibleIdsForCurrentViewer(Menu.SALES_CUSTOMERS, List.of(2L));
+        verify(customerApi, never()).findByIds(any());
+        verify(employeeApi, never()).findByIds(any());
+    }
+
+    @Test
+    @DisplayName("대시보드 영업 KPI와 최근 활동은 현재 조회자의 고객 범위만 조회")
+    void dashboard_sales_reads_use_current_viewer_scope() {
+        LocalDateTime since = LocalDateTime.of(2026, 8, 1, 0, 0);
+        SalesActivity activity = mockActivity();
+        given(customerApi.currentViewerIdRestriction(Menu.SALES_CUSTOMERS))
+                .willReturn(Optional.of(Set.of(1L)));
+        given(activityRepository.countByCustomerIdInAndActivityDateGreaterThanEqual(Set.of(1L), since))
+                .willReturn(1L);
+        given(activityRepository.findByCustomerIdInOrderByActivityDateDesc(eq(Set.of(1L)), any(Pageable.class)))
+                .willReturn(List.of(activity));
+        given(customerApi.findByIds(List.of(1L))).willReturn(List.of(
+                CustomerInfo.builder().id(1L).code("C0001").name("보이는 고객").build()));
+        given(employeeApi.findByIds(List.of(10L))).willReturn(List.of(activeEmployee(10L)));
+
+        assertThat(salesCustomerService.countVisibleActivitiesSince(since)).isEqualTo(1L);
+        assertThat(salesCustomerService.findRecentVisibleActivities(5))
+                .extracting("customerName")
+                .containsExactly("보이는 고객");
+        verify(activityRepository, never()).countByActivityDateGreaterThanEqual(any());
+        verify(activityRepository, never()).findAllByOrderByActivityDateDesc(any());
+        verify(customerApi, times(2)).currentViewerIdRestriction(Menu.SALES_CUSTOMERS);
+    }
+
+    @Test
     @DisplayName("createActivity 성공 — customer / employee 무결성 검증 후 저장")
     void create_activity_success() {
         // given
@@ -138,6 +224,7 @@ class SalesCustomerServiceTest {
         SalesActivity saved = mockActivity();
         ReflectionTestUtils.setField(saved, "id", 100L);
         given(activityRepository.save(any(SalesActivity.class))).willReturn(saved);
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(true);
 
         // when
         Long id = salesCustomerService.createActivity(request);
@@ -146,6 +233,127 @@ class SalesCustomerServiceTest {
         assertThat(id).isEqualTo(100L);
         verify(customerApi).getById(1L);
         verify(employeeApi).isEligibleForNewWorkReference(10L);
+    }
+
+    @Test
+    @DisplayName("createActivity 실패 — 현재 조회자에게 숨은 고객에는 활동을 생성할 수 없음")
+    void create_activity_rejects_customer_hidden_from_current_viewer() {
+        hideCustomerFromCurrentViewer(2L);
+
+        assertThatThrownBy(() -> salesCustomerService.createActivity(baseActivityCreateRequest(2L, 10L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        verifySalesCustomerVisibilityChecked(2L);
+        verify(customerApi, never()).getById(any());
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+        verify(activityRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("createActivity 실패 — 휴직·퇴사 직원은 새 활동 담당자가 될 수 없음")
+    void create_activity_rejects_inactive_employee() {
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(false);
+
+        assertThatThrownBy(() -> salesCustomerService.createActivity(baseActivityCreateRequest(1L, 10L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.INACTIVE_EMPLOYEE);
+        verify(activityRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("createActivity 실패 — 다른 고객사 재직 명함은 연결할 수 없음")
+    void create_activity_rejects_contact_from_other_customer() {
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(true);
+        given(salesContactApi.getById(20L)).willReturn(
+                SalesContactInfo.builder().id(20L).name("타사 담당자").build());
+        SalesActivityCreateRequest request = new SalesActivityCreateRequest(
+                1L, SalesActivityType.VISIT, LocalDateTime.now(),
+                "신규 미팅", "내용", 10L, 20L);
+
+        assertThatThrownBy(() -> salesCustomerService.createActivity(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.CONTACT_CUSTOMER_MISMATCH);
+        verify(activityRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("createActivity 성공 — 해당 고객사 현재 재직 명함은 연결 가능")
+    void create_activity_accepts_current_customer_contact() {
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(true);
+        given(salesContactApi.getById(20L)).willReturn(
+                SalesContactInfo.builder().id(20L).name("고객사 담당자").build());
+        given(salesContactApi.hasActiveEmploymentAtCustomer(20L, 1L)).willReturn(true);
+        SalesActivity saved = mockActivity();
+        ReflectionTestUtils.setField(saved, "id", 100L);
+        given(activityRepository.save(any(SalesActivity.class))).willReturn(saved);
+        SalesActivityCreateRequest request = new SalesActivityCreateRequest(
+                1L, SalesActivityType.VISIT, LocalDateTime.now(),
+                "신규 미팅", "내용", 10L, 20L);
+
+        assertThat(salesCustomerService.createActivity(request)).isEqualTo(100L);
+        verify(activityRepository).save(any(SalesActivity.class));
+    }
+
+    @Test
+    @DisplayName("updateActivity 실패 — 기존 활동 고객사와 명함의 현재 재직 고객사가 다르면 차단")
+    void update_activity_rejects_contact_from_other_customer() {
+        SalesActivity activity = mockActivity();
+        given(activityRepository.findById(7L)).willReturn(Optional.of(activity));
+        given(salesContactApi.getById(20L)).willReturn(
+                SalesContactInfo.builder().id(20L).name("타사 담당자").build());
+        SalesActivityUpdateRequest request = new SalesActivityUpdateRequest(
+                SalesActivityType.CALL, LocalDateTime.now(), "수정", "내용", 10L, 20L);
+
+        assertThatThrownBy(() -> salesCustomerService.updateActivity(7L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.CONTACT_CUSTOMER_MISMATCH);
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+    }
+
+    @Test
+    @DisplayName("updateActivity 성공 — 기존 담당자의 재직 상태가 바뀌어도 활동 내용은 수정 가능")
+    void update_activity_keeps_existing_ineligible_employee_reference() {
+        SalesActivity activity = mockActivity();
+        given(activityRepository.findById(7L)).willReturn(Optional.of(activity));
+        SalesActivityUpdateRequest request = new SalesActivityUpdateRequest(
+                SalesActivityType.CALL, LocalDateTime.now(), "수정", "내용", 10L, null);
+
+        salesCustomerService.updateActivity(7L, request);
+
+        assertThat(activity.getSubject()).isEqualTo("수정");
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+    }
+
+    @Test
+    @DisplayName("updateActivity 실패 — 비활성 직원으로 담당자를 변경할 수 없음")
+    void update_activity_rejects_new_ineligible_employee_reference() {
+        SalesActivity activity = mockActivity();
+        given(activityRepository.findById(7L)).willReturn(Optional.of(activity));
+        given(employeeApi.isEligibleForNewWorkReference(11L)).willReturn(false);
+
+        assertThatThrownBy(() -> salesCustomerService.updateActivity(
+                7L, baseActivityUpdateRequest(11L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.INACTIVE_EMPLOYEE);
+    }
+
+    @Test
+    @DisplayName("updateActivity 실패 — 현재 조회자에게 숨은 고객의 활동은 변경하지 않음")
+    void update_activity_rejects_customer_hidden_from_current_viewer() {
+        SalesActivity activity = mockActivity();
+        String originalSubject = activity.getSubject();
+        Long originalEmployeeId = activity.getOurEmployeeId();
+        given(activityRepository.findById(7L)).willReturn(Optional.of(activity));
+        hideCustomerFromCurrentViewer(1L);
+
+        assertThatThrownBy(() -> salesCustomerService.updateActivity(7L, baseActivityUpdateRequest(11L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        assertThat(activity.getSubject()).isEqualTo(originalSubject);
+        assertThat(activity.getOurEmployeeId()).isEqualTo(originalEmployeeId);
+        verifySalesCustomerVisibilityChecked(1L);
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+        verify(salesContactApi, never()).getById(any());
     }
 
     @Test
@@ -165,12 +373,26 @@ class SalesCustomerServiceTest {
     @DisplayName("deleteActivity 실패 — 존재하지 않는 활동")
     void delete_activity_fail_not_found() {
         // given
-        given(activityRepository.existsById(99L)).willReturn(false);
+        given(activityRepository.findById(99L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> salesCustomerService.deleteActivity(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.ACTIVITY_NOT_FOUND);
+        verify(activityRepository, never()).deleteById(any());
+    }
+
+    @Test
+    @DisplayName("deleteActivity 실패 — 현재 조회자에게 숨은 고객의 활동은 삭제하지 않음")
+    void delete_activity_rejects_customer_hidden_from_current_viewer() {
+        SalesActivity activity = mockActivity();
+        given(activityRepository.findById(7L)).willReturn(Optional.of(activity));
+        hideCustomerFromCurrentViewer(1L);
+
+        assertThatThrownBy(() -> salesCustomerService.deleteActivity(7L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        verifySalesCustomerVisibilityChecked(1L);
         verify(activityRepository, never()).deleteById(any());
     }
 
@@ -184,6 +406,7 @@ class SalesCustomerServiceTest {
         SalesAssignment saved = mockAssignment(1L, 10L, true);
         ReflectionTestUtils.setField(saved, "id", 200L);
         given(assignmentRepository.saveAndFlush(any(SalesAssignment.class))).willReturn(saved);
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(true);
 
         SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
                 1L, 10L, LocalDate.of(2026, 4, 1), true, "신규 주담당 배정");
@@ -205,6 +428,7 @@ class SalesCustomerServiceTest {
         SalesAssignment saved = mockAssignment(1L, 10L, false);
         ReflectionTestUtils.setField(saved, "id", 200L);
         given(assignmentRepository.saveAndFlush(any(SalesAssignment.class))).willReturn(saved);
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(true);
 
         // when
         salesCustomerService.createAssignment(request);
@@ -265,6 +489,36 @@ class SalesCustomerServiceTest {
     }
 
     @Test
+    @DisplayName("createAssignment 실패 — 현재 조회자에게 숨은 고객에는 담당자를 배정할 수 없음")
+    void create_assignment_rejects_customer_hidden_from_current_viewer() {
+        SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
+                2L, 10L, LocalDate.of(2026, 4, 1), true, "숨은 고객 배정");
+        hideCustomerFromCurrentViewer(2L);
+
+        assertThatThrownBy(() -> salesCustomerService.createAssignment(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        verifySalesCustomerVisibilityChecked(2L);
+        verify(customerApi, never()).getById(any());
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+        verify(assignmentRepository, never()).findByCustomerIdAndPrimaryTrueAndEndDateIsNull(any());
+        verify(assignmentRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("createAssignment 실패 — 휴직·퇴사 직원은 고객사 담당자로 신규 배정할 수 없음")
+    void create_assignment_rejects_inactive_employee() {
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(false);
+        SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
+                1L, 10L, LocalDate.of(2026, 4, 1), false, "보조 담당");
+
+        assertThatThrownBy(() -> salesCustomerService.createAssignment(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.INACTIVE_EMPLOYEE);
+        verify(assignmentRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     @DisplayName("updateAssignment 실패 — 이미 종료된 배정")
     void update_assignment_fail_already_terminated() {
         // given
@@ -285,6 +539,38 @@ class SalesCustomerServiceTest {
     }
 
     @Test
+    @DisplayName("updateAssignment 성공 — 기존 담당자의 재직 상태와 관계없이 배정 정보 수정")
+    void update_assignment_keeps_existing_ineligible_employee_reference() {
+        SalesAssignment active = mockAssignment(1L, 10L, true);
+        given(assignmentRepository.findById(7L)).willReturn(Optional.of(active));
+
+        salesCustomerService.updateAssignment(7L,
+                new SalesAssignmentUpdateRequest(LocalDate.of(2026, 1, 1), false, "변경"));
+
+        assertThat(active.getStartDate()).isEqualTo(LocalDate.of(2026, 1, 1));
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+    }
+
+    @Test
+    @DisplayName("updateAssignment 실패 — 현재 조회자에게 숨은 고객의 배정은 변경하지 않음")
+    void update_assignment_rejects_customer_hidden_from_current_viewer() {
+        SalesAssignment active = mockAssignment(1L, 10L, true);
+        LocalDate originalStartDate = active.getStartDate();
+        given(assignmentRepository.findById(7L)).willReturn(Optional.of(active));
+        hideCustomerFromCurrentViewer(1L);
+
+        assertThatThrownBy(() -> salesCustomerService.updateAssignment(7L,
+                new SalesAssignmentUpdateRequest(LocalDate.of(2026, 2, 1), false, "변경")))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        assertThat(active.getStartDate()).isEqualTo(originalStartDate);
+        assertThat(active.isPrimary()).isTrue();
+        verifySalesCustomerVisibilityChecked(1L);
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+        verify(assignmentRepository, never()).findByCustomerIdAndPrimaryTrueAndEndDateIsNull(any());
+    }
+
+    @Test
     @DisplayName("terminateAssignment 성공 — endDate / reason 설정, primary 해제")
     void terminate_assignment_success() {
         // given
@@ -301,6 +587,23 @@ class SalesCustomerServiceTest {
         assertThat(active.getEndDate()).isEqualTo(LocalDate.of(2026, 4, 30));
         assertThat(active.getReason()).isEqualTo("이직");
         assertThat(active.isPrimary()).isFalse();
+    }
+
+    @Test
+    @DisplayName("terminateAssignment 실패 — 현재 조회자에게 숨은 고객의 배정은 종료하지 않음")
+    void terminate_assignment_rejects_customer_hidden_from_current_viewer() {
+        SalesAssignment active = mockAssignment(1L, 10L, true);
+        given(assignmentRepository.findById(7L)).willReturn(Optional.of(active));
+        hideCustomerFromCurrentViewer(1L);
+
+        assertThatThrownBy(() -> salesCustomerService.terminateAssignment(
+                7L, new SalesAssignmentTerminateRequest(LocalDate.of(2026, 4, 30), "종료")))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        assertThat(active.isActive()).isTrue();
+        assertThat(active.getEndDate()).isNull();
+        assertThat(active.isPrimary()).isTrue();
+        verifySalesCustomerVisibilityChecked(1L);
     }
 
     @Test
@@ -346,12 +649,26 @@ class SalesCustomerServiceTest {
     @DisplayName("deleteAssignment 실패 — 존재하지 않는 배정")
     void delete_assignment_fail_not_found() {
         // given
-        given(assignmentRepository.existsById(99L)).willReturn(false);
+        given(assignmentRepository.findById(99L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> salesCustomerService.deleteAssignment(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.ASSIGNMENT_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("deleteAssignment 실패 — 현재 조회자에게 숨은 고객의 배정은 삭제하지 않음")
+    void delete_assignment_rejects_customer_hidden_from_current_viewer() {
+        SalesAssignment assignment = mockAssignment(1L, 10L, false);
+        given(assignmentRepository.findById(7L)).willReturn(Optional.of(assignment));
+        hideCustomerFromCurrentViewer(1L);
+
+        assertThatThrownBy(() -> salesCustomerService.deleteAssignment(7L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        verifySalesCustomerVisibilityChecked(1L);
+        verify(assignmentRepository, never()).deleteById(any());
     }
 
     private SalesActivity mockActivity() {
@@ -387,6 +704,20 @@ class SalesCustomerServiceTest {
                 "수정된 제목", "수정된 내용", employeeId, null
         );
     }
+
+    private EmployeeInfo activeEmployee(Long id) {
+        return EmployeeInfo.builder().id(id).name("재직자").build();
+    }
+
+    private void hideCustomerFromCurrentViewer(Long customerId) {
+        willThrow(new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND))
+                .given(customerApi).assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, customerId);
+    }
+
+    private void verifySalesCustomerVisibilityChecked(Long customerId) {
+        verify(customerApi).assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, customerId);
+    }
+
     private DataIntegrityViolationException integrityViolation(String constraintName) {
         SQLIntegrityConstraintViolationException sqlException = new SQLIntegrityConstraintViolationException(
                 "Duplicate entry for key '" + constraintName + "'");

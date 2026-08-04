@@ -1,8 +1,6 @@
 package io.github.ladium1.erp.global.security;
 
 import io.github.ladium1.erp.department.api.DepartmentApi;
-import io.github.ladium1.erp.employee.api.EmployeeApi;
-import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,7 +17,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class DataScopeContextProvider {
 
-    private final EmployeeApi employeeApi;
+    private final DataScopePrincipalReader principalReader;
     private final DepartmentApi departmentApi;
 
     public DataScopeContext current() {
@@ -31,12 +29,12 @@ public class DataScopeContextProvider {
     }
 
     public DataScopeContext forLoginId(String loginId) {
-        EmployeeInfo me = employeeApi.findByLoginId(loginId).orElse(null);
+        DataScopePrincipal me = principalReader.findByLoginId(loginId).orElse(null);
         if (me == null) {
             return DataScopeContext.anonymous();
         }
         Long deptId = me.departmentId();
         Set<Long> subtree = deptId == null ? Set.of() : departmentApi.findSubtreeIds(deptId);
-        return new DataScopeContext(me.id(), deptId, subtree);
+        return new DataScopeContext(me.employeeId(), deptId, subtree);
     }
 }

@@ -6,6 +6,7 @@ import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.security.DataScope;
+import io.github.ladium1.erp.global.security.DataScopePolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.role.api.RoleApi;
 import io.github.ladium1.erp.role.api.RoleDeletingEvent;
@@ -101,7 +102,12 @@ public class RoleService implements RoleApi {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_NOT_FOUND));
         return roleMenuRepository.findAllByRole(role).stream()
-                .map(rm -> new MenuPermission(rm.getMenuCode(), rm.isCanRead(), rm.isCanWrite(), rm.getDataScope()))
+                .map(rm -> new MenuPermission(
+                        rm.getMenuCode(),
+                        rm.isCanRead(),
+                        rm.isCanWrite(),
+                        DataScopePolicy.normalize(rm.getMenuCode(), rm.getDataScope())
+                ))
                 .toList();
     }
 
@@ -229,7 +235,7 @@ public class RoleService implements RoleApi {
                         .menuCode(p.menuCode())
                         .canRead(p.canRead() || p.canWrite())
                         .canWrite(p.canWrite())
-                        .dataScope(p.dataScope() == null ? DataScope.ALL : p.dataScope())
+                        .dataScope(DataScopePolicy.normalize(p.menuCode(), p.dataScope()))
                         .build())
                 .toList();
         roleMenuRepository.saveAll(rows);
@@ -248,7 +254,12 @@ public class RoleService implements RoleApi {
                         // 미저장 메뉴는 권한 없음 + 스코프 ALL (의미 없는 placeholder, FE 매트릭스 렌더 편의)
                         return new MenuPermission(m, false, false, DataScope.ALL);
                     }
-                    return new MenuPermission(m, rm.isCanRead(), rm.isCanWrite(), rm.getDataScope());
+                    return new MenuPermission(
+                            m,
+                            rm.isCanRead(),
+                            rm.isCanWrite(),
+                            DataScopePolicy.normalize(m, rm.getDataScope())
+                    );
                 })
                 .toList();
     }

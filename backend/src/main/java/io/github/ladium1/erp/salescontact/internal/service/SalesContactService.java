@@ -54,7 +54,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -152,9 +151,12 @@ public class SalesContactService implements SalesContactApi {
     }
 
     public PageResponse<SalesContactSummaryResponse> search(SalesContactSearchCondition condition, Pageable pageable) {
+        if (condition.customerId() != null) {
+            customerApi.assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, condition.customerId());
+        }
         Page<SalesContact> page = contactRepository.search(condition, pageable);
         List<Long> contactIds = page.getContent().stream().map(SalesContact::getId).toList();
-        EmploymentRefs refs = loadActiveEmployments(contactIds);
+        EmploymentRefs refs = loadActiveEmployments(contactIds, condition.customerId());
         Map<Long, List<AcquisitionSourceInfo>> sourcesByContact = loadSourcesByContact(contactIds);
         return PageResponse.of(page.map(c -> {
             SalesContactEmployment active = refs.activeByContact.get(c.getId());
@@ -181,7 +183,7 @@ public class SalesContactService implements SalesContactApi {
             return excelExporter.export(List.of());
         }
         List<Long> contactIds = contacts.stream().map(SalesContact::getId).toList();
-        EmploymentRefs refs = loadActiveEmployments(contactIds);
+        EmploymentRefs refs = loadActiveEmployments(contactIds, condition.customerId());
         Map<Long, List<AcquisitionSourceInfo>> sourcesByContact = loadSourcesByContact(contactIds);
 
         List<SalesContactExcelRow> rows = contacts.stream()
@@ -353,6 +355,7 @@ public class SalesContactService implements SalesContactApi {
      * 고객사 영업 상세 페이지가 호출하는 — 해당 고객사 소속 영업 명부 재직 이력.
      */
     public List<SalesContactEmploymentResponse> findEmploymentsByCustomerId(Long customerId) {
+        customerApi.assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, customerId);
         customerApi.getById(customerId);
         List<SalesContactEmployment> employments = employmentRepository.findByCustomerIdOrderByEndDateAscStartDateDesc(customerId);
         Map<Long, SalesContact> contactMap = contactRepository
@@ -414,10 +417,10 @@ public class SalesContactService implements SalesContactApi {
     @Auditable(menu = Menu.SALES_CONTACTS, action = AuditAction.UPDATE, targetType = "SalesContact", targetIdParam = "id")
     @Transactional
     public void update(Long id, SalesContactUpdateRequest request) {
+        List<Long> sourceIds = normalizeSourceIds(request.sourceIds());
         SalesContact contact = contactRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(SalesContactErrorCode.CONTACT_NOT_FOUND));
 
-        List<Long> sourceIds = normalizeSourceIds(request.sourceIds());
         acquisitionSourceService.validateIds(sourceIds);
 
         String mobilePhone = trimToNull(request.mobilePhone());
@@ -596,10 +599,17 @@ public class SalesContactService implements SalesContactApi {
     }
 
     private EmploymentRefs loadActiveEmployments(List<Long> contactIds) {
+        return loadActiveEmployments(contactIds, null);
+    }
+
+    private EmploymentRefs loadActiveEmployments(List<Long> contactIds, Long customerId) {
         if (contactIds.isEmpty()) {
             return new EmploymentRefs(Map.of(), Map.of());
         }
-        List<SalesContactEmployment> active = employmentRepository.findByContactIdInAndEndDateIsNull(contactIds);
+        List<SalesContactEmployment> active = customerId == null
+                ? employmentRepository.findByContactIdInAndEndDateIsNull(contactIds)
+                : employmentRepository.findByContactIdInAndCustomerIdAndEndDateIsNull(
+                        contactIds, customerId);
         Map<Long, SalesContactEmployment> activeByContact = new HashMap<>();
         for (SalesContactEmployment e : active) {
             // 중복 활성 재직이 있어도 첫 번째만 — 단순화. 한 사람에 다수 동시 재직 케이스는 적음.
@@ -629,7 +639,7 @@ public class SalesContactService implements SalesContactApi {
         if (ids.size() > MAX_SOURCE_COUNT || ids.stream().anyMatch(java.util.Objects::isNull)) {
             throw new BusinessException(SalesContactErrorCode.INVALID_SOURCE_SELECTION);
         }
-        Set<Long> distinct = new LinkedHashSet<>(ids);
+        Set<Long> distinct = new java.util.LinkedHashSet<>(ids);
         return distinct.stream().toList();
     }
 

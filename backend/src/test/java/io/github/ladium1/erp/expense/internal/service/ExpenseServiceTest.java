@@ -215,7 +215,6 @@ class ExpenseServiceTest {
         claim.linkApprovalDocument(99L);
         given(employeeApi.findByLoginId(TEST_LOGIN_ID)).willReturn(Optional.of(other));
         given(expenseClaimRepository.findById(10L)).willReturn(Optional.of(claim));
-        given(approvalApi.involves(99L, 2L)).willReturn(false);
         given(menuPermissionEvaluator.canWrite(any(), eq("EXPENSES"))).willReturn(false);
 
         // when & then
@@ -225,23 +224,54 @@ class ExpenseServiceTest {
     }
 
     @Test
-    @DisplayName("결재 관련자 상세 조회 성공 — involves 로 접근 허용")
-    void get_detail_success_involved_approver() {
+    @DisplayName("결재 관련자라도 쓰기 권한 없이는 다른 직원 청구 상세 조회 불가")
+    void get_detail_fail_involved_approver_without_write_permission() {
         // given
         EmployeeInfo approver = EmployeeInfo.builder().id(2L).loginId(TEST_LOGIN_ID).name("김철수").build();
         ExpenseClaim claim = claim();
         claim.linkApprovalDocument(99L);
         given(employeeApi.findByLoginId(TEST_LOGIN_ID)).willReturn(Optional.of(approver));
         given(expenseClaimRepository.findById(10L)).willReturn(Optional.of(claim));
-        given(approvalApi.involves(99L, 2L)).willReturn(true);
+        given(menuPermissionEvaluator.canWrite(any(), eq("EXPENSES"))).willReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> expenseService.getDetail(TEST_LOGIN_ID, 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ExpenseErrorCode.CLAIM_NOT_FOUND);
+        verify(approvalApi, never()).involves(any(), any());
+    }
+
+    @Test
+    @DisplayName("쓰기 권한자는 다른 직원 청구 상세 조회 가능")
+    void get_detail_success_for_settlement_manager() {
+        EmployeeInfo manager = EmployeeInfo.builder().id(2L).loginId(TEST_LOGIN_ID).name("정산 담당자").build();
+        ExpenseClaim claim = claim();
+        given(employeeApi.findByLoginId(TEST_LOGIN_ID)).willReturn(Optional.of(manager));
+        given(expenseClaimRepository.findById(10L)).willReturn(Optional.of(claim));
+        given(menuPermissionEvaluator.canWrite(any(), eq("EXPENSES"))).willReturn(true);
         given(employeeApi.getById(TEST_EMPLOYEE_ID)).willReturn(employeeInfo());
         given(fileStorageApi.getInfos(List.of())).willReturn(List.of());
 
-        // when
         ExpenseDetailResponse response = expenseService.getDetail(TEST_LOGIN_ID, 10L);
 
-        // then
         assertThat(response.claimantName()).isEqualTo("홍길동");
+    }
+
+    @Test
+    @DisplayName("본인 범위 조회는 읽기 사용자 자신의 청구만 검색")
+    void search_success_mine_scope_for_claimant() {
+        ExpenseSearchCondition condition = new ExpenseSearchCondition(null, null, null, null);
+        given(employeeApi.findByLoginId(TEST_LOGIN_ID)).willReturn(Optional.of(employeeInfo()));
+        given(expenseClaimRepository.search(eq(TEST_EMPLOYEE_ID), eq(condition), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(claim()), PageRequest.of(0, 20), 1));
+        given(employeeApi.findByIds(List.of(TEST_EMPLOYEE_ID))).willReturn(List.of(employeeInfo()));
+
+        PageResponse<ExpenseSummaryResponse> response = expenseService.search(
+                TEST_LOGIN_ID, ExpenseSearchScope.MINE, condition, PageRequest.of(0, 20));
+
+        verify(expenseClaimRepository).search(eq(TEST_EMPLOYEE_ID), eq(condition), any(Pageable.class));
+        verify(menuPermissionEvaluator, never()).canWrite(any(), any());
+        assertThat(response.content()).hasSize(1);
     }
 
     @Test

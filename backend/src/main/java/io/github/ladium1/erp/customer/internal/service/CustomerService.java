@@ -12,6 +12,8 @@ import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.customer.api.dto.RecentCustomerInfo;
 import io.github.ladium1.erp.customer.internal.dto.CustomerCreateRequest;
 import io.github.ladium1.erp.customer.internal.dto.CustomerDetailResponse;
+import io.github.ladium1.erp.customer.internal.dto.CustomerReferenceResponse;
+import io.github.ladium1.erp.customer.internal.dto.SalesCustomerReferenceResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerSearchCondition;
 import io.github.ladium1.erp.customer.internal.dto.CustomerSummaryResponse;
 import io.github.ladium1.erp.customer.internal.dto.CustomerUpdateRequest;
@@ -27,8 +29,6 @@ import io.github.ladium1.erp.customer.internal.repository.CustomerRepository;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
-import io.github.ladium1.erp.global.menu.Menu;
-import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRow;
 import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRows;
 import io.github.ladium1.erp.global.excel.ExcelRowError;
@@ -38,6 +38,7 @@ import io.github.ladium1.erp.global.security.DataScope;
 import io.github.ladium1.erp.global.security.DataScopeContext;
 import io.github.ladium1.erp.global.security.DataScopeContextProvider;
 import io.github.ladium1.erp.global.security.DataScopeResolver;
+import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -53,6 +54,7 @@ import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -64,12 +66,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CustomerService implements CustomerApi {
-
-    /**
-     * 가시성 결정에 함께 고려하는 메뉴들 — Customer 컨트롤러가 두 메뉴 모두에서 진입 가능 (CAN_READ_REFERENCE).
-     * 두 메뉴 중 더 permissive 한 스코프 적용.
-     */
-    private static final Menu[] VISIBILITY_MENUS = { Menu.CUSTOMERS, Menu.SALES_CUSTOMERS };
 
     private final CustomerRepository customerRepository;
     private final CustomerMapper customerMapper;
@@ -90,6 +86,39 @@ public class CustomerService implements CustomerApi {
     }
 
     @Override
+    public void assertVisibleToCurrentViewer(Menu menu, Long id) {
+        Optional<Set<Long>> visible = menuViewerIdRestriction(menu);
+        if (visible.isPresent() && !visible.get().contains(id)) {
+            throw new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND);
+        }
+    }
+
+    @Override
+    public List<Long> filterVisibleIdsForCurrentViewer(Menu menu, Collection<Long> ids) {
+        return filterVisibleIds(ids, menuViewerIdRestriction(menu));
+    }
+
+    private List<Long> filterVisibleIds(Collection<Long> ids, Optional<Set<Long>> visible) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return ids.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .filter(id -> visible.isEmpty() || visible.get().contains(id))
+                .toList();
+    }
+
+    @Override
+    public Optional<Set<Long>> currentViewerIdRestriction(Menu menu) {
+        return menuViewerIdRestriction(menu);
+    }
+
+    private Optional<Set<Long>> menuViewerIdRestriction(Menu menu) {
+        return resolveVisibleIds(menu).map(Set::copyOf);
+    }
+
+    @Override
     public List<CustomerInfo> findAll() {
         return customerMapper.toCustomerInfos(
                 customerRepository.findAll(Sort.by("name").ascending())
@@ -105,14 +134,14 @@ public class CustomerService implements CustomerApi {
     }
 
     @Override
-    public long count() {
+    public long countVisibleToCurrentViewer() {
         return customerRepository.count();
     }
 
     @Override
-    public List<RecentCustomerInfo> findRecent(int limit) {
+    public List<RecentCustomerInfo> findRecentVisibleToCurrentViewer(int limit) {
         Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return customerRepository.findAll(pageable).stream()
+        return customerRepository.findAll(pageable).getContent().stream()
                 .map(c -> RecentCustomerInfo.builder()
                         .id(c.getId())
                         .code(c.getCode())
@@ -125,22 +154,40 @@ public class CustomerService implements CustomerApi {
     }
 
     public PageResponse<CustomerSummaryResponse> search(CustomerSearchCondition condition, Pageable pageable) {
-        Optional<Set<Long>> visible = resolveVisibleIds();
+        Page<Customer> page = customerRepository.search(condition, pageable);
+        return PageResponse.of(page.map(customerMapper::toSummaryResponse));
+    }
+
+    public PageResponse<CustomerReferenceResponse> searchReference(
+            CustomerSearchCondition condition,
+            Pageable pageable
+    ) {
+        return PageResponse.of(customerRepository.search(condition, pageable)
+                .map(customerMapper::toReferenceResponse));
+    }
+
+    public PageResponse<SalesCustomerReferenceResponse> searchSalesReference(
+            CustomerSearchCondition condition,
+            Pageable pageable
+    ) {
+        Optional<Set<Long>> visible = resolveVisibleIds(Menu.SALES_CUSTOMERS);
         if (visible.isPresent() && visible.get().isEmpty()) {
             return PageResponse.of(Page.empty(pageable));
         }
         CustomerSearchCondition scoped = visible.map(condition::withIdScope).orElse(condition);
-        Page<Customer> page = customerRepository.search(scoped, pageable);
-        return PageResponse.of(page.map(customerMapper::toSummaryResponse));
+        return PageResponse.of(customerRepository.search(scoped, pageable)
+                .map(customerMapper::toSalesReferenceResponse));
+    }
+
+    public SalesCustomerReferenceResponse getSalesReference(Long id) {
+        assertVisibleToCurrentViewer(Menu.SALES_CUSTOMERS, id);
+        return customerRepository.findById(id)
+                .map(customerMapper::toSalesReferenceResponse)
+                .orElseThrow(() -> new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND));
     }
 
     public byte[] exportExcel(CustomerSearchCondition condition, Sort sort) {
-        Optional<Set<Long>> visible = resolveVisibleIds();
-        if (visible.isPresent() && visible.get().isEmpty()) {
-            return customerExcelExporter.export(List.of());
-        }
-        CustomerSearchCondition scoped = visible.map(condition::withIdScope).orElse(condition);
-        List<Customer> customers = customerRepository.searchAll(scoped, sort);
+        List<Customer> customers = customerRepository.searchAll(condition, sort);
         List<CustomerSummaryResponse> rows = customers.stream()
                 .map(customerMapper::toSummaryResponse)
                 .toList();
@@ -226,7 +273,6 @@ public class CustomerService implements CustomerApi {
     }
 
     public CustomerDetailResponse getDetail(Long id) {
-        assertVisible(id);
         return customerRepository.findById(id)
                 .map(customerMapper::toDetailResponse)
                 .orElseThrow(() -> new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND));
@@ -292,7 +338,6 @@ public class CustomerService implements CustomerApi {
     @Auditable(menu = Menu.CUSTOMERS, action = AuditAction.UPDATE, targetType = "Customer", targetIdParam = "id")
     @Transactional
     public void update(Long id, CustomerUpdateRequest request) {
-        assertVisible(id);
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND));
 
@@ -326,7 +371,6 @@ public class CustomerService implements CustomerApi {
     @Auditable(menu = Menu.CUSTOMERS, action = AuditAction.DELETE, targetType = "Customer", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
-        assertVisible(id);
         if (!customerRepository.existsById(id)) {
             throw new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND);
         }
@@ -397,8 +441,12 @@ public class CustomerService implements CustomerApi {
      * - {@code Optional.of(empty)} = 보이는 행 0 건 (서비스가 빈 결과로 분기)
      * - {@code Optional.of(set)} = 그 ID 집합만 보임
      */
-    private Optional<Set<Long>> resolveVisibleIds() {
-        DataScope scope = dataScopeResolver.resolveMostPermissive(VISIBILITY_MENUS);
+    private Optional<Set<Long>> resolveVisibleIds(Menu menu) {
+        // 단일 메뉴 호출도 read 권한이 없는 역할을 SELF로 좁히는 fail-closed resolver를 사용한다.
+        return resolveVisibleIds(dataScopeResolver.resolveMostPermissive(menu));
+    }
+
+    private Optional<Set<Long>> resolveVisibleIds(DataScope scope) {
         if (scope == DataScope.ALL) {
             return Optional.empty();
         }
@@ -409,13 +457,4 @@ public class CustomerService implements CustomerApi {
         return Optional.of(union);
     }
 
-    /**
-     * 단건 가시성 강제 — 가시 집합에 없는 ID 는 존재 자체를 노출하지 않기 위해 NOT_FOUND 로 처리.
-     */
-    private void assertVisible(Long customerId) {
-        Optional<Set<Long>> visible = resolveVisibleIds();
-        if (visible.isPresent() && !visible.get().contains(customerId)) {
-            throw new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND);
-        }
-    }
 }
