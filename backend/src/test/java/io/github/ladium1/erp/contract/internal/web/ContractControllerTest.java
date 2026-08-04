@@ -14,6 +14,7 @@ import io.github.ladium1.erp.contract.internal.service.ContractService;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
 import io.github.ladium1.erp.global.web.PageResponse;
+import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -177,6 +178,23 @@ class ContractControllerTest {
     }
 
     @Test
+    @DisplayName("계약 금액이 허용 범위를 넘으면 400")
+    void create_fail_amount_over_limit() throws Exception {
+        ContractCreateRequest request = new ContractCreateRequest(
+                null, 1L, 2L, 3L,
+                null, null, null,
+                null, MoneyPolicy.MAX_AMOUNT + 1, null, null, SupportProgramStatus.NONE,
+                LocalDate.of(2026, 1, 10), null, null, null, null, null, null,
+                null, ContractStatus.CONTRACTED
+        );
+
+        mockMvc.perform(post("/api/v1/contracts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("중복 계약 번호 등록 시 409")
     void create_fail_duplicate_contract_no() throws Exception {
         // given
@@ -255,6 +273,30 @@ class ContractControllerTest {
                 " ", null, null, null, null, null, null, null);
 
         // when & then
+        mockMvc.perform(post("/api/v1/contracts/{contractId}/payments", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("입금일과 입금액은 함께 입력해야 한다")
+    void create_payment_fail_incomplete_paid_pair() throws Exception {
+        ContractPaymentRequest request = new ContractPaymentRequest(
+                "계약금", null, null, LocalDate.of(2026, 1, 15), null, null, null, null);
+
+        mockMvc.perform(post("/api/v1/contracts/{contractId}/payments", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("대금 회차 금액이 허용 범위를 넘으면 400")
+    void create_payment_fail_amount_over_limit() throws Exception {
+        ContractPaymentRequest request = new ContractPaymentRequest(
+                "계약금", null, MoneyPolicy.MAX_AMOUNT + 1, null, null, null, null, null);
+
         mockMvc.perform(post("/api/v1/contracts/{contractId}/payments", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

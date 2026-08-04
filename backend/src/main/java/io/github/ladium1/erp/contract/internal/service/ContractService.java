@@ -38,6 +38,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.security.DataScope;
 import io.github.ladium1.erp.global.security.DataScopeContext;
@@ -58,8 +59,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -83,6 +88,7 @@ public class ContractService implements ContractApi {
     private final DataScopeResolver dataScopeResolver;
     private final DataScopeContextProvider dataScopeContextProvider;
     private final ApplicationEventPublisher eventPublisher;
+    private final Clock businessClock;
 
     @Override
     public ContractInfo getById(Long id) {
@@ -222,8 +228,7 @@ public class ContractService implements ContractApi {
         long paidTotal = payments.stream()
                 .map(ContractPayment::getPaidAmount)
                 .filter(java.util.Objects::nonNull)
-                .mapToLong(Long::longValue)
-                .sum();
+                .reduce(0L, MoneyPolicy::addExact);
 
         List<ContractNote> notes = noteRepository.findByContractIdOrderByIdDesc(id);
         Map<Long, String> authorNames = loadEmployeeNames(
@@ -270,12 +275,15 @@ public class ContractService implements ContractApi {
     @Auditable(menu = Menu.CONTRACTS, action = AuditAction.CREATE, targetType = "Contract", targetIdFromReturn = true)
     @Transactional
     public Long create(ContractCreateRequest request) {
+        validateSchedule(request.status(), request.contractDate(), request.orderDate(),
+                request.arrivalDate(), request.installedDate(), request.settledDate());
         // 참조 존재 검증 — 없으면 각 모듈이 NOT_FOUND 를 던진다.
         customerApi.getById(request.customerId());
         requireActiveEmployee(request.employeeId());
-        ProductInfo product = productApi.getById(request.productId());
+        requireEmployeeInContractScope(request.employeeId());
+        ProductInfo product = requireEligibleProduct(request.productId(), null);
 
-        String contractNo = resolveContractNo(request.contractNo());
+        String contractNo = resolveContractNo(request.contractNo(), request.contractDate());
         if (contractRepository.existsByContractNo(contractNo)) {
             throw new BusinessException(ContractErrorCode.DUPLICATE_CONTRACT_NO);
         }
@@ -306,8 +314,8 @@ public class ContractService implements ContractApi {
                 .build();
 
         Contract saved = contractRepository.save(contract);
-        // 과거 계약 수기 입력 등 설치완료 상태로 바로 등록되는 케이스도 설비 대장 자동 생성 대상.
-        if (saved.getStatus() == ContractStatus.INSTALLED) {
+        // 과거 계약 수기 입력처럼 설치·정산 완료 상태로 바로 등록되는 케이스도 설비 자동 생성 대상.
+        if (hasReachedInstallation(saved.getStatus())) {
             publishInstalledEvent(saved);
         }
         return saved.getId();
@@ -316,19 +324,29 @@ public class ContractService implements ContractApi {
     @Auditable(menu = Menu.CONTRACTS, action = AuditAction.UPDATE, targetType = "Contract", targetIdParam = "id")
     @Transactional
     public void update(Long id, ContractUpdateRequest request) {
-        Contract contract = contractRepository.findById(id)
+        Contract contract = contractRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ContractErrorCode.CONTRACT_NOT_FOUND));
         assertVisible(contract);
 
+        validateSchedule(request.status(), request.contractDate(), request.orderDate(),
+                request.arrivalDate(), request.installedDate(), request.settledDate());
+        validateContractNoDateScope(contract, request.contractDate());
         customerApi.getById(request.customerId());
-        requireActiveEmployee(request.employeeId());
-        ProductInfo product = productApi.getById(request.productId());
+        if (!Objects.equals(contract.getEmployeeId(), request.employeeId())) {
+            requireActiveEmployee(request.employeeId());
+            requireEmployeeInContractScope(request.employeeId());
+        }
+        ProductInfo product = requireEligibleProduct(request.productId(), contract.getProductId());
+        validateInstalledContractUpdate(contract, request);
+        Long supplierId = hasReachedInstallation(contract.getStatus())
+                ? contract.getSupplierId()
+                : product.supplierId();
 
         ContractStatus previousStatus = contract.getStatus();
         contract.update(
                 request.customerId(),
                 request.employeeId(),
-                product.supplierId(),
+                supplierId,
                 request.productId(),
                 request.outputValue(),
                 request.outputUnit(),
@@ -349,8 +367,8 @@ public class ContractService implements ContractApi {
                 request.status()
         );
 
-        // 설치완료로 전이될 때만 설비 대장 자동 생성 이벤트 발행 (재저장 중복 발행 방지).
-        if (previousStatus != ContractStatus.INSTALLED && contract.getStatus() == ContractStatus.INSTALLED) {
+        // 설치 단계에 처음 도달할 때만 설비 자동 생성 이벤트 발행 (INSTALLED → SETTLED 중복 방지).
+        if (!hasReachedInstallation(previousStatus) && hasReachedInstallation(contract.getStatus())) {
             publishInstalledEvent(contract);
         }
     }
@@ -358,9 +376,12 @@ public class ContractService implements ContractApi {
     @Auditable(menu = Menu.CONTRACTS, action = AuditAction.DELETE, targetType = "Contract", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
-        Contract contract = contractRepository.findById(id)
+        Contract contract = contractRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ContractErrorCode.CONTRACT_NOT_FOUND));
         assertVisible(contract);
+        if (hasReachedInstallation(contract.getStatus())) {
+            throw new BusinessException(ContractErrorCode.INSTALLED_CONTRACT_DELETE_FORBIDDEN);
+        }
         // 다른 모듈 (설비 대장 등) 의 사용 여부는 동기 이벤트로 검사 — 리스너가 throw 하면 트랜잭션 롤백.
         eventPublisher.publishEvent(new ContractDeletingEvent(id));
         // 대금 스케줄 / 메모도 함께 제거 (물리 삭제 — 계약 자체를 지우는 케이스)
@@ -487,20 +508,38 @@ public class ContractService implements ContractApi {
      * 채번 규칙의 inputMode 에 따라 최종 계약 번호 결정.
      * AUTO: 항상 시스템 생성 / MANUAL: 사용자 입력 필수 + 패턴 검증 / AUTO_OR_MANUAL: 입력 있으면 검증, 없으면 생성.
      */
-    private String resolveContractNo(String requested) {
+    private String resolveContractNo(String requested, LocalDate contractDate) {
         CodeRuleInfo rule = codeRuleApi.getRule(CodeRuleTarget.CONTRACT);
         InputMode mode = rule.inputMode();
         boolean hasInput = requested != null && !requested.isBlank();
 
         if (mode == InputMode.AUTO || (mode == InputMode.AUTO_OR_MANUAL && !hasInput)) {
-            return codeRuleApi.generate(CodeRuleTarget.CONTRACT, CodeGenerationContext.empty());
+            return codeRuleApi.generate(
+                    CodeRuleTarget.CONTRACT,
+                    CodeGenerationContext.onDate(contractDate)
+            );
         }
         if (!hasInput) {
             throw new BusinessException(ContractErrorCode.CONTRACT_NO_REQUIRED);
         }
         String trimmed = requested.trim();
-        codeRuleApi.validate(CodeRuleTarget.CONTRACT, trimmed);
+        codeRuleApi.validate(
+                CodeRuleTarget.CONTRACT,
+                trimmed,
+                CodeGenerationContext.onDate(contractDate)
+        );
         return trimmed;
+    }
+
+    private void validateContractNoDateScope(Contract contract, LocalDate requestedContractDate) {
+        if (contract.getContractDate().equals(requestedContractDate)) {
+            return;
+        }
+        codeRuleApi.validate(
+                CodeRuleTarget.CONTRACT,
+                contract.getContractNo(),
+                CodeGenerationContext.onDate(requestedContractDate)
+        );
     }
 
     private void publishInstalledEvent(Contract contract) {
@@ -513,12 +552,6 @@ public class ContractService implements ContractApi {
                 contract.getOutputUnit() == null ? null : contract.getOutputUnit().name(),
                 contract.getInstalledDate()
         ));
-    }
-
-    private void requireActiveEmployee(Long employeeId) {
-        if (!employeeApi.isEligibleForNewWorkReference(employeeId)) {
-            throw new BusinessException(ContractErrorCode.INVALID_EMPLOYEE);
-        }
     }
 
     private static Long outstanding(Long finalAmount, Long paidTotal) {
@@ -608,6 +641,103 @@ public class ContractService implements ContractApi {
         }
         return employeeApi.findByIds(employeeIds).stream()
                 .collect(toMap(EmployeeInfo::id, EmployeeInfo::name));
+    }
+
+    private void requireActiveEmployee(Long employeeId) {
+        if (!employeeApi.isEligibleForNewWorkReference(employeeId)) {
+            throw new BusinessException(ContractErrorCode.INVALID_EMPLOYEE);
+        }
+    }
+
+    private void requireEmployeeInContractScope(Long employeeId) {
+        Optional<Set<Long>> visible = resolveVisibleEmployeeIds();
+        if (visible.isPresent() && !visible.get().contains(employeeId)) {
+            throw new BusinessException(ContractErrorCode.EMPLOYEE_OUT_OF_SCOPE);
+        }
+    }
+
+    private ProductInfo requireEligibleProduct(Long productId, Long currentProductId) {
+        ProductInfo product = productApi.getById(productId);
+        if (!Objects.equals(currentProductId, productId) && !product.active()) {
+            throw new BusinessException(ContractErrorCode.INACTIVE_PRODUCT);
+        }
+        return product;
+    }
+
+    private static boolean hasReachedInstallation(ContractStatus status) {
+        return status == ContractStatus.INSTALLED || status == ContractStatus.SETTLED;
+    }
+
+    /** 설비 생성 뒤에는 계약과 설비가 함께 보유하는 스냅샷 및 완료 상태를 되돌리지 않는다. */
+    private void validateInstalledContractUpdate(
+            Contract contract,
+            ContractUpdateRequest request
+    ) {
+        if (!hasReachedInstallation(contract.getStatus())) {
+            return;
+        }
+
+        boolean statusAllowed = hasReachedInstallation(request.status())
+                && !(contract.getStatus() == ContractStatus.SETTLED
+                && request.status() != ContractStatus.SETTLED);
+        boolean snapshotUnchanged = java.util.Objects.equals(contract.getCustomerId(), request.customerId())
+                && java.util.Objects.equals(contract.getProductId(), request.productId())
+                && sameDecimal(contract.getOutputValue(), request.outputValue())
+                && contract.getOutputUnit() == request.outputUnit()
+                && java.util.Objects.equals(contract.getInstalledDate(), request.installedDate());
+
+        if (!statusAllowed || !snapshotUnchanged) {
+            throw new BusinessException(ContractErrorCode.INSTALLED_CONTRACT_SNAPSHOT_IMMUTABLE);
+        }
+    }
+
+    private static boolean sameDecimal(BigDecimal left, BigDecimal right) {
+        if (left == null || right == null) {
+            return left == right;
+        }
+        return left.compareTo(right) == 0;
+    }
+
+    /**
+     * 신규·수정 요청만 검증해 과거 계약 조회는 유지하면서, 상태가 의미하는 필수 이정표와
+     * 실제 날짜의 선후 관계가 어긋난 계약이 더 쌓이지 않게 한다.
+     */
+    private void validateSchedule(
+            ContractStatus status,
+            LocalDate contractDate,
+            LocalDate orderDate,
+            LocalDate arrivalDate,
+            LocalDate installedDate,
+            LocalDate settledDate
+    ) {
+        boolean requiredDatesPresent = switch (status) {
+            case CONTRACTED -> orderDate == null && arrivalDate == null
+                    && installedDate == null && settledDate == null;
+            case ORDERED -> orderDate != null && arrivalDate == null
+                    && installedDate == null && settledDate == null;
+            case ARRIVED, INSTALLING -> orderDate != null && arrivalDate != null
+                    && installedDate == null && settledDate == null;
+            case INSTALLED -> orderDate != null && arrivalDate != null
+                    && installedDate != null && settledDate == null;
+            case SETTLED -> orderDate != null && arrivalDate != null
+                    && installedDate != null && settledDate != null;
+            case CANCELED -> true;
+        };
+
+        boolean orderedFlow = (orderDate == null || !orderDate.isBefore(contractDate))
+                && (arrivalDate == null || (orderDate != null && !arrivalDate.isBefore(orderDate)))
+                && (installedDate == null || (arrivalDate != null && !installedDate.isBefore(arrivalDate)))
+                && (settledDate == null || (installedDate != null && !settledDate.isBefore(installedDate)));
+
+        LocalDate today = LocalDate.now(businessClock);
+        boolean actualDatesNotInFuture = (orderDate == null || !orderDate.isAfter(today))
+                && (arrivalDate == null || !arrivalDate.isAfter(today))
+                && (installedDate == null || !installedDate.isAfter(today))
+                && (settledDate == null || !settledDate.isAfter(today));
+
+        if (!requiredDatesPresent || !orderedFlow || !actualDatesNotInFuture) {
+            throw new BusinessException(ContractErrorCode.INVALID_DATE_FLOW);
+        }
     }
 
     private record RefNames(Map<Long, String> customer,

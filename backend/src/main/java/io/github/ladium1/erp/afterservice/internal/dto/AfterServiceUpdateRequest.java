@@ -3,7 +3,9 @@ package io.github.ladium1.erp.afterservice.internal.dto;
 import io.github.ladium1.erp.afterservice.internal.entity.ServiceStatus;
 import io.github.ladium1.erp.afterservice.internal.entity.ServiceType;
 import io.github.ladium1.erp.afterservice.internal.entity.WarrantyDecision;
+import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.PositiveOrZero;
 
 import java.time.LocalDate;
@@ -33,7 +35,7 @@ public record AfterServiceUpdateRequest(
         @NotNull
         WarrantyDecision warrantyDecision,
 
-        @PositiveOrZero
+        @PositiveOrZero @Max(MoneyPolicy.MAX_AMOUNT)
         Long billingAmount,
 
         LocalDate completedDate

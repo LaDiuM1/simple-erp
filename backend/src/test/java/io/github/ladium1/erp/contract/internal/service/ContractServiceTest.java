@@ -4,6 +4,8 @@ import io.github.ladium1.erp.coderule.api.CodeRuleApi;
 import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
 import io.github.ladium1.erp.coderule.api.InputMode;
 import io.github.ladium1.erp.coderule.api.dto.CodeRuleInfo;
+import io.github.ladium1.erp.coderule.api.dto.CodeGenerationContext;
+import io.github.ladium1.erp.coderule.internal.exception.CodeRuleErrorCode;
 import io.github.ladium1.erp.contract.api.ContractDeletingEvent;
 import io.github.ladium1.erp.contract.api.ContractInstalledEvent;
 import io.github.ladium1.erp.contract.api.dto.ContractOutstandingSummary;
@@ -60,7 +62,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,6 +74,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -80,6 +86,9 @@ import static org.mockito.Mockito.verify;
 class ContractServiceTest {
 
     private static final String TEST_LOGIN_ID = "sales01";
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
+    private static final Instant FIXED_INSTANT = Instant.parse("2026-08-11T03:00:00Z");
+    private static final LocalDate FIXED_TODAY = LocalDate.of(2026, 8, 11);
 
     @InjectMocks
     private ContractService contractService;
@@ -92,6 +101,7 @@ class ContractServiceTest {
     @Mock private CodeRuleApi codeRuleApi;
     @Mock private CustomerApi customerApi;
     @Mock private EmployeeApi employeeApi;
+    @Mock private Clock businessClock;
     @Mock private SupplierApi supplierApi;
     @Mock private ProductApi productApi;
     @Mock private DataScopeResolver dataScopeResolver;
@@ -103,7 +113,8 @@ class ContractServiceTest {
         // 모든 테스트 default — ALL 스코프로 통과 (행 가시성 제한 없음).
         // 가시성 자체를 검증하는 테스트가 stub 을 덮어쓴다.
         lenient().when(dataScopeResolver.resolve(Menu.CONTRACTS)).thenReturn(DataScope.ALL);
-        lenient().when(employeeApi.isEligibleForNewWorkReference(any())).thenReturn(true);
+        lenient().when(businessClock.instant()).thenReturn(FIXED_INSTANT);
+        lenient().when(businessClock.getZone()).thenReturn(BUSINESS_ZONE);
     }
 
     @AfterEach
@@ -238,6 +249,7 @@ class ContractServiceTest {
         // given
         ContractCreateRequest request = baseCreateRequest(null);
         given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.isEligibleForNewWorkReference(2L)).willReturn(true);
         given(productApi.getById(3L)).willReturn(productInfo());
         given(codeRuleApi.getRule(CodeRuleTarget.CONTRACT)).willReturn(ruleWithMode(InputMode.AUTO));
         given(codeRuleApi.generate(eq(CodeRuleTarget.CONTRACT), any())).willReturn("CT2026-001");
@@ -256,6 +268,44 @@ class ContractServiceTest {
         verify(contractRepository).save(captor.capture());
         assertThat(captor.getValue().getContractNo()).isEqualTo("CT2026-001");
         assertThat(captor.getValue().getSupplierId()).isEqualTo(7L);
+        verify(codeRuleApi).generate(
+                CodeRuleTarget.CONTRACT,
+                CodeGenerationContext.onDate(LocalDate.of(2026, 1, 10))
+        );
+    }
+
+    @Test
+    @DisplayName("create — SETTLED 상태로 직접 등록해도 ContractInstalledEvent 발행")
+    void create_settled_publishes_installed_event() {
+        ContractCreateRequest request = settledCreateRequest(null);
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.isEligibleForNewWorkReference(2L)).willReturn(true);
+        given(productApi.getById(3L)).willReturn(productInfo());
+        given(codeRuleApi.getRule(CodeRuleTarget.CONTRACT)).willReturn(ruleWithMode(InputMode.AUTO));
+        given(codeRuleApi.generate(eq(CodeRuleTarget.CONTRACT), any())).willReturn("CT2026-001");
+        given(contractRepository.existsByContractNo("CT2026-001")).willReturn(false);
+
+        Contract saved = Contract.builder()
+                .contractNo("CT2026-001")
+                .customerId(1L).employeeId(2L).supplierId(7L).productId(3L)
+                .finalAmount(100_000_000L)
+                .supportProgramStatus(SupportProgramStatus.NONE)
+                .contractDate(LocalDate.of(2026, 1, 10))
+                .orderDate(LocalDate.of(2026, 1, 15))
+                .arrivalDate(LocalDate.of(2026, 2, 15))
+                .installedDate(LocalDate.of(2026, 3, 2))
+                .settledDate(LocalDate.of(2026, 3, 10))
+                .status(ContractStatus.SETTLED)
+                .build();
+        ReflectionTestUtils.setField(saved, "id", 100L);
+        given(contractRepository.save(any(Contract.class))).willReturn(saved);
+
+        contractService.create(request);
+
+        ArgumentCaptor<ContractInstalledEvent> captor = ArgumentCaptor.forClass(ContractInstalledEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().contractId()).isEqualTo(100L);
+        assertThat(captor.getValue().installedDate()).isEqualTo(LocalDate.of(2026, 3, 2));
     }
 
     @Test
@@ -264,6 +314,7 @@ class ContractServiceTest {
         // given
         ContractCreateRequest request = baseCreateRequest(null);
         given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.isEligibleForNewWorkReference(2L)).willReturn(true);
         given(productApi.getById(3L)).willReturn(productInfo());
         given(codeRuleApi.getRule(CodeRuleTarget.CONTRACT)).willReturn(ruleWithMode(InputMode.AUTO));
         given(codeRuleApi.generate(eq(CodeRuleTarget.CONTRACT), any())).willReturn("CT2026-001");
@@ -282,6 +333,7 @@ class ContractServiceTest {
         // given
         ContractCreateRequest request = baseCreateRequest(null);
         given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.isEligibleForNewWorkReference(2L)).willReturn(true);
         given(productApi.getById(3L)).willReturn(productInfo());
         given(codeRuleApi.getRule(CodeRuleTarget.CONTRACT)).willReturn(ruleWithMode(InputMode.MANUAL));
 
@@ -292,12 +344,144 @@ class ContractServiceTest {
     }
 
     @Test
+    @DisplayName("create 성공 — MANUAL 계약번호의 날짜 토큰을 계약일 기준으로 검증")
+    void create_manual_mode_validates_contract_date_scope() {
+        ContractCreateRequest request = baseCreateRequest("CT2026-009");
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.isEligibleForNewWorkReference(2L)).willReturn(true);
+        given(productApi.getById(3L)).willReturn(productInfo());
+        given(codeRuleApi.getRule(CodeRuleTarget.CONTRACT)).willReturn(ruleWithMode(InputMode.MANUAL));
+        given(contractRepository.existsByContractNo("CT2026-009")).willReturn(false);
+        Contract saved = mockContract(2L);
+        ReflectionTestUtils.setField(saved, "id", 100L);
+        given(contractRepository.save(any(Contract.class))).willReturn(saved);
+
+        contractService.create(request);
+
+        verify(codeRuleApi).validate(
+                CodeRuleTarget.CONTRACT,
+                "CT2026-009",
+                CodeGenerationContext.onDate(LocalDate.of(2026, 1, 10))
+        );
+    }
+
+    @Test
+    @DisplayName("create 실패 — 휴직·퇴사 직원에게 신규 계약을 배정할 수 없음")
+    void create_rejects_inactive_employee() {
+        ContractCreateRequest request = baseCreateRequest(null);
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.isEligibleForNewWorkReference(2L)).willReturn(false);
+
+        assertThatThrownBy(() -> contractService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.INVALID_EMPLOYEE);
+        verify(productApi, never()).getById(any());
+        verify(contractRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create 실패 — SELF 범위 밖 직원을 계약 담당자로 지정할 수 없음")
+    void create_rejects_employee_outside_self_scope() {
+        ContractCreateRequest request = baseCreateRequest(null);
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.isEligibleForNewWorkReference(2L)).willReturn(true);
+        given(dataScopeResolver.resolve(Menu.CONTRACTS)).willReturn(DataScope.SELF);
+        given(dataScopeContextProvider.current())
+                .willReturn(new DataScopeContext(5L, 10L, Set.of(10L)));
+
+        assertThatThrownBy(() -> contractService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.EMPLOYEE_OUT_OF_SCOPE);
+        verify(productApi, never()).getById(any());
+        verify(contractRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create 실패 — 비활성 제품 모델에는 새 계약을 연결할 수 없음")
+    void create_rejects_inactive_product() {
+        ContractCreateRequest request = baseCreateRequest(null);
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.isEligibleForNewWorkReference(2L)).willReturn(true);
+        given(productApi.getById(3L)).willReturn(productInfo(3L, false));
+
+        assertThatThrownBy(() -> contractService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.INACTIVE_PRODUCT);
+        verify(contractRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create 실패 — INSTALLED 상태에는 발주·입고·설치일이 모두 필요")
+    void create_rejects_installed_without_milestones() {
+        ContractCreateRequest request = new ContractCreateRequest(
+                null, 1L, 2L, 3L, null, null, null,
+                null, 100_000_000L, null, null, SupportProgramStatus.NONE,
+                LocalDate.of(2026, 1, 10), null, null, null, null,
+                LocalDate.of(2026, 3, 2), null, null, ContractStatus.INSTALLED);
+
+        assertThatThrownBy(() -> contractService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.INVALID_DATE_FLOW);
+        verify(customerApi, never()).getById(any());
+    }
+
+    @Test
+    @DisplayName("create 실패 — CONTRACTED 상태에는 후속 실제 날짜를 저장할 수 없음")
+    void create_rejects_status_date_mismatch() {
+        ContractCreateRequest request = new ContractCreateRequest(
+                null, 1L, 2L, 3L, null, null, null,
+                null, 100_000_000L, null, null, SupportProgramStatus.NONE,
+                LocalDate.of(2026, 1, 10), null, LocalDate.of(2026, 1, 11),
+                null, null, null, null, null, ContractStatus.CONTRACTED);
+
+        assertThatThrownBy(() -> contractService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.INVALID_DATE_FLOW);
+    }
+
+    @Test
+    @DisplayName("create 실패 — 정산일은 설치일보다 빠를 수 없음")
+    void create_rejects_settlement_before_installation() {
+        ContractCreateRequest request = new ContractCreateRequest(
+                null, 1L, 2L, 3L, null, null, null,
+                null, 100_000_000L, null, null, SupportProgramStatus.NONE,
+                LocalDate.of(2026, 1, 10), null, LocalDate.of(2026, 1, 11),
+                null, LocalDate.of(2026, 1, 20), LocalDate.of(2026, 1, 30),
+                LocalDate.of(2026, 1, 29), null, ContractStatus.SETTLED);
+
+        assertThatThrownBy(() -> contractService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.INVALID_DATE_FLOW);
+    }
+
+    @Test
+    @DisplayName("create 실패 — 발주·입고·설치·정산 실제 날짜는 미래일 수 없음")
+    void create_rejects_future_actual_milestones() {
+        LocalDate tomorrow = FIXED_TODAY.plusDays(1);
+        ContractCreateRequest request = new ContractCreateRequest(
+                null, 1L, 2L, 3L, null, null, null,
+                null, 100_000_000L, null, null, SupportProgramStatus.NONE,
+                tomorrow.minusDays(1), null, tomorrow, null, tomorrow,
+                tomorrow, null, null, ContractStatus.INSTALLED);
+
+        assertThatThrownBy(() -> contractService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.INVALID_DATE_FLOW);
+        verify(customerApi, never()).getById(any());
+    }
+
+    @Test
     @DisplayName("update 성공 — 필드 반영 + 공급사 스냅샷 재파생")
     void update_success() {
         // given
         Contract contract = mockContract(2L);
-        given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
         given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.isEligibleForNewWorkReference(9L)).willReturn(true);
+        given(dataScopeResolver.resolve(Menu.CONTRACTS)).willReturn(DataScope.DEPARTMENT);
+        given(dataScopeContextProvider.current())
+                .willReturn(new DataScopeContext(5L, 10L, Set.of(10L)));
+        given(employeeApi.findIdsByDepartmentIds(List.of(10L))).willReturn(List.of(2L, 9L));
         given(productApi.getById(3L)).willReturn(productInfo());
         ContractUpdateRequest request = baseUpdateRequest(9L, 250_000_000L);
 
@@ -311,9 +495,144 @@ class ContractServiceTest {
     }
 
     @Test
+    @DisplayName("update 실패 — 기존 계약도 비활성 직원에게 새로 배정할 수 없음")
+    void update_rejects_inactive_employee() {
+        Contract contract = mockContract(2L);
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        given(employeeApi.isEligibleForNewWorkReference(9L)).willReturn(false);
+
+        assertThatThrownBy(() -> contractService.update(1L, baseUpdateRequest(9L, 100_000_000L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.INVALID_EMPLOYEE);
+        verify(productApi, never()).getById(any());
+    }
+
+    @Test
+    @DisplayName("update 실패 — 조회 범위 밖 직원에게 계약을 재배정할 수 없음")
+    void update_rejects_employee_outside_department_tree_scope() {
+        Contract contract = mockContract(2L);
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        given(employeeApi.isEligibleForNewWorkReference(9L)).willReturn(true);
+        given(dataScopeResolver.resolve(Menu.CONTRACTS)).willReturn(DataScope.DEPARTMENT_TREE);
+        given(dataScopeContextProvider.current())
+                .willReturn(new DataScopeContext(5L, 10L, Set.of(10L, 11L)));
+        given(employeeApi.findIdsByDepartmentIds(anyCollection())).willReturn(List.of(2L, 8L));
+
+        assertThatThrownBy(() -> contractService.update(1L, baseUpdateRequest(9L, 100_000_000L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.EMPLOYEE_OUT_OF_SCOPE);
+        verify(productApi, never()).getById(any());
+    }
+
+    @Test
+    @DisplayName("update 성공 — 기존 담당자의 재직 상태가 바뀌어도 다른 필드는 수정 가능")
+    void update_keeps_existing_ineligible_employee_reference() {
+        Contract contract = mockContract(2L);
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(3L)).willReturn(productInfo());
+
+        contractService.update(1L, baseUpdateRequest(2L, 250_000_000L));
+
+        assertThat(contract.getFinalAmount()).isEqualTo(250_000_000L);
+        verify(employeeApi, never()).isEligibleForNewWorkReference(any());
+    }
+
+    @Test
+    @DisplayName("update 성공 — 기존 비활성 제품 모델 참조는 그대로 유지 가능")
+    void update_keeps_existing_inactive_product() {
+        Contract contract = mockContract(2L);
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(3L)).willReturn(productInfo(3L, false));
+
+        contractService.update(1L, baseUpdateRequest(2L, 3L, 250_000_000L));
+
+        assertThat(contract.getProductId()).isEqualTo(3L);
+        assertThat(contract.getFinalAmount()).isEqualTo(250_000_000L);
+    }
+
+    @Test
+    @DisplayName("update 실패 — 제품 모델을 비활성 대상으로 변경할 수 없음")
+    void update_rejects_new_inactive_product() {
+        Contract contract = mockContract(2L);
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(4L)).willReturn(productInfo(4L, false));
+
+        assertThatThrownBy(() -> contractService.update(
+                1L, baseUpdateRequest(2L, 4L, 100_000_000L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.INACTIVE_PRODUCT);
+        assertThat(contract.getProductId()).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("update 실패 — 계약번호의 날짜 scope를 벗어난 계약일 변경")
+    void update_rejects_contract_date_outside_code_scope() {
+        Contract contract = mockContract(2L);
+        ContractUpdateRequest nextYear = new ContractUpdateRequest(
+                1L, 2L, 3L,
+                null, null, null,
+                null, 100_000_000L, null, null, SupportProgramStatus.NONE,
+                LocalDate.of(2027, 1, 10), null, null, null, null, null, null,
+                null, ContractStatus.CONTRACTED
+        );
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        org.mockito.BDDMockito.willThrow(
+                new BusinessException(CodeRuleErrorCode.CODE_FORMAT_MISMATCH)
+        ).given(codeRuleApi).validate(
+                CodeRuleTarget.CONTRACT,
+                "CT2026-001",
+                CodeGenerationContext.onDate(LocalDate.of(2027, 1, 10))
+        );
+
+        assertThatThrownBy(() -> contractService.update(1L, nextYear))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CodeRuleErrorCode.CODE_FORMAT_MISMATCH);
+        verify(customerApi, never()).getById(any());
+    }
+
+    @Test
+    @DisplayName("update 실패 — 설비 생성 뒤에는 비설치 상태로 되돌릴 수 없음")
+    void update_rejects_installed_status_rollback() {
+        Contract contract = installedContract();
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(3L)).willReturn(productInfo());
+
+        assertThatThrownBy(() -> contractService.update(1L, baseUpdateRequest(2L, 100_000_000L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode", ContractErrorCode.INSTALLED_CONTRACT_SNAPSHOT_IMMUTABLE);
+    }
+
+    @Test
+    @DisplayName("update 실패 — 설비 생성 뒤 고객사·제품·출력·설치일 스냅샷은 변경 불가")
+    void update_rejects_installed_snapshot_change() {
+        Contract contract = installedContract();
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        given(customerApi.getById(2L)).willReturn(CustomerInfo.builder().id(2L).build());
+        given(productApi.getById(3L)).willReturn(productInfo());
+        ContractUpdateRequest changedCustomer = new ContractUpdateRequest(
+                2L, 2L, 3L,
+                null, null, null,
+                null, 100_000_000L, null, null, SupportProgramStatus.NONE,
+                LocalDate.of(2026, 1, 10), null,
+                LocalDate.of(2026, 1, 15), null, LocalDate.of(2026, 2, 15),
+                LocalDate.of(2026, 3, 2), null,
+                null, ContractStatus.INSTALLED);
+
+        assertThatThrownBy(() -> contractService.update(1L, changedCustomer))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode", ContractErrorCode.INSTALLED_CONTRACT_SNAPSHOT_IMMUTABLE);
+    }
+
+    @Test
     @DisplayName("update 실패 — 존재하지 않는 계약")
     void update_fail_not_found() {
-        given(contractRepository.findById(99L)).willReturn(Optional.empty());
+        given(contractRepository.findByIdForUpdate(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> contractService.update(99L, baseUpdateRequest(2L, 100_000_000L)))
                 .isInstanceOf(BusinessException.class)
@@ -326,7 +645,7 @@ class ContractServiceTest {
         // given
         Contract contract = mockContract(2L);
         ReflectionTestUtils.setField(contract, "id", 1L);
-        given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
         given(customerApi.getById(1L)).willReturn(customerInfo());
         given(productApi.getById(3L)).willReturn(productInfo());
 
@@ -342,6 +661,20 @@ class ContractServiceTest {
     }
 
     @Test
+    @DisplayName("update — 비설치 상태에서 SETTLED 로 바로 전이해도 ContractInstalledEvent 발행")
+    void update_transition_to_settled_publishes_event() {
+        Contract contract = mockContract(2L);
+        ReflectionTestUtils.setField(contract, "id", 1L);
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(3L)).willReturn(productInfo());
+
+        contractService.update(1L, settledUpdateRequest());
+
+        verify(eventPublisher).publishEvent(any(ContractInstalledEvent.class));
+    }
+
+    @Test
     @DisplayName("update — 이미 INSTALLED 인 계약 재저장은 이벤트 미발행")
     void update_already_installed_no_event() {
         // given
@@ -351,9 +684,12 @@ class ContractServiceTest {
                 .finalAmount(100_000_000L)
                 .supportProgramStatus(SupportProgramStatus.NONE)
                 .contractDate(LocalDate.of(2026, 1, 10))
+                .orderDate(LocalDate.of(2026, 1, 15))
+                .arrivalDate(LocalDate.of(2026, 2, 15))
+                .installedDate(LocalDate.of(2026, 3, 2))
                 .status(ContractStatus.INSTALLED)
                 .build();
-        given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
         given(customerApi.getById(1L)).willReturn(customerInfo());
         given(productApi.getById(3L)).willReturn(productInfo());
 
@@ -365,12 +701,50 @@ class ContractServiceTest {
     }
 
     @Test
+    @DisplayName("update — INSTALLED 에서 SETTLED 로 전이할 때 설비 이벤트 중복 발행 안 함")
+    void update_installed_to_settled_no_duplicate_event() {
+        Contract contract = Contract.builder()
+                .contractNo("CT2026-001")
+                .customerId(1L).employeeId(2L).supplierId(7L).productId(3L)
+                .finalAmount(100_000_000L)
+                .supportProgramStatus(SupportProgramStatus.NONE)
+                .contractDate(LocalDate.of(2026, 1, 10))
+                .orderDate(LocalDate.of(2026, 1, 15))
+                .arrivalDate(LocalDate.of(2026, 2, 15))
+                .installedDate(LocalDate.of(2026, 3, 2))
+                .status(ContractStatus.INSTALLED)
+                .build();
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(3L)).willReturn(productInfo());
+
+        contractService.update(1L, settledUpdateRequest());
+
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("update — 설치 뒤 제품 마스터 공급사가 바뀌어도 계약 공급사 스냅샷 보존")
+    void update_installed_preserves_supplier_snapshot() {
+        Contract contract = installedContract();
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(productApi.getById(3L)).willReturn(ProductInfo.builder()
+                .id(3L).supplierId(99L).active(true).build());
+
+        contractService.update(1L, settledUpdateRequest());
+
+        assertThat(contract.getSupplierId()).isEqualTo(7L);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
     @DisplayName("delete 성공 — ContractDeletingEvent 발행 + 대금 / 메모도 함께 삭제")
     void delete_success() {
         // given
         Contract contract = mockContract(2L);
         ReflectionTestUtils.setField(contract, "id", 1L);
-        given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
 
         // when
         contractService.delete(1L);
@@ -385,11 +759,25 @@ class ContractServiceTest {
     @Test
     @DisplayName("delete 실패 — 존재하지 않는 계약")
     void delete_fail_not_found() {
-        given(contractRepository.findById(99L)).willReturn(Optional.empty());
+        given(contractRepository.findByIdForUpdate(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> contractService.delete(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.CONTRACT_NOT_FOUND);
+        verify(contractRepository, never()).delete(any(Contract.class));
+    }
+
+    @Test
+    @DisplayName("delete 실패 — 설비 생성 대상이 된 설치·정산 계약은 비동기 처리 중에도 삭제 금지")
+    void delete_rejects_installed_contract() {
+        Contract contract = installedContract();
+        given(contractRepository.findByIdForUpdate(1L)).willReturn(Optional.of(contract));
+
+        assertThatThrownBy(() -> contractService.delete(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode", ContractErrorCode.INSTALLED_CONTRACT_DELETE_FORBIDDEN);
+        verify(eventPublisher, never()).publishEvent(any());
         verify(contractRepository, never()).delete(any(Contract.class));
     }
 
@@ -557,6 +945,20 @@ class ContractServiceTest {
                 .build();
     }
 
+    private Contract installedContract() {
+        return Contract.builder()
+                .contractNo("CT2026-001")
+                .customerId(1L).employeeId(2L).supplierId(7L).productId(3L)
+                .finalAmount(100_000_000L)
+                .supportProgramStatus(SupportProgramStatus.NONE)
+                .contractDate(LocalDate.of(2026, 1, 10))
+                .orderDate(LocalDate.of(2026, 1, 15))
+                .arrivalDate(LocalDate.of(2026, 2, 15))
+                .installedDate(LocalDate.of(2026, 3, 2))
+                .status(ContractStatus.INSTALLED)
+                .build();
+    }
+
     private ContractPayment payment(Long contractId, String label, Long paidAmount) {
         return ContractPayment.builder()
                 .contractId(contractId)
@@ -575,9 +977,25 @@ class ContractServiceTest {
         );
     }
 
+    private ContractCreateRequest settledCreateRequest(String contractNo) {
+        return new ContractCreateRequest(
+                contractNo, 1L, 2L, 3L,
+                null, null, null,
+                null, 100_000_000L, null, null, SupportProgramStatus.NONE,
+                LocalDate.of(2026, 1, 10), null,
+                LocalDate.of(2026, 1, 15), null, LocalDate.of(2026, 2, 15),
+                LocalDate.of(2026, 3, 2), LocalDate.of(2026, 3, 10),
+                null, ContractStatus.SETTLED
+        );
+    }
+
     private ContractUpdateRequest baseUpdateRequest(Long employeeId, Long finalAmount) {
+        return baseUpdateRequest(employeeId, 3L, finalAmount);
+    }
+
+    private ContractUpdateRequest baseUpdateRequest(Long employeeId, Long productId, Long finalAmount) {
         return new ContractUpdateRequest(
-                1L, employeeId, 3L,
+                1L, employeeId, productId,
                 null, null, null,
                 null, finalAmount, null, null, SupportProgramStatus.NONE,
                 LocalDate.of(2026, 1, 10), null, null, null, null, null, null,
@@ -590,9 +1008,22 @@ class ContractServiceTest {
                 1L, 2L, 3L,
                 null, null, null,
                 null, 100_000_000L, null, null, SupportProgramStatus.NONE,
-                LocalDate.of(2026, 1, 10), null, null, null, null,
+                LocalDate.of(2026, 1, 10), null,
+                LocalDate.of(2026, 1, 15), null, LocalDate.of(2026, 2, 15),
                 LocalDate.of(2026, 3, 2), null,
                 null, ContractStatus.INSTALLED
+        );
+    }
+
+    private ContractUpdateRequest settledUpdateRequest() {
+        return new ContractUpdateRequest(
+                1L, 2L, 3L,
+                null, null, null,
+                null, 100_000_000L, null, null, SupportProgramStatus.NONE,
+                LocalDate.of(2026, 1, 10), null,
+                LocalDate.of(2026, 1, 15), null, LocalDate.of(2026, 2, 15),
+                LocalDate.of(2026, 3, 2), LocalDate.of(2026, 3, 10),
+                null, ContractStatus.SETTLED
         );
     }
 
@@ -617,9 +1048,13 @@ class ContractServiceTest {
     }
 
     private ProductInfo productInfo() {
+        return productInfo(3L, true);
+    }
+
+    private ProductInfo productInfo(Long id, boolean active) {
         return ProductInfo.builder()
-                .id(3L).categoryId(1L).categoryName("평판 레이저")
-                .modelName("HLA-1530").supplierId(7L).active(true)
+                .id(id).categoryId(1L).categoryName("평판 레이저")
+                .modelName("HLA-1530").supplierId(7L).active(active)
                 .build();
     }
 

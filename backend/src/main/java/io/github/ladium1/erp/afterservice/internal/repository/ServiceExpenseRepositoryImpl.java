@@ -1,11 +1,14 @@
 package io.github.ladium1.erp.afterservice.internal.repository;
 
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.ladium1.erp.afterservice.internal.entity.QServiceExpense;
+import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import lombok.RequiredArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -22,7 +25,8 @@ public class ServiceExpenseRepositoryImpl implements ServiceExpenseRepositoryCus
             return Map.of();
         }
         QServiceExpense e = QServiceExpense.serviceExpense;
-        NumberExpression<Long> amountSum = e.amount.sumLong();
+        NumberExpression<BigDecimal> amountSum = Expressions.numberTemplate(
+                BigDecimal.class, "sum({0})", e.amount);
         List<Tuple> rows = queryFactory
                 .select(e.afterServiceId, amountSum)
                 .from(e)
@@ -33,8 +37,7 @@ public class ServiceExpenseRepositoryImpl implements ServiceExpenseRepositoryCus
         Map<Long, Long> sums = new HashMap<>();
         for (Tuple row : rows) {
             Long afterServiceId = row.get(e.afterServiceId);
-            Long sum = row.get(amountSum);
-            sums.put(afterServiceId, sum != null ? sum : 0L);
+            sums.put(afterServiceId, MoneyPolicy.fromAggregate(row.get(amountSum)));
         }
         return sums;
     }

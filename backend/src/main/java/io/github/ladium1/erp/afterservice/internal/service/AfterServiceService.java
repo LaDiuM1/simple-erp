@@ -14,6 +14,7 @@ import io.github.ladium1.erp.afterservice.internal.dto.ServiceExpenseResponse;
 import io.github.ladium1.erp.afterservice.internal.dto.ServiceVisitRequest;
 import io.github.ladium1.erp.afterservice.internal.dto.ServiceVisitResponse;
 import io.github.ladium1.erp.afterservice.internal.entity.AfterService;
+import io.github.ladium1.erp.afterservice.internal.entity.AfterServiceProcessPolicy;
 import io.github.ladium1.erp.afterservice.internal.entity.ServiceExpense;
 import io.github.ladium1.erp.afterservice.internal.entity.ServiceType;
 import io.github.ladium1.erp.afterservice.internal.entity.ServiceVisit;
@@ -35,6 +36,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.product.api.ProductApi;
@@ -115,7 +117,9 @@ public class AfterServiceService implements AfterServiceApi {
         List<ServiceExpense> expenses = expenseRepository.findByAfterServiceIdOrderByIdAsc(id);
         Map<Long, String> engineerNames = engineerService.findNamesByIds(collectEngineerIds(afterService, visits, expenses));
 
-        long expenseTotal = expenses.stream().mapToLong(ServiceExpense::getAmount).sum();
+        long expenseTotal = expenses.stream()
+                .map(ServiceExpense::getAmount)
+                .reduce(0L, MoneyPolicy::addExact);
 
         return AfterServiceDetailResponse.builder()
                 .id(afterService.getId())
@@ -165,6 +169,13 @@ public class AfterServiceService implements AfterServiceApi {
     @Auditable(menu = Menu.AFTER_SERVICES, action = AuditAction.CREATE, targetType = "AfterService", targetIdFromReturn = true)
     @Transactional
     public Long create(AfterServiceCreateRequest request) {
+        AfterServiceProcessPolicy.validate(
+                request.status(),
+                request.receivedDate(),
+                request.completedDate(),
+                request.warrantyDecision(),
+                request.billingAmount()
+        );
         validateReferences(request.customerId(), request.equipmentId(), request.assignedEngineerId(), null);
 
         String receiptNo = resolveReceiptNo(request.receiptNo());
@@ -193,6 +204,13 @@ public class AfterServiceService implements AfterServiceApi {
     public void update(Long id, AfterServiceUpdateRequest request) {
         AfterService afterService = afterServiceRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(AfterServiceErrorCode.AFTER_SERVICE_NOT_FOUND));
+        AfterServiceProcessPolicy.validate(
+                request.status(),
+                request.receivedDate(),
+                request.completedDate(),
+                request.warrantyDecision(),
+                request.billingAmount()
+        );
         validateReferences(
                 request.customerId(),
                 request.equipmentId(),

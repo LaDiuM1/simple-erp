@@ -2,6 +2,7 @@ package io.github.ladium1.erp.afterservice.internal.repository;
 
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.ladium1.erp.afterservice.internal.dto.AfterServiceSearchCondition;
@@ -10,6 +11,7 @@ import io.github.ladium1.erp.afterservice.internal.entity.QAfterService;
 import io.github.ladium1.erp.afterservice.internal.entity.QServiceExpense;
 import io.github.ladium1.erp.afterservice.internal.entity.ServiceType;
 import io.github.ladium1.erp.global.jpa.QuerydslSortUtils;
+import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -81,7 +84,8 @@ public class AfterServiceRepositoryImpl implements AfterServiceRepositoryCustom 
     public Map<ServiceType, Long> expenseSumByTypeSince(LocalDate fromDate) {
         QAfterService a = QAfterService.afterService;
         QServiceExpense e = QServiceExpense.serviceExpense;
-        NumberExpression<Long> amountSum = e.amount.sumLong();
+        NumberExpression<BigDecimal> amountSum = Expressions.numberTemplate(
+                BigDecimal.class, "sum({0})", e.amount);
         List<Tuple> rows = queryFactory
                 .select(a.type, amountSum)
                 .from(e)
@@ -92,8 +96,7 @@ public class AfterServiceRepositoryImpl implements AfterServiceRepositoryCustom 
 
         Map<ServiceType, Long> sums = new HashMap<>();
         for (Tuple row : rows) {
-            Long sum = row.get(amountSum);
-            sums.put(row.get(a.type), sum != null ? sum : 0L);
+            sums.put(row.get(a.type), MoneyPolicy.fromAggregate(row.get(amountSum)));
         }
         return sums;
     }
@@ -102,7 +105,8 @@ public class AfterServiceRepositoryImpl implements AfterServiceRepositoryCustom 
     public Map<Long, Long> expenseSumByEngineerSince(LocalDate fromDate) {
         QAfterService a = QAfterService.afterService;
         QServiceExpense e = QServiceExpense.serviceExpense;
-        NumberExpression<Long> amountSum = e.amount.sumLong();
+        NumberExpression<BigDecimal> amountSum = Expressions.numberTemplate(
+                BigDecimal.class, "sum({0})", e.amount);
         List<Tuple> rows = queryFactory
                 .select(e.engineerId, amountSum)
                 .from(e)
@@ -113,8 +117,7 @@ public class AfterServiceRepositoryImpl implements AfterServiceRepositoryCustom 
 
         Map<Long, Long> sums = new HashMap<>();
         for (Tuple row : rows) {
-            Long sum = row.get(amountSum);
-            sums.put(row.get(e.engineerId), sum != null ? sum : 0L);
+            sums.put(row.get(e.engineerId), MoneyPolicy.fromAggregate(row.get(amountSum)));
         }
         return sums;
     }

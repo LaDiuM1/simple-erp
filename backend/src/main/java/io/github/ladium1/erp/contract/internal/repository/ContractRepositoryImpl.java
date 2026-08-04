@@ -14,6 +14,7 @@ import io.github.ladium1.erp.contract.internal.entity.ContractStatus;
 import io.github.ladium1.erp.contract.internal.entity.QContract;
 import io.github.ladium1.erp.contract.internal.entity.QContractPayment;
 import io.github.ladium1.erp.global.jpa.QuerydslSortUtils;
+import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -67,7 +69,8 @@ public class ContractRepositoryImpl implements ContractRepositoryCustom {
         QContract c = QContract.contract;
         // 월 버킷 — JPQL 표준 함수가 아니라 DB (MariaDB) 의 DATE_FORMAT 에 위임.
         StringExpression month = Expressions.stringTemplate("function('date_format', {0}, '%Y-%m')", c.contractDate);
-        NumberExpression<Long> amountSum = c.finalAmount.sumLong();
+        NumberExpression<BigDecimal> amountSum = Expressions.numberTemplate(
+                BigDecimal.class, "sum({0})", c.finalAmount);
 
         BooleanBuilder where = new BooleanBuilder()
                 .and(c.status.ne(ContractStatus.CANCELED))
@@ -87,11 +90,10 @@ public class ContractRepositoryImpl implements ContractRepositoryCustom {
         return rows.stream()
                 .map(row -> {
                     Long count = row.get(c.count());
-                    Long sum = row.get(amountSum);
                     return MonthlyContractStat.builder()
                             .month(row.get(month))
                             .count(count == null ? 0L : count)
-                            .totalAmount(sum == null ? 0L : sum)
+                            .totalAmount(MoneyPolicy.fromAggregate(row.get(amountSum)))
                             .build();
                 })
                 .toList();
@@ -107,23 +109,25 @@ public class ContractRepositoryImpl implements ContractRepositoryCustom {
             where.and(c.employeeId.in(employeeIdScope));
         }
 
-        NumberExpression<Long> finalSum = c.finalAmount.sumLong();
-        Long totalFinal = queryFactory
+        NumberExpression<BigDecimal> finalSum = Expressions.numberTemplate(
+                BigDecimal.class, "sum({0})", c.finalAmount);
+        BigDecimal totalFinal = queryFactory
                 .select(finalSum)
                 .from(c)
                 .where(where)
                 .fetchOne();
 
-        NumberExpression<Long> paidSum = p.paidAmount.sumLong();
-        Long totalPaid = queryFactory
+        NumberExpression<BigDecimal> paidSum = Expressions.numberTemplate(
+                BigDecimal.class, "sum({0})", p.paidAmount);
+        BigDecimal totalPaid = queryFactory
                 .select(paidSum)
                 .from(p)
                 .join(c).on(c.id.eq(p.contractId))
                 .where(where)
                 .fetchOne();
 
-        long finalAmount = totalFinal == null ? 0L : totalFinal;
-        long paidAmount = totalPaid == null ? 0L : totalPaid;
+        long finalAmount = MoneyPolicy.fromAggregate(totalFinal);
+        long paidAmount = MoneyPolicy.fromAggregate(totalPaid);
         return ContractOutstandingSummary.builder()
                 .totalFinalAmount(finalAmount)
                 .totalPaidAmount(paidAmount)

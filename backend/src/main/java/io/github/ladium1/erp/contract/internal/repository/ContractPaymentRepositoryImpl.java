@@ -1,11 +1,14 @@
 package io.github.ladium1.erp.contract.internal.repository;
 
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.ladium1.erp.contract.internal.entity.QContractPayment;
+import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import lombok.RequiredArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -22,7 +25,8 @@ public class ContractPaymentRepositoryImpl implements ContractPaymentRepositoryC
             return Map.of();
         }
         QContractPayment p = QContractPayment.contractPayment;
-        NumberExpression<Long> paidSum = p.paidAmount.sumLong();
+        NumberExpression<BigDecimal> paidSum = Expressions.numberTemplate(
+                BigDecimal.class, "sum({0})", p.paidAmount);
         List<Tuple> rows = queryFactory
                 .select(p.contractId, paidSum)
                 .from(p)
@@ -33,8 +37,7 @@ public class ContractPaymentRepositoryImpl implements ContractPaymentRepositoryC
         Map<Long, Long> sums = new HashMap<>();
         for (Tuple row : rows) {
             Long contractId = row.get(p.contractId);
-            Long sum = row.get(paidSum);
-            sums.put(contractId, sum != null ? sum : 0L);
+            sums.put(contractId, MoneyPolicy.fromAggregate(row.get(paidSum)));
         }
         return sums;
     }

@@ -17,6 +17,7 @@ import io.github.ladium1.erp.afterservice.internal.service.AfterServiceService;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
 import io.github.ladium1.erp.global.web.PageResponse;
+import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -176,6 +177,21 @@ class AfterServiceControllerTest {
     }
 
     @Test
+    @DisplayName("AS 청구액이 허용 범위를 넘으면 400")
+    void create_fail_billing_amount_over_limit() throws Exception {
+        AfterServiceCreateRequest request = new AfterServiceCreateRequest(
+                null, 1L, null, LocalDate.of(2026, 5, 1),
+                ServiceType.REPAIR, null, ServiceStatus.RECEIVED,
+                null, WarrantyDecision.PAID, MoneyPolicy.MAX_AMOUNT + 1, null
+        );
+
+        mockMvc.perform(post("/api/v1/after-services")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("AS 수정 성공")
     void update_success() throws Exception {
         // given
@@ -279,6 +295,19 @@ class AfterServiceControllerTest {
                 ServiceExpenseCategory.MEAL, null, ExpensePayerType.ENGINEER, null, null, null);
 
         // when & then
+        mockMvc.perform(post("/api/v1/after-services/{afterServiceId}/expenses", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("AS 경비 금액이 허용 범위를 넘으면 400")
+    void create_expense_fail_amount_over_limit() throws Exception {
+        ServiceExpenseRequest request = new ServiceExpenseRequest(
+                ServiceExpenseCategory.PARTS, MoneyPolicy.MAX_AMOUNT + 1,
+                ExpensePayerType.COMPANY, null, null, null);
+
         mockMvc.perform(post("/api/v1/after-services/{afterServiceId}/expenses", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

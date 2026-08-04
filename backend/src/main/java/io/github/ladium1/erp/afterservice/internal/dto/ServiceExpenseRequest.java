@@ -2,7 +2,9 @@ package io.github.ladium1.erp.afterservice.internal.dto;
 
 import io.github.ladium1.erp.afterservice.internal.entity.ExpensePayerType;
 import io.github.ladium1.erp.afterservice.internal.entity.ServiceExpenseCategory;
+import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
@@ -15,7 +17,7 @@ public record ServiceExpenseRequest(
         @NotNull
         ServiceExpenseCategory category,
 
-        @NotNull @PositiveOrZero
+        @NotNull @PositiveOrZero @Max(MoneyPolicy.MAX_AMOUNT)
         Long amount,
 
         @NotNull
