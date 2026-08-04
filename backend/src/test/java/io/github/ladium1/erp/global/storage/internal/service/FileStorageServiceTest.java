@@ -1,8 +1,10 @@
 package io.github.ladium1.erp.global.storage.internal.service;
 
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
 import io.github.ladium1.erp.global.storage.internal.entity.StoredFile;
+import io.github.ladium1.erp.global.storage.internal.entity.StoredFileStatus;
 import io.github.ladium1.erp.global.storage.internal.exception.StorageErrorCode;
 import io.github.ladium1.erp.global.storage.internal.repository.StoredFileRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,17 +14,28 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -40,15 +53,15 @@ class FileStorageServiceTest {
     private static final Long FILE_ID = 1L;
     private static final Long UPLOADER_ID = 10L;
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 7, 7, 10, 0);
+    private static final FileOwner OWNER = FileOwner.boardPost(100L);
 
     private final AtomicReference<StoredFile> savedFile = new AtomicReference<>();
 
     @BeforeEach
-    void set_up() {
+    void setUp() {
         fileStorageService = new FileStorageService(storedFileRepository, tempDir.toString());
     }
 
-    // JPA 감사가 채우는 id / createdAt 을 save 시점에 시뮬레이션
     private void stubSaveWithJpaAudit() {
         given(storedFileRepository.save(any(StoredFile.class))).willAnswer(invocation -> {
             StoredFile file = invocation.getArgument(0);
@@ -59,33 +72,277 @@ class FileStorageServiceTest {
         });
     }
 
+    private void claimSavedFile() {
+        given(storedFileRepository.findAllByIdForUpdate(List.of(FILE_ID)))
+                .willReturn(List.of(savedFile.get()));
+        fileStorageService.claim(List.of(FILE_ID), OWNER, UPLOADER_ID);
+    }
+
     @Test
-    @DisplayName("store → getInfo → loadContent 왕복 성공")
-    void store_get_info_load_content_success() {
-        // given
+    @DisplayName("업로드 파일을 소유자에 연결한 뒤 메타데이터와 본체 조회")
+    void store_claim_and_load_success() {
         byte[] content = "hello file".getBytes(StandardCharsets.UTF_8);
         stubSaveWithJpaAudit();
 
-        // when
         StoredFileInfo stored = fileStorageService.store("hello.txt", "text/plain", content, UPLOADER_ID);
-        given(storedFileRepository.findById(FILE_ID)).willReturn(Optional.of(savedFile.get()));
-        StoredFileInfo info = fileStorageService.getInfo(FILE_ID);
-        byte[] loaded = fileStorageService.loadContent(FILE_ID);
+        assertThat(savedFile.get().getStatus()).isEqualTo(StoredFileStatus.PENDING);
 
-        // then
+        claimSavedFile();
+        given(storedFileRepository.findById(FILE_ID)).willReturn(Optional.of(savedFile.get()));
+
+        StoredFileInfo info = fileStorageService.getInfo(FILE_ID, OWNER);
+        byte[] loaded = fileStorageService.loadContent(FILE_ID, OWNER);
+
         assertThat(stored.id()).isEqualTo(FILE_ID);
         assertThat(stored.originalName()).isEqualTo("hello.txt");
         assertThat(stored.size()).isEqualTo(content.length);
         assertThat(stored.uploaderId()).isEqualTo(UPLOADER_ID);
+        assertThat(savedFile.get().getStatus()).isEqualTo(StoredFileStatus.CLAIMED);
         assertThat(info.contentType()).isEqualTo("text/plain");
         assertThat(loaded).isEqualTo(content);
-        assertThat(tempDir.resolve("2026").resolve("07").resolve(savedFile.get().getStoredName())).exists();
+        assertThat(contentPathOf(savedFile.get())).exists();
+    }
+
+    @Test
+    @DisplayName("같은 소유자가 같은 파일을 다시 연결해도 성공")
+    void claim_is_idempotent_for_same_owner() {
+        stubSaveWithJpaAudit();
+        fileStorageService.store("hello.txt", "text/plain", "payload".getBytes(), UPLOADER_ID);
+        given(storedFileRepository.findAllByIdForUpdate(List.of(FILE_ID)))
+                .willReturn(List.of(savedFile.get()));
+
+        fileStorageService.claim(List.of(FILE_ID), OWNER, UPLOADER_ID);
+        fileStorageService.claim(List.of(FILE_ID), OWNER, UPLOADER_ID);
+
+        assertThat(savedFile.get().isClaimedBy(OWNER)).isTrue();
+    }
+
+    @Test
+    @DisplayName("다른 업로더나 다른 업무 소유자는 파일을 연결할 수 없음")
+    void claim_rejects_uploader_and_owner_mismatch() {
+        stubSaveWithJpaAudit();
+        fileStorageService.store("hello.txt", "text/plain", "payload".getBytes(), UPLOADER_ID);
+        given(storedFileRepository.findAllByIdForUpdate(List.of(FILE_ID)))
+                .willReturn(List.of(savedFile.get()));
+
+        assertThatThrownBy(() -> fileStorageService.claim(List.of(FILE_ID), OWNER, 99L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_CLAIM_NOT_ALLOWED);
+
+        fileStorageService.claim(List.of(FILE_ID), OWNER, UPLOADER_ID);
+        assertThatThrownBy(() -> fileStorageService.claim(
+                List.of(FILE_ID), FileOwner.approvalDocument(100L), UPLOADER_ID))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_CLAIM_NOT_ALLOWED);
+    }
+
+    @Test
+    @DisplayName("여러 파일 중 하나라도 연결할 수 없으면 어느 파일도 상태를 바꾸지 않음")
+    void claim_validates_all_files_before_changing_state() {
+        StoredFile first = pendingFile(1L, UPLOADER_ID);
+        StoredFile second = pendingFile(2L, 99L);
+        given(storedFileRepository.findAllByIdForUpdate(List.of(1L, 2L)))
+                .willReturn(List.of(first, second));
+
+        assertThatThrownBy(() -> fileStorageService.claim(List.of(2L, 1L), OWNER, UPLOADER_ID))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_CLAIM_NOT_ALLOWED);
+
+        assertThat(first.getStatus()).isEqualTo(StoredFileStatus.PENDING);
+        assertThat(second.getStatus()).isEqualTo(StoredFileStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("연결 요청은 최대 20개이며 null과 중복을 허용하지 않음")
+    void claim_validates_batch_shape_before_repository_access() {
+        List<Long> overLimit = LongStream.rangeClosed(1, 21).boxed().toList();
+
+        assertInvalidClaim(overLimit);
+        assertInvalidClaim(Arrays.asList(1L, null));
+        assertInvalidClaim(List.of(1L, 1L));
+
+        verify(storedFileRepository, never()).findAllByIdForUpdate(any());
+    }
+
+    @Test
+    @DisplayName("기대한 소유자가 다르면 파일 존재를 숨김")
+    void read_rejects_unexpected_owner() {
+        StoredFile file = claimedFile(OWNER);
+        given(storedFileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+
+        assertThatThrownBy(() -> fileStorageService.getInfo(FILE_ID, FileOwner.boardPost(200L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_NOT_FOUND);
+        assertThatThrownBy(() -> fileStorageService.loadContent(FILE_ID, FileOwner.boardPost(200L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("삭제 요청은 소유권을 확인한 뒤 물리 정리 전까지 본체를 유지")
+    void request_deletion_then_cleanup() throws IOException {
+        stubSaveWithJpaAudit();
+        fileStorageService.store("delete.txt", "text/plain", "delete me".getBytes(), UPLOADER_ID);
+        claimSavedFile();
+        Path contentPath = contentPathOf(savedFile.get());
+        given(storedFileRepository.findAllByIdForUpdate(List.of(FILE_ID)))
+                .willReturn(List.of(savedFile.get()));
+
+        fileStorageService.requestDeletion(List.of(FILE_ID), OWNER);
+
+        assertThat(savedFile.get().getStatus()).isEqualTo(StoredFileStatus.DELETE_PENDING);
+        assertThat(contentPath).exists();
+
+        given(storedFileRepository.findByStatusForUpdate(eq(StoredFileStatus.DELETE_PENDING), any(Pageable.class)))
+                .willReturn(List.of(savedFile.get()));
+        assertThat(fileStorageService.deletePendingFiles()).isEqualTo(1);
+
+        assertThat(contentPath).doesNotExist();
+        verify(storedFileRepository).deleteAll(List.of(savedFile.get()));
+    }
+
+    @Test
+    @DisplayName("소유자가 다른 삭제 요청은 상태를 바꾸지 않음")
+    void request_deletion_rejects_unexpected_owner() {
+        StoredFile file = claimedFile(OWNER);
+        given(storedFileRepository.findAllByIdForUpdate(List.of(FILE_ID))).willReturn(List.of(file));
+
+        assertThatThrownBy(() -> fileStorageService.requestDeletion(
+                List.of(FILE_ID), FileOwner.boardPost(200L)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_NOT_FOUND);
+
+        assertThat(file.getStatus()).isEqualTo(StoredFileStatus.CLAIMED);
+    }
+
+    @Test
+    @DisplayName("여러 파일 중 하나라도 소유권이 다르면 어느 파일도 삭제 대기로 바꾸지 않음")
+    void request_deletion_validates_all_files_before_changing_state() {
+        StoredFile first = pendingFile(1L, UPLOADER_ID);
+        first.claim(OWNER);
+        StoredFile second = pendingFile(2L, UPLOADER_ID);
+        second.claim(FileOwner.boardPost(200L));
+        given(storedFileRepository.findAllByIdForUpdate(List.of(1L, 2L)))
+                .willReturn(List.of(first, second));
+
+        assertThatThrownBy(() -> fileStorageService.requestDeletion(List.of(1L, 2L), OWNER))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_NOT_FOUND);
+
+        assertThat(first.getStatus()).isEqualTo(StoredFileStatus.CLAIMED);
+        assertThat(second.getStatus()).isEqualTo(StoredFileStatus.CLAIMED);
+    }
+
+    @Test
+    @DisplayName("물리 파일 정리에 실패하면 메타데이터를 남겨 다음 주기에 다시 시도")
+    void cleanup_keeps_metadata_when_content_deletion_fails() throws IOException {
+        StoredFile file = pendingFile();
+        file.requestDeletion();
+        Path contentPath = contentPathOf(file);
+        Files.createDirectories(contentPath);
+        Files.writeString(contentPath.resolve("child"), "not empty");
+        given(storedFileRepository.findByStatusForUpdate(
+                eq(StoredFileStatus.DELETE_PENDING), any(Pageable.class)))
+                .willReturn(List.of(file));
+
+        assertThatThrownBy(fileStorageService::deletePendingFiles)
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.STORAGE_IO_FAILED);
+
+        assertThat(contentPath).exists();
+        verify(storedFileRepository, never()).deleteAll(any());
+    }
+
+    @Test
+    @DisplayName("TTL이 지난 미연결 업로드만 삭제 대기로 전환")
+    void mark_expired_pending_for_deletion() {
+        StoredFile pending = pendingFile();
+        LocalDateTime threshold = CREATED_AT.plusDays(1);
+        given(storedFileRepository.findCreatedBeforeForUpdate(
+                eq(StoredFileStatus.PENDING), eq(threshold), any(Pageable.class)))
+                .willReturn(List.of(pending));
+
+        assertThat(fileStorageService.markExpiredPendingForDeletion(threshold)).isEqualTo(1);
+        assertThat(pending.getStatus()).isEqualTo(StoredFileStatus.DELETE_PENDING);
+    }
+
+    @Test
+    @DisplayName("파일명과 MIME이 비어도 안전한 기본 메타데이터로 정규화")
+    void store_normalizes_missing_multipart_metadata() {
+        stubSaveWithJpaAudit();
+
+        StoredFileInfo stored = fileStorageService.store(
+                " \t", null, "payload".getBytes(StandardCharsets.UTF_8), UPLOADER_ID);
+
+        assertThat(stored.originalName()).isEqualTo("upload.bin");
+        assertThat(stored.contentType()).isEqualTo(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+        assertThat(savedFile.get().getOriginalName()).isEqualTo("upload.bin");
+        assertThat(savedFile.get().getContentType()).isEqualTo(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+    }
+
+    @Test
+    @DisplayName("상위 트랜잭션까지 rollback이면 이미 이동한 파일 본체 제거")
+    void store_removes_materialized_content_on_outer_transaction_rollback() {
+        stubSaveWithJpaAudit();
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            fileStorageService.store(
+                    "drive.txt", "text/plain", "payload".getBytes(StandardCharsets.UTF_8), UPLOADER_ID);
+            Path contentPath = contentPathOf(savedFile.get());
+            assertThat(contentPath).exists();
+            assertThat(TransactionSynchronizationManager.getSynchronizations()).hasSize(1);
+
+            completeSynchronization(TransactionSynchronization.STATUS_ROLLED_BACK);
+
+            assertThat(contentPath).doesNotExist();
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    @DisplayName("트랜잭션 commit 뒤에는 원자적으로 이동한 파일 본체 유지")
+    void store_keeps_materialized_content_after_transaction_commit() {
+        stubSaveWithJpaAudit();
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            fileStorageService.store(
+                    "committed.txt", "text/plain", "payload".getBytes(StandardCharsets.UTF_8), UPLOADER_ID);
+            Path contentPath = contentPathOf(savedFile.get());
+
+            completeSynchronization(TransactionSynchronization.STATUS_COMMITTED);
+
+            assertThat(contentPath).hasContent("payload");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    @DisplayName("파일 기록 중 IOException이 나면 부분 본체를 남기지 않고 저장 실패")
+    void store_removes_partial_content_after_io_failure() throws IOException {
+        stubSaveWithJpaAudit();
+        fileStorageService = new FileStorageService(
+                storedFileRepository,
+                tempDir.toString(),
+                (target, content) -> {
+                    Files.createDirectories(target.getParent());
+                    Files.write(target, Arrays.copyOf(content, 2));
+                    throw new IOException("simulated partial write");
+                }
+        );
+
+        assertThatThrownBy(() -> fileStorageService.store(
+                "partial.txt", "text/plain", "payload".getBytes(StandardCharsets.UTF_8), UPLOADER_ID))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.STORAGE_IO_FAILED);
+
+        assertThat(regularFiles()).isEmpty();
     }
 
     @Test
     @DisplayName("빈 파일 업로드 거부")
     void store_fail_empty_content() {
-        // when & then
         assertThatThrownBy(() -> fileStorageService.store("empty.txt", "text/plain", new byte[0], UPLOADER_ID))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.EMPTY_FILE);
@@ -93,52 +350,47 @@ class FileStorageServiceTest {
         verify(storedFileRepository, never()).save(any(StoredFile.class));
     }
 
-    @Test
-    @DisplayName("존재하지 않는 파일 조회 시 404")
-    void get_info_fail_file_not_found() {
-        // given
-        given(storedFileRepository.findById(99L)).willReturn(Optional.empty());
-
-        // when & then
-        assertThatThrownBy(() -> fileStorageService.getInfo(99L))
+    private void assertInvalidClaim(List<Long> fileIds) {
+        assertThatThrownBy(() -> fileStorageService.claim(fileIds, OWNER, UPLOADER_ID))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_NOT_FOUND);
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.INVALID_FILE_REFERENCES);
     }
 
-    @Test
-    @DisplayName("delete 성공 — 메타 + 본체 제거 후 조회 실패")
-    void delete_success_then_get_info_fail() {
-        // given
-        byte[] content = "delete me".getBytes(StandardCharsets.UTF_8);
-        stubSaveWithJpaAudit();
-        fileStorageService.store("delete.txt", "text/plain", content, UPLOADER_ID);
-        StoredFile saved = savedFile.get();
-        Path contentPath = tempDir.resolve("2026").resolve("07").resolve(saved.getStoredName());
-        given(storedFileRepository.findById(FILE_ID))
-                .willReturn(Optional.of(saved))
-                .willReturn(Optional.empty());
-
-        // when
-        fileStorageService.delete(FILE_ID);
-
-        // then
-        verify(storedFileRepository).delete(saved);
-        assertThat(contentPath).doesNotExist();
-        assertThatThrownBy(() -> fileStorageService.getInfo(FILE_ID))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_NOT_FOUND);
+    private StoredFile pendingFile() {
+        return pendingFile(FILE_ID, UPLOADER_ID);
     }
 
-    @Test
-    @DisplayName("존재하지 않는 파일 delete 는 무시")
-    void delete_ignores_missing_file() {
-        // given
-        given(storedFileRepository.findById(99L)).willReturn(Optional.empty());
+    private StoredFile pendingFile(Long fileId, Long uploaderId) {
+        StoredFile file = StoredFile.builder()
+                .originalName("file.txt")
+                .storedName("stored-name")
+                .contentType("text/plain")
+                .size(7)
+                .uploaderId(uploaderId)
+                .build();
+        ReflectionTestUtils.setField(file, "id", fileId);
+        ReflectionTestUtils.setField(file, "createdAt", CREATED_AT);
+        return file;
+    }
 
-        // when
-        fileStorageService.delete(99L);
+    private StoredFile claimedFile(FileOwner owner) {
+        StoredFile file = pendingFile();
+        file.claim(owner);
+        return file;
+    }
 
-        // then
-        verify(storedFileRepository, never()).delete(any(StoredFile.class));
+    private Path contentPathOf(StoredFile file) {
+        return tempDir.resolve("2026").resolve("07").resolve(file.getStoredName());
+    }
+
+    private List<Path> regularFiles() throws IOException {
+        try (Stream<Path> paths = Files.walk(tempDir)) {
+            return paths.filter(Files::isRegularFile).toList();
+        }
+    }
+
+    private static void completeSynchronization(int status) {
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(synchronization -> synchronization.afterCompletion(status));
     }
 }

@@ -23,6 +23,7 @@ import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
+import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
@@ -69,7 +70,11 @@ public class ApprovalService implements ApprovalApi {
                 .build();
         command.approverIds().forEach(document::addStep);
 
-        return approvalDocumentRepository.save(document).getId();
+        Long documentId = approvalDocumentRepository.save(document).getId();
+        if (command.attachmentFileIds() != null && !command.attachmentFileIds().isEmpty()) {
+            fileStorageApi.claim(command.attachmentFileIds(), attachmentOwner(documentId, command), command.drafterId());
+        }
+        return documentId;
     }
 
     /**
@@ -120,9 +125,11 @@ public class ApprovalService implements ApprovalApi {
         List<ApprovalStepResponse> steps = document.getSteps().stream()
                 .map(step -> approvalMapper.toStepResponse(step, nameById.get(step.getApproverId())))
                 .toList();
-        List<ApprovalAttachmentResponse> attachments = fileStorageApi.getInfos(document.getAttachmentFileIds()).stream()
-                .map(approvalMapper::toAttachmentResponse)
-                .toList();
+        List<ApprovalAttachmentResponse> attachments = document.getAttachmentFileIds().isEmpty()
+                ? List.of()
+                : fileStorageApi.getInfos(document.getAttachmentFileIds(), attachmentOwner(document)).stream()
+                        .map(approvalMapper::toAttachmentResponse)
+                        .toList();
 
         boolean myTurn = !document.isCompleted() && document.currentStep().getApproverId().equals(employeeId);
         boolean cancelable = document.getDrafterId().equals(employeeId)
@@ -150,8 +157,10 @@ public class ApprovalService implements ApprovalApi {
             throw new BusinessException(ApprovalErrorCode.DOCUMENT_NOT_FOUND);
         }
 
-        StoredFileInfo info = fileStorageApi.getInfo(fileId);
-        return new ApprovalAttachmentDownload(info.originalName(), info.contentType(), fileStorageApi.loadContent(fileId));
+        FileOwner owner = attachmentOwner(document);
+        StoredFileInfo info = fileStorageApi.getInfo(fileId, owner);
+        return new ApprovalAttachmentDownload(info.originalName(), info.contentType(),
+                fileStorageApi.loadContent(fileId, owner));
     }
 
     @Auditable(menu = Menu.APPROVALS, action = AuditAction.UPDATE, targetType = "ApprovalDocument", targetIdParam = "documentId")
@@ -213,6 +222,18 @@ public class ApprovalService implements ApprovalApi {
         if (!employeeApi.allEligibleForNewWorkReference(approverIds)) {
             throw new BusinessException(ApprovalErrorCode.INVALID_APPROVAL_LINE);
         }
+    }
+
+    private FileOwner attachmentOwner(ApprovalDocument document) {
+        return document.getDocType() == ApprovalDocType.EXPENSE
+                ? FileOwner.expenseClaim(document.getRefId())
+                : FileOwner.approvalDocument(document.getId());
+    }
+
+    private FileOwner attachmentOwner(Long documentId, ApprovalSubmitCommand command) {
+        return command.docType() == ApprovalDocType.EXPENSE
+                ? FileOwner.expenseClaim(command.refId())
+                : FileOwner.approvalDocument(documentId);
     }
 
     /**

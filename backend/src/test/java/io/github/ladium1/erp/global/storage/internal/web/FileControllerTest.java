@@ -23,6 +23,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -85,12 +87,24 @@ class FileControllerTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "empty.txt", "text/plain", new byte[0]
         );
-        given(dataScopeContextProvider.current()).willReturn(DataScopeContext.anonymous());
+        given(dataScopeContextProvider.current()).willReturn(new DataScopeContext(1L, null, Set.of()));
         willThrow(new BusinessException(StorageErrorCode.EMPTY_FILE))
-                .given(fileStorageService).store(eq("empty.txt"), eq("text/plain"), any(), eq(null));
+                .given(fileStorageService).store(eq("empty.txt"), eq("text/plain"), any(), eq(1L));
 
         // when & then
         mockMvc.perform(multipart("/api/v1/files").file(file))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("인증 직원 식별자가 없으면 업로드 거부")
+    void upload_rejects_missing_employee_identity() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "hello.txt", "text/plain", "hello file".getBytes());
+        given(dataScopeContextProvider.current()).willReturn(DataScopeContext.anonymous());
+
+        mockMvc.perform(multipart("/api/v1/files").file(file))
+                .andExpect(status().isForbidden());
+        verify(fileStorageService, never()).store(any(), any(), any(), any());
     }
 }

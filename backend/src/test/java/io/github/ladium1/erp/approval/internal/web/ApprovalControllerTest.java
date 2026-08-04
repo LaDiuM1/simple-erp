@@ -188,6 +188,48 @@ class ApprovalControllerTest {
 
     @Test
     @WithMockUser(username = LOGIN_ID)
+    @DisplayName("첨부가 20개를 넘으면 서비스 호출 전에 400")
+    void create_rejects_attachments_over_limit() throws Exception {
+        ApprovalCreateRequest request = new ApprovalCreateRequest(
+                "월간 구매 기안", "본문", List.of(2L), LongStream.rangeClosed(1, 21).boxed().toList());
+
+        mockMvc.perform(post("/api/v1/approvals")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(approvalService, never()).createGeneral(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("첨부에 null이 있으면 서비스 호출 전에 400")
+    void create_rejects_null_attachment() throws Exception {
+        ApprovalCreateRequest request = new ApprovalCreateRequest(
+                "월간 구매 기안", "본문", List.of(2L), Arrays.asList(1L, null));
+
+        mockMvc.perform(post("/api/v1/approvals")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(approvalService, never()).createGeneral(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
+    @DisplayName("중복 첨부는 서비스 호출 전에 400")
+    void create_rejects_duplicate_attachments() throws Exception {
+        ApprovalCreateRequest request = new ApprovalCreateRequest(
+                "월간 구매 기안", "본문", List.of(2L), List.of(1L, 1L));
+
+        mockMvc.perform(post("/api/v1/approvals")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(approvalService, never()).createGeneral(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = LOGIN_ID)
     @DisplayName("빈 결재선 등록 시 400")
     void create_fail_empty_approver_ids() throws Exception {
         // given

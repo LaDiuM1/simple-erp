@@ -16,6 +16,7 @@ import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.DataScopeContextProvider;
+import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,6 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -113,25 +113,29 @@ public class DriveService {
         DriveFile file = DriveFile.builder()
                 .folder(folder)
                 .storageFileId(stored.id())
-                .name(originalName)
+                .name(stored.originalName())
                 .uploaderId(uploaderId)
                 .build();
 
-        return driveFileRepository.save(file).getId();
+        Long driveFileId = driveFileRepository.save(file).getId();
+        fileStorageApi.claim(List.of(stored.id()), FileOwner.driveFile(driveFileId), uploaderId);
+        return driveFileId;
     }
 
     public DriveFileDownload downloadFile(Long id) {
         DriveFile file = getFile(id);
-        StoredFileInfo info = fileStorageApi.getInfo(file.getStorageFileId());
-        return new DriveFileDownload(file.getName(), info.contentType(), fileStorageApi.loadContent(file.getStorageFileId()));
+        FileOwner owner = FileOwner.driveFile(id);
+        StoredFileInfo info = fileStorageApi.getInfo(file.getStorageFileId(), owner);
+        return new DriveFileDownload(file.getName(), info.contentType(),
+                fileStorageApi.loadContent(file.getStorageFileId(), owner));
     }
 
     @Auditable(menu = Menu.DRIVE, action = AuditAction.DELETE, targetType = "DriveFile", targetIdParam = "id")
     @Transactional
     public void deleteFile(Long id) {
         DriveFile file = getFile(id);
+        fileStorageApi.requestDeletion(List.of(file.getStorageFileId()), FileOwner.driveFile(id));
         driveFileRepository.delete(file);
-        fileStorageApi.delete(file.getStorageFileId());
     }
 
     /**
@@ -158,10 +162,11 @@ public class DriveService {
     }
 
     private List<DriveBrowseResponse.FileItem> toFileItems(List<DriveFile> files) {
-        Map<Long, StoredFileInfo> storageInfos = fileStorageApi
-                .getInfos(files.stream().map(DriveFile::getStorageFileId).toList())
-                .stream()
-                .collect(Collectors.toMap(StoredFileInfo::id, Function.identity()));
+        Map<Long, FileOwner> expectedOwners = files.stream().collect(Collectors.toMap(
+                DriveFile::getStorageFileId,
+                file -> FileOwner.driveFile(file.getId())
+        ));
+        Map<Long, StoredFileInfo> storageInfos = fileStorageApi.getInfos(expectedOwners);
         Map<Long, String> uploaderNames = employeeApi
                 .findByIds(files.stream().map(DriveFile::getUploaderId).distinct().toList())
                 .stream()

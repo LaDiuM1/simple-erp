@@ -24,6 +24,7 @@ import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
+import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
 import io.github.ladium1.erp.global.web.PageResponse;
@@ -83,8 +84,10 @@ public class BoardService {
                 ).toList()
         );
 
-        List<PostAttachmentResponse> attachments =
-                boardMapper.toAttachmentResponses(fileStorageApi.getInfos(post.getAttachmentFileIds()));
+        List<PostAttachmentResponse> attachments = post.getAttachmentFileIds().isEmpty()
+                ? List.of()
+                : boardMapper.toAttachmentResponses(
+                        fileStorageApi.getInfos(post.getAttachmentFileIds(), FileOwner.boardPost(post.getId())));
         List<PostCommentResponse> commentResponses = comments.stream()
                 .map(comment -> boardMapper.toCommentResponse(comment, authorNames.get(comment.getAuthorId())))
                 .toList();
@@ -100,8 +103,10 @@ public class BoardService {
         if (!post.getAttachmentFileIds().contains(fileId)) {
             throw new BusinessException(BoardErrorCode.POST_NOT_FOUND);
         }
-        StoredFileInfo info = fileStorageApi.getInfo(fileId);
-        return new PostAttachmentDownload(info.originalName(), info.contentType(), fileStorageApi.loadContent(fileId));
+        FileOwner owner = FileOwner.boardPost(postId);
+        StoredFileInfo info = fileStorageApi.getInfo(fileId, owner);
+        return new PostAttachmentDownload(info.originalName(), info.contentType(),
+                fileStorageApi.loadContent(fileId, owner));
     }
 
     @Auditable(menu = Menu.BOARDS, action = AuditAction.CREATE, targetType = "Post", targetIdFromReturn = true)
@@ -109,21 +114,25 @@ public class BoardService {
     public Long create(PostCreateRequest request) {
         requireWritePermissionForNotice(request.category());
 
+        Long authorId = currentEmployeeId();
         Post post = Post.builder()
                 .category(request.category())
                 .title(request.title())
                 .content(request.content())
-                .authorId(currentEmployeeId())
+                .authorId(authorId)
                 .attachmentFileIds(request.attachmentFileIds())
                 .build();
-        return postRepository.save(post).getId();
+        Long postId = postRepository.save(post).getId();
+        fileStorageApi.claim(request.attachmentFileIds(), FileOwner.boardPost(postId), authorId);
+        return postId;
     }
 
     @Auditable(menu = Menu.BOARDS, action = AuditAction.UPDATE, targetType = "Post", targetIdParam = "id")
     @Transactional
     public void update(Long id, PostUpdateRequest request) {
         Post post = findPost(id);
-        requireAuthor(post.isAuthor(currentEmployeeId()));
+        Long authorId = currentEmployeeId();
+        requireAuthor(post.isAuthor(authorId));
         requireWritePermissionForNotice(request.category());
 
         // 수정으로 제외된 첨부는 storage 에서도 제거 — 고아 파일 잔존 차단 (drive 의 파일 삭제 관습과 대칭)
@@ -132,8 +141,10 @@ public class BoardService {
                 .filter(fileId -> !requestedFileIds.contains(fileId))
                 .toList();
 
-        post.update(request.category(), request.title(), request.content(), request.attachmentFileIds());
-        removedFileIds.forEach(fileStorageApi::delete);
+        FileOwner owner = FileOwner.boardPost(id);
+        fileStorageApi.claim(requestedFileIds, owner, authorId);
+        post.update(request.category(), request.title(), request.content(), requestedFileIds);
+        fileStorageApi.requestDeletion(removedFileIds, owner);
     }
 
     @Auditable(menu = Menu.BOARDS, action = AuditAction.DELETE, targetType = "Post", targetIdParam = "id")
@@ -143,9 +154,9 @@ public class BoardService {
         requireAuthor(post.isAuthor(currentEmployeeId()));
 
         List<Long> attachmentFileIds = List.copyOf(post.getAttachmentFileIds());
+        fileStorageApi.requestDeletion(attachmentFileIds, FileOwner.boardPost(id));
         postCommentRepository.deleteByPostId(id);
         postRepository.delete(post);
-        attachmentFileIds.forEach(fileStorageApi::delete);
     }
 
     @Auditable(menu = Menu.BOARDS, action = AuditAction.CREATE, targetType = "PostComment", targetIdFromReturn = true)

@@ -15,8 +15,10 @@ import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
+import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
+import io.github.ladium1.erp.global.storage.internal.exception.StorageErrorCode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,6 +40,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -106,7 +110,10 @@ class BoardServiceTest {
         // then
         assertThat(id).isEqualTo(100L);
         ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
-        verify(postRepository).save(captor.capture());
+        var order = inOrder(postRepository, fileStorageApi);
+        order.verify(postRepository).save(captor.capture());
+        order.verify(fileStorageApi).claim(
+                List.of(10L), FileOwner.boardPost(100L), MY_EMPLOYEE_ID);
         assertThat(captor.getValue().getAuthorId()).isEqualTo(MY_EMPLOYEE_ID);
         assertThat(captor.getValue().getAttachmentFileIds()).containsExactly(10L);
     }
@@ -153,10 +160,10 @@ class BoardServiceTest {
         boardService.delete(5L);
 
         // then
-        verify(postCommentRepository).deleteByPostId(5L);
-        verify(postRepository).delete(post);
-        verify(fileStorageApi).delete(10L);
-        verify(fileStorageApi).delete(11L);
+        var order = inOrder(fileStorageApi, postCommentRepository, postRepository);
+        order.verify(fileStorageApi).requestDeletion(List.of(10L, 11L), FileOwner.boardPost(5L));
+        order.verify(postCommentRepository).deleteByPostId(5L);
+        order.verify(postRepository).delete(post);
     }
 
     @Test
@@ -173,9 +180,31 @@ class BoardServiceTest {
 
         // then
         assertThat(post.getAttachmentFileIds()).containsExactly(11L, 12L);
-        verify(fileStorageApi).delete(10L);
-        verify(fileStorageApi, never()).delete(11L);
-        verify(fileStorageApi, never()).delete(12L);
+        var order = inOrder(fileStorageApi);
+        order.verify(fileStorageApi).claim(
+                List.of(11L, 12L), FileOwner.boardPost(5L), MY_EMPLOYEE_ID);
+        order.verify(fileStorageApi).requestDeletion(List.of(10L), FileOwner.boardPost(5L));
+    }
+
+    @Test
+    @DisplayName("첨부 소유권 검증 실패 시 게시글과 기존 첨부를 변경하지 않음")
+    void update_stops_before_domain_change_when_claim_fails() {
+        stubCurrentEmployee();
+        Post post = post(BoardCategory.FREE, MY_EMPLOYEE_ID, List.of(10L));
+        given(postRepository.findById(5L)).willReturn(Optional.of(post));
+        PostUpdateRequest request = new PostUpdateRequest(
+                BoardCategory.FREE, "수정 제목", "수정 본문", List.of(11L));
+        willThrow(new BusinessException(StorageErrorCode.FILE_CLAIM_NOT_ALLOWED))
+                .given(fileStorageApi)
+                .claim(List.of(11L), FileOwner.boardPost(5L), MY_EMPLOYEE_ID);
+
+        assertThatThrownBy(() -> boardService.update(5L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_CLAIM_NOT_ALLOWED);
+
+        assertThat(post.getTitle()).isEqualTo("제목");
+        assertThat(post.getAttachmentFileIds()).containsExactly(10L);
+        verify(fileStorageApi, never()).requestDeletion(any(), any());
     }
 
     @Test
@@ -239,9 +268,10 @@ class BoardServiceTest {
         // given
         Post post = post(BoardCategory.FREE, MY_EMPLOYEE_ID, List.of(10L));
         given(postRepository.findById(5L)).willReturn(Optional.of(post));
-        given(fileStorageApi.getInfo(10L)).willReturn(
+        FileOwner owner = FileOwner.boardPost(5L);
+        given(fileStorageApi.getInfo(10L, owner)).willReturn(
                 StoredFileInfo.builder().id(10L).originalName("자료.pdf").contentType("application/pdf").build());
-        given(fileStorageApi.loadContent(10L)).willReturn("pdf-bytes".getBytes());
+        given(fileStorageApi.loadContent(10L, owner)).willReturn("pdf-bytes".getBytes());
 
         // when
         PostAttachmentDownload download = boardService.downloadAttachment(5L, 10L);
@@ -263,6 +293,6 @@ class BoardServiceTest {
         assertThatThrownBy(() -> boardService.downloadAttachment(5L, 999L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", BoardErrorCode.POST_NOT_FOUND);
-        verify(fileStorageApi, never()).loadContent(any());
+        verify(fileStorageApi, never()).loadContent(any(), any());
     }
 }

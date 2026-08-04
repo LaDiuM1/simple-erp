@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.drive.internal.service;
 
 import io.github.ladium1.erp.drive.internal.dto.DriveBrowseResponse;
+import io.github.ladium1.erp.drive.internal.dto.DriveFileDownload;
 import io.github.ladium1.erp.drive.internal.dto.FolderCreateRequest;
 import io.github.ladium1.erp.drive.internal.entity.DriveFile;
 import io.github.ladium1.erp.drive.internal.entity.DriveFolder;
@@ -12,11 +13,15 @@ import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.security.DataScopeContext;
 import io.github.ladium1.erp.global.security.DataScopeContextProvider;
+import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -25,6 +30,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -32,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -78,8 +85,9 @@ class DriveServiceTest {
         given(driveFolderRepository.findById(3L)).willReturn(Optional.of(current));
         given(driveFolderRepository.findAllByParentId(3L)).willReturn(List.of());
         given(driveFileRepository.findAllByFolderId(3L)).willReturn(List.of(file(10L, current, 100L, "회의록.pdf")));
-        given(fileStorageApi.getInfos(List.of(100L))).willReturn(List.of(
-                StoredFileInfo.builder().id(100L).originalName("회의록.pdf").size(2048L).uploaderId(ME).build()
+        given(fileStorageApi.getInfos(Map.of(100L, FileOwner.driveFile(10L)))).willReturn(Map.of(
+                100L, StoredFileInfo.builder()
+                        .id(100L).originalName("회의록.pdf").size(2048L).uploaderId(ME).build()
         ));
         given(employeeApi.findByIds(List.of(ME))).willReturn(List.of(
                 EmployeeInfo.builder().id(ME).name("홍길동").build()
@@ -202,14 +210,43 @@ class DriveServiceTest {
 
         // then
         assertThat(id).isEqualTo(10L);
-        verify(fileStorageApi).store("보고서.xlsx", "application/octet-stream", content, ME);
 
         ArgumentCaptor<DriveFile> captor = ArgumentCaptor.forClass(DriveFile.class);
-        verify(driveFileRepository).save(captor.capture());
+        var order = inOrder(fileStorageApi, driveFileRepository);
+        order.verify(fileStorageApi).store("보고서.xlsx", "application/octet-stream", content, ME);
+        order.verify(driveFileRepository).save(captor.capture());
+        order.verify(fileStorageApi).claim(List.of(100L), FileOwner.driveFile(10L), ME);
         assertThat(captor.getValue().getFolder().getId()).isEqualTo(1L);
         assertThat(captor.getValue().getStorageFileId()).isEqualTo(100L);
         assertThat(captor.getValue().getName()).isEqualTo("보고서.xlsx");
         assertThat(captor.getValue().getUploaderId()).isEqualTo(ME);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", " \t"})
+    @DisplayName("파일명이 비어 있으면 storage가 정규화한 이름으로 DriveFile 생성")
+    void upload_file_uses_storage_normalized_original_name(String originalName) {
+        mockCurrentUser();
+        byte[] content = "file-content".getBytes();
+        given(fileStorageApi.store(originalName, null, content, ME)).willReturn(
+                StoredFileInfo.builder()
+                        .id(100L)
+                        .originalName("upload.bin")
+                        .size(content.length)
+                        .uploaderId(ME)
+                        .build()
+        );
+        given(driveFileRepository.save(any(DriveFile.class)))
+                .willReturn(file(10L, null, 100L, "upload.bin"));
+
+        Long id = driveService.uploadFile(null, originalName, null, content);
+
+        assertThat(id).isEqualTo(10L);
+        ArgumentCaptor<DriveFile> captor = ArgumentCaptor.forClass(DriveFile.class);
+        verify(driveFileRepository).save(captor.capture());
+        assertThat(captor.getValue().getName()).isEqualTo("upload.bin");
+        verify(fileStorageApi).claim(List.of(100L), FileOwner.driveFile(10L), ME);
     }
 
     @Test
@@ -240,7 +277,23 @@ class DriveServiceTest {
     }
 
     @Test
-    @DisplayName("파일 삭제 — DriveFile + storage 본체 삭제")
+    @DisplayName("파일 다운로드는 DriveFile 소유권으로 메타데이터와 본체 조회")
+    void download_file_uses_expected_owner() {
+        DriveFile target = file(10L, null, 100L, "보고서.xlsx");
+        FileOwner owner = FileOwner.driveFile(10L);
+        given(driveFileRepository.findById(10L)).willReturn(Optional.of(target));
+        given(fileStorageApi.getInfo(100L, owner)).willReturn(
+                StoredFileInfo.builder().id(100L).contentType("application/octet-stream").build());
+        given(fileStorageApi.loadContent(100L, owner)).willReturn("content".getBytes());
+
+        DriveFileDownload download = driveService.downloadFile(10L);
+
+        assertThat(download.name()).isEqualTo("보고서.xlsx");
+        assertThat(download.content()).isEqualTo("content".getBytes());
+    }
+
+    @Test
+    @DisplayName("파일 삭제 — 소유권 확인 뒤 DriveFile 제거")
     void delete_file_success() {
         // given
         DriveFile target = file(10L, folder(1L, "자료실", null), 100L, "보고서.xlsx");
@@ -250,7 +303,8 @@ class DriveServiceTest {
         driveService.deleteFile(10L);
 
         // then
-        verify(driveFileRepository).delete(target);
-        verify(fileStorageApi).delete(100L);
+        var order = inOrder(fileStorageApi, driveFileRepository);
+        order.verify(fileStorageApi).requestDeletion(List.of(100L), FileOwner.driveFile(10L));
+        order.verify(driveFileRepository).delete(target);
     }
 }

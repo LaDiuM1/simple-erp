@@ -6,6 +6,7 @@ import io.github.ladium1.erp.global.storage.StoredFileInfo;
 import io.github.ladium1.erp.global.storage.internal.exception.StorageErrorCode;
 import io.github.ladium1.erp.global.storage.internal.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,6 +36,9 @@ public class FileController {
     @PreAuthorize(IS_AUTHENTICATED)
     public StoredFileInfo upload(@RequestPart("file") MultipartFile file) {
         Long uploaderId = dataScopeContextProvider.current().employeeId();
+        if (uploaderId == null) {
+            throw new AccessDeniedException("인증된 직원 정보를 찾을 수 없습니다.");
+        }
         return fileStorageService.store(file.getOriginalFilename(), file.getContentType(), readBytes(file), uploaderId);
     }
 

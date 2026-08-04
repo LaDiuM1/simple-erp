@@ -25,7 +25,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.LongStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -201,6 +203,32 @@ class BoardControllerTest {
     }
 
     @Test
+    @DisplayName("첨부가 20개를 넘으면 등록 서비스 호출 전에 400")
+    void create_rejects_attachments_over_limit() throws Exception {
+        PostCreateRequest request = new PostCreateRequest(
+                BoardCategory.FREE, "제목", "본문", LongStream.rangeClosed(1, 21).boxed().toList());
+
+        mockMvc.perform(post("/api/v1/boards")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(boardService, never()).create(any());
+    }
+
+    @Test
+    @DisplayName("중복 첨부는 등록 서비스 호출 전에 400")
+    void create_rejects_duplicate_attachments() throws Exception {
+        PostCreateRequest request = new PostCreateRequest(
+                BoardCategory.FREE, "제목", "본문", List.of(10L, 10L));
+
+        mockMvc.perform(post("/api/v1/boards")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(boardService, never()).create(any());
+    }
+
+    @Test
     @DisplayName("쓰기 권한 없는 공지 등록 시 403")
     void create_fail_notice_without_write_permission() throws Exception {
         // given
@@ -234,6 +262,19 @@ class BoardControllerTest {
     void update_rejects_korean_content_over_limit() throws Exception {
         PostUpdateRequest request = new PostUpdateRequest(
                 BoardCategory.FREE, "수정 제목", "가".repeat(RequestTextPolicy.MAX_LONG_TEXT_LENGTH + 1), null);
+
+        mockMvc.perform(put("/api/v1/boards/{id}", 7L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(boardService, never()).update(any(), any());
+    }
+
+    @Test
+    @DisplayName("수정 첨부에 null이 있으면 서비스 호출 전에 400")
+    void update_rejects_null_attachment() throws Exception {
+        PostUpdateRequest request = new PostUpdateRequest(
+                BoardCategory.FREE, "수정 제목", "수정 본문", Arrays.asList(10L, null));
 
         mockMvc.perform(put("/api/v1/boards/{id}", 7L)
                         .contentType(MediaType.APPLICATION_JSON)

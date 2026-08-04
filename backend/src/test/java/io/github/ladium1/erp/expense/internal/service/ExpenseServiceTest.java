@@ -18,8 +18,10 @@ import io.github.ladium1.erp.expense.internal.exception.ExpenseErrorCode;
 import io.github.ladium1.erp.expense.internal.repository.ExpenseClaimRepository;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
+import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
+import io.github.ladium1.erp.global.storage.internal.exception.StorageErrorCode;
 import io.github.ladium1.erp.global.web.PageResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,6 +47,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -137,6 +141,12 @@ class ExpenseServiceTest {
         assertThat(command.refId()).isEqualTo(10L);
         assertThat(command.approverIds()).containsExactly(5L, 6L);
         assertThat(command.attachmentFileIds()).containsExactly(101L, 102L);
+
+        var order = inOrder(expenseClaimRepository, fileStorageApi, approvalApi);
+        order.verify(expenseClaimRepository).save(any(ExpenseClaim.class));
+        order.verify(fileStorageApi).claim(
+                List.of(101L, 102L), FileOwner.expenseClaim(10L), TEST_EMPLOYEE_ID);
+        order.verify(approvalApi).submit(any(ApprovalSubmitCommand.class));
     }
 
     @Test
@@ -151,6 +161,32 @@ class ExpenseServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ExpenseErrorCode.EMPTY_ITEMS);
         verify(expenseClaimRepository, never()).save(any());
+        verify(approvalApi, never()).submit(any());
+    }
+
+    @Test
+    @DisplayName("영수증 소유권 검증 실패 시 결재 상신을 시작하지 않음")
+    void create_stops_before_approval_when_receipt_claim_fails() {
+        ExpenseCreateRequest request = new ExpenseCreateRequest(
+                "경비 청구",
+                List.of(new ExpenseCreateRequest.ItemRequest(
+                        LocalDate.of(2026, 6, 1), ExpenseCategory.TRANSPORT,
+                        new BigDecimal("12000"), null, 101L)),
+                List.of(5L)
+        );
+        given(employeeApi.findByLoginId(TEST_LOGIN_ID)).willReturn(Optional.of(employeeInfo()));
+        given(expenseClaimRepository.save(any(ExpenseClaim.class))).willAnswer(invocation -> {
+            ExpenseClaim saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 10L);
+            return saved;
+        });
+        willThrow(new BusinessException(StorageErrorCode.FILE_CLAIM_NOT_ALLOWED))
+                .given(fileStorageApi)
+                .claim(List.of(101L), FileOwner.expenseClaim(10L), TEST_EMPLOYEE_ID);
+
+        assertThatThrownBy(() -> expenseService.create(TEST_LOGIN_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.FILE_CLAIM_NOT_ALLOWED);
         verify(approvalApi, never()).submit(any());
     }
 
@@ -250,7 +286,6 @@ class ExpenseServiceTest {
         given(expenseClaimRepository.findById(10L)).willReturn(Optional.of(claim));
         given(menuPermissionEvaluator.canWrite(any(), eq("EXPENSES"))).willReturn(true);
         given(employeeApi.getById(TEST_EMPLOYEE_ID)).willReturn(employeeInfo());
-        given(fileStorageApi.getInfos(List.of())).willReturn(List.of());
 
         ExpenseDetailResponse response = expenseService.getDetail(TEST_LOGIN_ID, 10L);
 
@@ -315,9 +350,10 @@ class ExpenseServiceTest {
                 new BigDecimal("12000"), "KTX 왕복", 101L);
         given(employeeApi.findByLoginId(TEST_LOGIN_ID)).willReturn(Optional.of(employeeInfo()));
         given(expenseClaimRepository.findById(10L)).willReturn(Optional.of(claim));
-        given(fileStorageApi.getInfo(101L)).willReturn(
+        FileOwner owner = FileOwner.expenseClaim(10L);
+        given(fileStorageApi.getInfo(101L, owner)).willReturn(
                 StoredFileInfo.builder().id(101L).originalName("영수증.png").contentType("image/png").build());
-        given(fileStorageApi.loadContent(101L)).willReturn("image-bytes".getBytes());
+        given(fileStorageApi.loadContent(101L, owner)).willReturn("image-bytes".getBytes());
 
         // when
         ExpenseReceiptDownload download = expenseService.downloadReceipt(TEST_LOGIN_ID, 10L, 101L);
@@ -342,6 +378,6 @@ class ExpenseServiceTest {
         assertThatThrownBy(() -> expenseService.downloadReceipt(TEST_LOGIN_ID, 10L, 999L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ExpenseErrorCode.CLAIM_NOT_FOUND);
-        verify(fileStorageApi, never()).loadContent(any());
+        verify(fileStorageApi, never()).loadContent(any(), any());
     }
 }

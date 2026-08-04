@@ -20,6 +20,7 @@ import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
+import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
 import io.github.ladium1.erp.global.web.PageResponse;
@@ -83,6 +84,10 @@ public class ExpenseService {
                 item.expenseDate(), item.category(), item.amount(), item.description(), item.receiptFileId()));
         expenseClaimRepository.save(claim);
 
+        List<Long> receiptFileIds = collectReceiptFileIds(items);
+        FileOwner owner = FileOwner.expenseClaim(claim.getId());
+        fileStorageApi.claim(receiptFileIds, owner, claimantId);
+
         Long approvalDocumentId = approvalApi.submit(ApprovalSubmitCommand.builder()
                 .docType(ApprovalDocType.EXPENSE)
                 .title(request.title())
@@ -90,7 +95,7 @@ public class ExpenseService {
                 .drafterId(claimantId)
                 .refId(claim.getId())
                 .approverIds(request.approverIds())
-                .attachmentFileIds(collectReceiptFileIds(items))
+                .attachmentFileIds(receiptFileIds)
                 .build());
         claim.linkApprovalDocument(approvalDocumentId);
 
@@ -136,8 +141,10 @@ public class ExpenseService {
         if (!attached) {
             throw new BusinessException(ExpenseErrorCode.CLAIM_NOT_FOUND);
         }
-        StoredFileInfo info = fileStorageApi.getInfo(fileId);
-        return new ExpenseReceiptDownload(info.originalName(), info.contentType(), fileStorageApi.loadContent(fileId));
+        FileOwner owner = FileOwner.expenseClaim(id);
+        StoredFileInfo info = fileStorageApi.getInfo(fileId, owner);
+        return new ExpenseReceiptDownload(info.originalName(), info.contentType(),
+                fileStorageApi.loadContent(fileId, owner));
     }
 
     private ExpenseClaim getAccessibleClaim(String loginId, Long id) {
@@ -212,8 +219,10 @@ public class ExpenseService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        Map<Long, String> receiptNameById = fileStorageApi.getInfos(receiptFileIds).stream()
-                .collect(Collectors.toMap(StoredFileInfo::id, StoredFileInfo::originalName, (a, b) -> a));
+        Map<Long, String> receiptNameById = receiptFileIds.isEmpty()
+                ? Map.of()
+                : fileStorageApi.getInfos(receiptFileIds, FileOwner.expenseClaim(claim.getId())).stream()
+                        .collect(Collectors.toMap(StoredFileInfo::id, StoredFileInfo::originalName, (a, b) -> a));
 
         List<ExpenseDetailResponse.ItemResponse> items = claim.getItems().stream()
                 .map(item -> ExpenseDetailResponse.ItemResponse.builder()

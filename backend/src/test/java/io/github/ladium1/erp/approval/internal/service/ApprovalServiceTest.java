@@ -16,6 +16,7 @@ import io.github.ladium1.erp.approval.internal.repository.ApprovalDocumentReposi
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
 import io.github.ladium1.erp.global.validation.RequestValidationErrorCode;
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -36,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -92,6 +95,7 @@ class ApprovalServiceTest {
                 .attachmentFileIds(List.of(fileId))
                 .build();
         document.addStep(2L);
+        ReflectionTestUtils.setField(document, "id", DOCUMENT_ID);
         return document;
     }
 
@@ -125,6 +129,54 @@ class ApprovalServiceTest {
         assertThat(saved.getSteps()).extracting(ApprovalStep::getStepOrder).containsExactly(1, 2);
         assertThat(saved.getSteps()).extracting(ApprovalStep::getApproverId).containsExactly(2L, 3L);
         assertThat(saved.getSteps()).extracting(ApprovalStep::getStatus).containsOnly(StepStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("일반 기안 저장 뒤 기안자 업로드를 문서 소유로 연결")
+    void submit_claims_general_attachments_after_document_save() {
+        ApprovalSubmitCommand command = ApprovalSubmitCommand.builder()
+                .docType(ApprovalDocType.GENERAL)
+                .title("첨부 기안")
+                .drafterId(DRAFTER_ID)
+                .approverIds(List.of(2L))
+                .attachmentFileIds(List.of(200L))
+                .build();
+        approversAreEligible(List.of(2L));
+        given(approvalDocumentRepository.save(any(ApprovalDocument.class))).willAnswer(invocation -> {
+            ApprovalDocument document = invocation.getArgument(0);
+            ReflectionTestUtils.setField(document, "id", DOCUMENT_ID);
+            return document;
+        });
+
+        approvalService.submit(command);
+
+        var order = inOrder(approvalDocumentRepository, fileStorageApi);
+        order.verify(approvalDocumentRepository).save(any(ApprovalDocument.class));
+        order.verify(fileStorageApi).claim(
+                List.of(200L), FileOwner.approvalDocument(DOCUMENT_ID), DRAFTER_ID);
+    }
+
+    @Test
+    @DisplayName("경비 결재 첨부는 결재 문서가 아닌 경비 청구 소유권을 재확인")
+    void submit_keeps_expense_attachment_owner() {
+        ApprovalSubmitCommand command = ApprovalSubmitCommand.builder()
+                .docType(ApprovalDocType.EXPENSE)
+                .title("경비 청구")
+                .drafterId(DRAFTER_ID)
+                .refId(REF_ID)
+                .approverIds(List.of(2L))
+                .attachmentFileIds(List.of(200L))
+                .build();
+        approversAreEligible(List.of(2L));
+        given(approvalDocumentRepository.save(any(ApprovalDocument.class))).willAnswer(invocation -> {
+            ApprovalDocument document = invocation.getArgument(0);
+            ReflectionTestUtils.setField(document, "id", DOCUMENT_ID);
+            return document;
+        });
+
+        approvalService.submit(command);
+
+        verify(fileStorageApi).claim(List.of(200L), FileOwner.expenseClaim(REF_ID), DRAFTER_ID);
     }
 
     @Test
@@ -399,9 +451,10 @@ class ApprovalServiceTest {
         Long fileId = 200L;
         loginAs(2L);
         given(approvalDocumentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(documentWithAttachment(fileId)));
-        given(fileStorageApi.getInfo(fileId)).willReturn(StoredFileInfo.builder()
+        FileOwner owner = FileOwner.approvalDocument(DOCUMENT_ID);
+        given(fileStorageApi.getInfo(fileId, owner)).willReturn(StoredFileInfo.builder()
                 .id(fileId).originalName("영수증.pdf").contentType("application/pdf").size(3L).build());
-        given(fileStorageApi.loadContent(fileId)).willReturn(new byte[]{1, 2, 3});
+        given(fileStorageApi.loadContent(fileId, owner)).willReturn(new byte[]{1, 2, 3});
 
         // when
         ApprovalAttachmentDownload download = approvalService.downloadAttachment(LOGIN_ID, DOCUMENT_ID, fileId);
@@ -424,7 +477,7 @@ class ApprovalServiceTest {
         assertThatThrownBy(() -> approvalService.downloadAttachment(LOGIN_ID, DOCUMENT_ID, fileId))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ApprovalErrorCode.DOCUMENT_NOT_FOUND);
-        verify(fileStorageApi, never()).loadContent(any());
+        verify(fileStorageApi, never()).loadContent(any(), any());
     }
 
     @Test
@@ -438,6 +491,6 @@ class ApprovalServiceTest {
         assertThatThrownBy(() -> approvalService.downloadAttachment(LOGIN_ID, DOCUMENT_ID, 999L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ApprovalErrorCode.DOCUMENT_NOT_FOUND);
-        verify(fileStorageApi, never()).loadContent(any());
+        verify(fileStorageApi, never()).loadContent(any(), any());
     }
 }

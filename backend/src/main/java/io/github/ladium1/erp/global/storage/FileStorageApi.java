@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.global.storage;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 파일 스토리지 공용 인터페이스.
@@ -18,20 +19,30 @@ public interface FileStorageApi {
     /**
      * 파일 메타 조회 — 없으면 BusinessException(FILE_NOT_FOUND).
      */
-    StoredFileInfo getInfo(Long fileId);
+    StoredFileInfo getInfo(Long fileId, FileOwner expectedOwner);
 
     /**
-     * 여러 파일 메타 조회 — 존재하는 것만 반환. 빈 입력은 빈 리스트.
+     * 같은 업무 소유자의 여러 파일 메타 조회. 하나라도 소유권이 다르면 FILE_NOT_FOUND.
      */
-    List<StoredFileInfo> getInfos(List<Long> fileIds);
+    List<StoredFileInfo> getInfos(List<Long> fileIds, FileOwner expectedOwner);
 
     /**
-     * 파일 본체 로드 — 없으면 BusinessException(FILE_NOT_FOUND).
+     * 서로 다른 소유자의 파일을 한 번에 조회한다. 키는 파일 ID, 값은 각 파일에 기대하는 소유자다.
      */
-    byte[] loadContent(Long fileId);
+    Map<Long, StoredFileInfo> getInfos(Map<Long, FileOwner> expectedOwners);
 
     /**
-     * 파일 삭제 — 메타 + 본체 모두 제거. 없으면 무시.
+     * 파일 본체 로드 — 파일이 없거나 기대 소유자와 다르면 FILE_NOT_FOUND.
      */
-    void delete(Long fileId);
+    byte[] loadContent(Long fileId, FileOwner expectedOwner);
+
+    /**
+     * 업로더 본인의 미연결 파일을 하나의 업무 소유자에 귀속한다.
+     */
+    void claim(List<Long> fileIds, FileOwner owner, Long uploaderId);
+
+    /**
+     * 업무 연결 해제와 같은 트랜잭션에서 삭제를 예약한다. 물리 파일은 별도 정리 주기에 제거한다.
+     */
+    void requestDeletion(List<Long> fileIds, FileOwner owner);
 }

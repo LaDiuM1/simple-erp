@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.UniqueElements;
 
 import java.util.List;
 
@@ -18,6 +19,8 @@ public record ApprovalCreateRequest(
         String content,
         @NotEmpty @Size(max = RequestCollectionPolicy.MAX_MUTATION_BATCH_SIZE)
         List<@NotNull Long> approverIds,
-        List<Long> attachmentFileIds
+        @Size(max = RequestCollectionPolicy.MAX_MUTATION_BATCH_SIZE)
+        @UniqueElements
+        List<@NotNull Long> attachmentFileIds
 ) {
 }
