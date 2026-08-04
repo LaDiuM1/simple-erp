@@ -16,7 +16,7 @@ import type {
   MyMonthlyAttendanceParams,
 } from '@/features/attendance/types';
 
-const attendanceApi = api.injectEndpoints({
+export const attendanceApi = api.injectEndpoints({
   endpoints: (builder) => ({
     checkIn: builder.mutation<Attendance, CheckInRequest>({
       query: (body) => ({ url: '/api/v1/attendances/check-in', method: 'POST', data: body }),
@@ -66,6 +66,7 @@ const attendanceApi = api.injectEndpoints({
         { type: 'Leave', id: 'MY' },
         { type: 'Leave', id: 'LIST' },
         { type: 'LeaveBalance', id: 'MY' },
+        { type: 'Approval', id: 'LIST' },
       ],
     }),
     getMyLeaves: builder.query<Leave[], void>({

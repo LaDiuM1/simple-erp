@@ -1,4 +1,5 @@
 import { api } from '@/shared/api/baseApi';
+import { DERIVED_CACHE_TAGS } from '@/shared/api/cacheDependencies';
 import type { PageResponse } from '@/shared/types/api';
 import type {
   SupplierCreateRequest,
@@ -14,7 +15,7 @@ function cleanParams<T extends object>(params: T): Partial<T> {
   ) as Partial<T>;
 }
 
-const supplierApi = api.injectEndpoints({
+export const supplierApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getSuppliersSummary: builder.query<PageResponse<SupplierSummary>, SupplierSearchParams>({
       query: (params) => ({
@@ -33,22 +34,23 @@ const supplierApi = api.injectEndpoints({
     }),
     createSupplier: builder.mutation<number, SupplierCreateRequest>({
       query: (body) => ({ url: '/api/v1/suppliers', method: 'POST', data: body }),
-      invalidatesTags: [{ type: 'Supplier', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Supplier', id: 'LIST' }, ...DERIVED_CACHE_TAGS.supplier],
     }),
     updateSupplier: builder.mutation<void, { id: number; body: SupplierUpdateRequest }>({
       query: ({ id, body }) => ({ url: `/api/v1/suppliers/${id}`, method: 'PUT', data: body }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Supplier', id },
         { type: 'Supplier', id: 'LIST' },
+        ...DERIVED_CACHE_TAGS.supplier,
       ],
     }),
     deleteSupplier: builder.mutation<void, number>({
       query: (id) => ({ url: `/api/v1/suppliers/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Supplier', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Supplier', id: 'LIST' }, ...DERIVED_CACHE_TAGS.supplier],
     }),
     deleteSuppliers: builder.mutation<void, number[]>({
       query: (ids) => ({ url: '/api/v1/suppliers', method: 'DELETE', data: ids }),
-      invalidatesTags: [{ type: 'Supplier', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Supplier', id: 'LIST' }, ...DERIVED_CACHE_TAGS.supplier],
     }),
   }),
 });

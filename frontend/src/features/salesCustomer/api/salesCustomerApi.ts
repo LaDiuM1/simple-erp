@@ -1,4 +1,5 @@
 import { api } from '@/shared/api/baseApi';
+import { DASHBOARD_CACHE_TAGS } from '@/shared/api/cacheDependencies';
 import type {
   SalesActivity,
   SalesActivityCreateRequest,
@@ -59,6 +60,7 @@ const salesCustomerApi = api.injectEndpoints({
       invalidatesTags: (_result, _error, { customerId, customerContactId }) => [
         { type: 'SalesActivity', id: `CUSTOMER:${customerId}` },
         { type: 'SalesAggregate', id: customerId },
+        DASHBOARD_CACHE_TAGS.summary,
         ...(customerContactId
           ? [{ type: 'SalesActivity' as const, id: `CONTACT:${customerContactId}` }]
           : []),
@@ -76,6 +78,7 @@ const salesCustomerApi = api.injectEndpoints({
       invalidatesTags: (_result, _error, { customerId, body }) => [
         { type: 'SalesActivity', id: `CUSTOMER:${customerId}` },
         { type: 'SalesAggregate', id: customerId },
+        DASHBOARD_CACHE_TAGS.summary,
         ...(body.customerContactId
           ? [{ type: 'SalesActivity' as const, id: `CONTACT:${body.customerContactId}` }]
           : []),
@@ -89,6 +92,7 @@ const salesCustomerApi = api.injectEndpoints({
       invalidatesTags: (_result, _error, { customerId, customerContactId }) => [
         { type: 'SalesActivity', id: `CUSTOMER:${customerId}` },
         { type: 'SalesAggregate', id: customerId },
+        DASHBOARD_CACHE_TAGS.summary,
         ...(customerContactId
           ? [{ type: 'SalesActivity' as const, id: `CONTACT:${customerContactId}` }]
           : []),

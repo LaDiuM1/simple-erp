@@ -3,6 +3,10 @@ import { api } from '@/shared/api/baseApi';
 import axiosInstance from '@/shared/api/axiosInstance';
 import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
 import { useAppSelector } from '@/app/hooks';
+import {
+  DASHBOARD_CACHE_TAGS,
+  DERIVED_CACHE_TAGS,
+} from '@/shared/api/cacheDependencies';
 import type { PageResponse } from '@/shared/types/api';
 import type {
   AfterServiceCreateRequest,
@@ -22,7 +26,7 @@ function cleanParams<T extends object>(params: T): Partial<T> {
   ) as Partial<T>;
 }
 
-const afterServiceApi = api.injectEndpoints({
+export const afterServiceApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getAfterServices: builder.query<PageResponse<AfterServiceSummary>, AfterServiceSearchParams>({
       query: (params) => ({
@@ -41,22 +45,23 @@ const afterServiceApi = api.injectEndpoints({
     }),
     createAfterService: builder.mutation<number, AfterServiceCreateRequest>({
       query: (body) => ({ url: '/api/v1/after-services', method: 'POST', data: body }),
-      invalidatesTags: [{ type: 'AfterService', id: 'LIST' }],
+      invalidatesTags: [{ type: 'AfterService', id: 'LIST' }, DASHBOARD_CACHE_TAGS.service],
     }),
     updateAfterService: builder.mutation<void, { id: number; body: AfterServiceUpdateRequest }>({
       query: ({ id, body }) => ({ url: `/api/v1/after-services/${id}`, method: 'PUT', data: body }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'AfterService', id },
         { type: 'AfterService', id: 'LIST' },
+        DASHBOARD_CACHE_TAGS.service,
       ],
     }),
     deleteAfterService: builder.mutation<void, number>({
       query: (id) => ({ url: `/api/v1/after-services/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'AfterService', id: 'LIST' }],
+      invalidatesTags: [{ type: 'AfterService', id: 'LIST' }, DASHBOARD_CACHE_TAGS.service],
     }),
     deleteAfterServices: builder.mutation<void, number[]>({
       query: (ids) => ({ url: '/api/v1/after-services', method: 'DELETE', data: ids }),
-      invalidatesTags: [{ type: 'AfterService', id: 'LIST' }],
+      invalidatesTags: [{ type: 'AfterService', id: 'LIST' }, DASHBOARD_CACHE_TAGS.service],
     }),
 
     // --- 방문 일지 (자식) — 상세 응답에 포함되므로 상세를 invalidate ---
@@ -97,6 +102,7 @@ const afterServiceApi = api.injectEndpoints({
       invalidatesTags: (_result, _error, { afterServiceId }) => [
         { type: 'AfterService', id: afterServiceId },
         { type: 'AfterService', id: 'LIST' },
+        DASHBOARD_CACHE_TAGS.service,
       ],
     }),
     updateServiceExpense: builder.mutation<void, { id: number; afterServiceId: number; body: ServiceExpenseRequest }>({
@@ -108,6 +114,7 @@ const afterServiceApi = api.injectEndpoints({
       invalidatesTags: (_result, _error, { afterServiceId }) => [
         { type: 'AfterService', id: afterServiceId },
         { type: 'AfterService', id: 'LIST' },
+        DASHBOARD_CACHE_TAGS.service,
       ],
     }),
     deleteServiceExpense: builder.mutation<void, { id: number; afterServiceId: number }>({
@@ -115,6 +122,7 @@ const afterServiceApi = api.injectEndpoints({
       invalidatesTags: (_result, _error, { afterServiceId }) => [
         { type: 'AfterService', id: afterServiceId },
         { type: 'AfterService', id: 'LIST' },
+        DASHBOARD_CACHE_TAGS.service,
       ],
     }),
 
@@ -125,7 +133,7 @@ const afterServiceApi = api.injectEndpoints({
     }),
     createEngineer: builder.mutation<number, EngineerRequest>({
       query: (body) => ({ url: '/api/v1/after-services/engineers', method: 'POST', data: body }),
-      invalidatesTags: [{ type: 'Engineer', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Engineer', id: 'LIST' }, DASHBOARD_CACHE_TAGS.service],
     }),
     updateEngineer: builder.mutation<void, { id: number; body: EngineerRequest }>({
       query: ({ id, body }) => ({
@@ -136,12 +144,13 @@ const afterServiceApi = api.injectEndpoints({
       // 이름 변경이 AS 목록 / 상세의 엔지니어 표기에 반영되도록 함께 invalidate.
       invalidatesTags: [
         { type: 'Engineer', id: 'LIST' },
-        { type: 'AfterService', id: 'LIST' },
+        ...DERIVED_CACHE_TAGS.engineer,
+        DASHBOARD_CACHE_TAGS.service,
       ],
     }),
     deleteEngineer: builder.mutation<void, number>({
       query: (id) => ({ url: `/api/v1/after-services/engineers/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Engineer', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Engineer', id: 'LIST' }, DASHBOARD_CACHE_TAGS.service],
     }),
   }),
 });

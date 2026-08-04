@@ -2,6 +2,10 @@ import { useCallback } from 'react';
 import { api } from '@/shared/api/baseApi';
 import axiosInstance from '@/shared/api/axiosInstance';
 import { useAppSelector } from '@/app/hooks';
+import {
+  DERIVED_CACHE_TAGS,
+  PROFILE_CACHE_TAG,
+} from '@/shared/api/cacheDependencies';
 import type { PageResponse } from '@/shared/types/api';
 import type {
   EmployeeCreateRequest,
@@ -24,6 +28,7 @@ export const employeeApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getMyProfile: builder.query<EmployeeProfileResponse, void>({
       query: () => ({ url: '/api/v1/employees/me', method: 'GET' }),
+      providesTags: [PROFILE_CACHE_TAG],
     }),
     getEmployees: builder.query<PageResponse<EmployeeSummary>, EmployeeSearchParams>({
       query: (params) => ({
@@ -79,6 +84,7 @@ export const employeeApi = api.injectEndpoints({
       invalidatesTags: [
         { type: 'Employee', id: 'LIST' },
         { type: 'Employee', id: 'REFERENCE_LIST' },
+        ...DERIVED_CACHE_TAGS.employee,
       ],
     }),
     updateEmployee: builder.mutation<void, { id: number; body: EmployeeUpdateRequest }>({
@@ -87,6 +93,7 @@ export const employeeApi = api.injectEndpoints({
         { type: 'Employee', id },
         { type: 'Employee', id: 'LIST' },
         { type: 'Employee', id: 'REFERENCE_LIST' },
+        ...DERIVED_CACHE_TAGS.employee,
       ],
     }),
     deleteEmployee: builder.mutation<void, number>({
@@ -94,6 +101,7 @@ export const employeeApi = api.injectEndpoints({
       invalidatesTags: [
         { type: 'Employee', id: 'LIST' },
         { type: 'Employee', id: 'REFERENCE_LIST' },
+        ...DERIVED_CACHE_TAGS.employee,
       ],
     }),
     deleteEmployees: builder.mutation<void, number[]>({
@@ -101,6 +109,7 @@ export const employeeApi = api.injectEndpoints({
       invalidatesTags: [
         { type: 'Employee', id: 'LIST' },
         { type: 'Employee', id: 'REFERENCE_LIST' },
+        ...DERIVED_CACHE_TAGS.employee,
       ],
     }),
     checkLoginIdAvailability: builder.query<{ available: boolean }, string>({

@@ -1,4 +1,5 @@
 import { api } from '@/shared/api/baseApi';
+import { DERIVED_CACHE_TAGS } from '@/shared/api/cacheDependencies';
 import type { PageResponse } from '@/shared/types/api';
 import type {
   RoleCreateRequest,
@@ -14,7 +15,7 @@ function cleanParams<T extends object>(params: T): Partial<T> {
   ) as Partial<T>;
 }
 
-const roleApi = api.injectEndpoints({
+export const roleApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getRolesSummary: builder.query<PageResponse<RoleSummary>, RoleSearchParams>({
       query: (params) => ({
@@ -33,22 +34,23 @@ const roleApi = api.injectEndpoints({
     }),
     createRole: builder.mutation<number, RoleCreateRequest>({
       query: (body) => ({ url: '/api/v1/roles', method: 'POST', data: body }),
-      invalidatesTags: [{ type: 'Role', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Role', id: 'LIST' }, ...DERIVED_CACHE_TAGS.role],
     }),
     updateRole: builder.mutation<void, { id: number; body: RoleUpdateRequest }>({
       query: ({ id, body }) => ({ url: `/api/v1/roles/${id}`, method: 'PUT', data: body }),
       invalidatesTags: (_r, _e, { id }) => [
         { type: 'Role', id },
         { type: 'Role', id: 'LIST' },
+        ...DERIVED_CACHE_TAGS.role,
       ],
     }),
     deleteRole: builder.mutation<void, number>({
       query: (id) => ({ url: `/api/v1/roles/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Role', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Role', id: 'LIST' }, ...DERIVED_CACHE_TAGS.role],
     }),
     deleteRoles: builder.mutation<void, number[]>({
       query: (ids) => ({ url: '/api/v1/roles', method: 'DELETE', data: ids }),
-      invalidatesTags: [{ type: 'Role', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Role', id: 'LIST' }, ...DERIVED_CACHE_TAGS.role],
     }),
     checkRoleCodeAvailability: builder.query<{ available: boolean }, string>({
       query: (code) => ({

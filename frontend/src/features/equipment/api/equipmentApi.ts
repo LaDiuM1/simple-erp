@@ -3,6 +3,10 @@ import { api } from '@/shared/api/baseApi';
 import axiosInstance from '@/shared/api/axiosInstance';
 import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
 import { useAppSelector } from '@/app/hooks';
+import {
+  DASHBOARD_CACHE_TAGS,
+  DERIVED_CACHE_TAGS,
+} from '@/shared/api/cacheDependencies';
 import type { PageResponse } from '@/shared/types/api';
 import type {
   EquipmentCreateRequest,
@@ -70,6 +74,7 @@ export const equipmentApi = api.injectEndpoints({
       invalidatesTags: [
         { type: 'Equipment', id: 'LIST' },
         { type: 'Equipment', id: 'REFERENCE_LIST' },
+        DASHBOARD_CACHE_TAGS.warranty,
       ],
     }),
     updateEquipment: builder.mutation<void, { id: number; body: EquipmentUpdateRequest }>({
@@ -78,6 +83,8 @@ export const equipmentApi = api.injectEndpoints({
         { type: 'Equipment', id },
         { type: 'Equipment', id: 'LIST' },
         { type: 'Equipment', id: 'REFERENCE_LIST' },
+        ...DERIVED_CACHE_TAGS.equipment,
+        DASHBOARD_CACHE_TAGS.warranty,
       ],
     }),
     deleteEquipment: builder.mutation<void, number>({
@@ -85,6 +92,7 @@ export const equipmentApi = api.injectEndpoints({
       invalidatesTags: [
         { type: 'Equipment', id: 'LIST' },
         { type: 'Equipment', id: 'REFERENCE_LIST' },
+        DASHBOARD_CACHE_TAGS.warranty,
       ],
     }),
     deleteEquipments: builder.mutation<void, number[]>({
@@ -92,6 +100,7 @@ export const equipmentApi = api.injectEndpoints({
       invalidatesTags: [
         { type: 'Equipment', id: 'LIST' },
         { type: 'Equipment', id: 'REFERENCE_LIST' },
+        DASHBOARD_CACHE_TAGS.warranty,
       ],
     }),
   }),
@@ -109,7 +118,7 @@ export const {
 } = equipmentApi;
 
 /**
- * ?‘ì? ?Œì¼?€ binary ?‘ë‹µ?´ë¼ RTK Query baseQuery(JSON ?Œì‹±)?€ ë§žì? ?Šì•„ axiosë¡?ì§ì ‘ ?¸ì¶œ.
+ * ?ï¿½ï¿½? ?ï¿½ì¼?ï¿½ binary ?ï¿½ë‹µ?ï¿½ë¼ RTK Query baseQuery(JSON ?ï¿½ì‹±)?ï¿½ ë§žï¿½? ?ï¿½ì•„ axiosï¿½?ì§ì ‘ ?ï¿½ì¶œ.
  */
 export function useDownloadEquipmentsExcel() {
   const token = useAppSelector((s) => s.auth.accessToken);

@@ -10,6 +10,8 @@ export default function ProtectedRoute() {
   const accessToken = useAppSelector((s) => s.auth.accessToken);
   const { isLoading, isError, error, refetch } = useGetMyProfileQuery(undefined, {
     skip: !accessToken,
+    // 다른 세션에서 조직·권한이 변경된 경우 창에 다시 진입할 때 메뉴와 서버 권한을 맞춘다.
+    refetchOnFocus: true,
   });
 
   if (!accessToken) return <Navigate to="/login" replace />;

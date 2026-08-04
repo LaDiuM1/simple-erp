@@ -17,10 +17,12 @@ import type {
 const decisionSideEffectTags = [
   'Expense' as const,
   { type: 'Leave' as const, id: 'MY' },
+  { type: 'Leave' as const, id: 'LIST' },
   { type: 'LeaveBalance' as const, id: 'MY' },
+  { type: 'LeaveBalance' as const, id: 'LIST' },
 ];
 
-const approvalApi = api.injectEndpoints({
+export const approvalApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getApprovals: builder.query<PageResponse<ApprovalSummary>, ApprovalSearchParams>({
       // box 는 BE 필수 파라미터 — 필터 미선택 (null = '전체') 은 INVOLVED 로 매핑해 전송

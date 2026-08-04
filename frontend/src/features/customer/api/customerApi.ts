@@ -3,6 +3,7 @@ import { api } from '@/shared/api/baseApi';
 import axiosInstance from '@/shared/api/axiosInstance';
 import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
 import { useAppSelector } from '@/app/hooks';
+import { DERIVED_CACHE_TAGS } from '@/shared/api/cacheDependencies';
 import type { PageResponse } from '@/shared/types/api';
 import type { ExcelUploadResult } from '@/shared/ui/ExcelUpload';
 import type {
@@ -21,7 +22,7 @@ function cleanParams<T extends object>(params: T): Partial<T> {
   ) as Partial<T>;
 }
 
-const customerApi = api.injectEndpoints({
+export const customerApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getCustomers: builder.query<PageResponse<CustomerSummary>, CustomerSearchParams>({
       query: (params) => ({
@@ -70,6 +71,7 @@ const customerApi = api.injectEndpoints({
         { type: 'Customer', id: 'LIST' },
         { type: 'Customer', id: 'REFERENCE_LIST' },
         { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
+        ...DERIVED_CACHE_TAGS.customer,
       ],
     }),
     updateCustomer: builder.mutation<void, { id: number; body: CustomerUpdateRequest }>({
@@ -79,6 +81,7 @@ const customerApi = api.injectEndpoints({
         { type: 'Customer', id: 'LIST' },
         { type: 'Customer', id: 'REFERENCE_LIST' },
         { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
+        ...DERIVED_CACHE_TAGS.customer,
       ],
     }),
     deleteCustomer: builder.mutation<void, number>({
@@ -88,6 +91,7 @@ const customerApi = api.injectEndpoints({
         { type: 'Customer', id: 'LIST' },
         { type: 'Customer', id: 'REFERENCE_LIST' },
         { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
+        ...DERIVED_CACHE_TAGS.customer,
       ],
     }),
     deleteCustomers: builder.mutation<void, number[]>({
@@ -96,6 +100,7 @@ const customerApi = api.injectEndpoints({
         { type: 'Customer', id: 'LIST' },
         { type: 'Customer', id: 'REFERENCE_LIST' },
         { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
+        ...DERIVED_CACHE_TAGS.customer,
         ...ids.map((id) => ({ type: 'Customer' as const, id })),
       ],
     }),
@@ -105,6 +110,7 @@ const customerApi = api.injectEndpoints({
         { type: 'Customer', id: 'LIST' },
         { type: 'Customer', id: 'REFERENCE_LIST' },
         { type: 'Customer', id: 'SALES_REFERENCE_LIST' },
+        ...DERIVED_CACHE_TAGS.customer,
       ],
     }),
     checkCustomerCodeAvailability: builder.query<{ available: boolean }, string>({

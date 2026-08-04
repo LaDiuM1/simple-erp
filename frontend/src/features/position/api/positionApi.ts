@@ -1,4 +1,5 @@
 import { api } from '@/shared/api/baseApi';
+import { DERIVED_CACHE_TAGS } from '@/shared/api/cacheDependencies';
 import type { PageResponse } from '@/shared/types/api';
 import type {
   PositionCreateRequest,
@@ -15,7 +16,7 @@ function cleanParams<T extends object>(params: T): Partial<T> {
   ) as Partial<T>;
 }
 
-const positionApi = api.injectEndpoints({
+export const positionApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getPositionsSummary: builder.query<PageResponse<PositionSummary>, PositionSearchParams>({
       query: (params) => ({
@@ -41,6 +42,7 @@ const positionApi = api.injectEndpoints({
       invalidatesTags: [
         { type: 'Position', id: 'LIST' },
         { type: 'Position', id: 'RANKING' },
+        ...DERIVED_CACHE_TAGS.organization,
       ],
     }),
     updatePosition: builder.mutation<void, { id: number; body: PositionUpdateRequest }>({
@@ -49,6 +51,7 @@ const positionApi = api.injectEndpoints({
         { type: 'Position', id },
         { type: 'Position', id: 'LIST' },
         { type: 'Position', id: 'RANKING' },
+        ...DERIVED_CACHE_TAGS.organization,
       ],
     }),
     deletePosition: builder.mutation<void, number>({
@@ -56,6 +59,7 @@ const positionApi = api.injectEndpoints({
       invalidatesTags: [
         { type: 'Position', id: 'LIST' },
         { type: 'Position', id: 'RANKING' },
+        ...DERIVED_CACHE_TAGS.organization,
       ],
     }),
     deletePositions: builder.mutation<void, number[]>({
@@ -63,6 +67,7 @@ const positionApi = api.injectEndpoints({
       invalidatesTags: [
         { type: 'Position', id: 'LIST' },
         { type: 'Position', id: 'RANKING' },
+        ...DERIVED_CACHE_TAGS.organization,
       ],
     }),
     reorderPositions: builder.mutation<void, PositionRankingRequest>({
@@ -70,6 +75,7 @@ const positionApi = api.injectEndpoints({
       invalidatesTags: [
         { type: 'Position', id: 'LIST' },
         { type: 'Position', id: 'RANKING' },
+        ...DERIVED_CACHE_TAGS.organization,
       ],
     }),
     checkPositionCodeAvailability: builder.query<{ available: boolean }, string>({

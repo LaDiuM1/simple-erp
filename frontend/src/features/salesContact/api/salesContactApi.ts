@@ -3,6 +3,7 @@ import { api } from '@/shared/api/baseApi';
 import axiosInstance from '@/shared/api/axiosInstance';
 import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
 import { useAppSelector } from '@/app/hooks';
+import { DASHBOARD_CACHE_TAGS } from '@/shared/api/cacheDependencies';
 import type { PageResponse } from '@/shared/types/api';
 import type { ExcelUploadResult } from '@/shared/ui/ExcelUpload';
 import type {
@@ -37,7 +38,7 @@ const paramsSerializer = {
   indexes: null as null | boolean,
 };
 
-const salesContactApi = api.injectEndpoints({
+export const salesContactApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getSalesContacts: builder.query<PageResponse<SalesContactSummary>, SalesContactSearchParams>({
       query: (params) => ({
@@ -60,26 +61,27 @@ const salesContactApi = api.injectEndpoints({
     }),
     createSalesContact: builder.mutation<number, SalesContactCreateRequest>({
       query: (body) => ({ url: '/api/v1/sales-contacts', method: 'POST', data: body }),
-      invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }],
+      invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }, DASHBOARD_CACHE_TAGS.summary],
     }),
     updateSalesContact: builder.mutation<void, { id: number; body: SalesContactUpdateRequest }>({
       query: ({ id, body }) => ({ url: `/api/v1/sales-contacts/${id}`, method: 'PUT', data: body }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'SalesContact', id },
         { type: 'SalesContact', id: 'LIST' },
+        DASHBOARD_CACHE_TAGS.summary,
       ],
     }),
     deleteSalesContact: builder.mutation<void, number>({
       query: (id) => ({ url: `/api/v1/sales-contacts/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }],
+      invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }, DASHBOARD_CACHE_TAGS.summary],
     }),
     deleteSalesContacts: builder.mutation<void, number[]>({
       query: (ids) => ({ url: '/api/v1/sales-contacts', method: 'DELETE', data: ids }),
-      invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }],
+      invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }, DASHBOARD_CACHE_TAGS.summary],
     }),
     uploadSalesContactsExcel: builder.mutation<ExcelUploadResult, FormData>({
       query: (form) => ({ url: '/api/v1/sales-contacts/excel/upload', method: 'POST', data: form }),
-      invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }],
+      invalidatesTags: [{ type: 'SalesContact', id: 'LIST' }, DASHBOARD_CACHE_TAGS.summary],
     }),
 
     /**
@@ -119,6 +121,7 @@ const salesContactApi = api.injectEndpoints({
         data: body,
       }),
       invalidatesTags: (_result, _error, { contactId, body }) => [
+        { type: 'SalesContact', id: 'LIST' },
         { type: 'SalesContactEmployment', id: `CONTACT:${contactId}` },
         ...(body.customerId
           ? [{ type: 'SalesContactEmployment' as const, id: `CUSTOMER:${body.customerId}` }]
@@ -136,6 +139,7 @@ const salesContactApi = api.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { contactId, customerId, body }) => {
         const tags = [
+          { type: 'SalesContact' as const, id: 'LIST' },
           { type: 'SalesContactEmployment' as const, id: `CONTACT:${contactId}` },
         ];
         // 변경 전후의 customer 모두 invalidate (회사 이전 케이스 대비)
@@ -157,6 +161,7 @@ const salesContactApi = api.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { contactId, customerId }) => {
         const tags = [
+          { type: 'SalesContact' as const, id: 'LIST' },
           { type: 'SalesContactEmployment' as const, id: `CONTACT:${contactId}` },
         ];
         if (customerId) tags.push({ type: 'SalesContactEmployment' as const, id: `CUSTOMER:${customerId}` });
@@ -170,6 +175,7 @@ const salesContactApi = api.injectEndpoints({
       query: ({ id }) => ({ url: `/api/v1/sales-contacts/employments/${id}`, method: 'DELETE' }),
       invalidatesTags: (_result, _error, { contactId, customerId }) => {
         const tags = [
+          { type: 'SalesContact' as const, id: 'LIST' },
           { type: 'SalesContactEmployment' as const, id: `CONTACT:${contactId}` },
         ];
         if (customerId) tags.push({ type: 'SalesContactEmployment' as const, id: `CUSTOMER:${customerId}` });

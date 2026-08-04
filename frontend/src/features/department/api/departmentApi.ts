@@ -1,4 +1,5 @@
 import { api } from '@/shared/api/baseApi';
+import { DERIVED_CACHE_TAGS } from '@/shared/api/cacheDependencies';
 import type { PageResponse } from '@/shared/types/api';
 import type {
   DepartmentCreateRequest,
@@ -14,7 +15,7 @@ function cleanParams<T extends object>(params: T): Partial<T> {
   ) as Partial<T>;
 }
 
-const departmentApi = api.injectEndpoints({
+export const departmentApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getDepartmentsSummary: builder.query<PageResponse<DepartmentSummary>, DepartmentSearchParams>({
       query: (params) => ({
@@ -33,22 +34,23 @@ const departmentApi = api.injectEndpoints({
     }),
     createDepartment: builder.mutation<number, DepartmentCreateRequest>({
       query: (body) => ({ url: '/api/v1/departments', method: 'POST', data: body }),
-      invalidatesTags: [{ type: 'Department', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Department', id: 'LIST' }, ...DERIVED_CACHE_TAGS.organization],
     }),
     updateDepartment: builder.mutation<void, { id: number; body: DepartmentUpdateRequest }>({
       query: ({ id, body }) => ({ url: `/api/v1/departments/${id}`, method: 'PUT', data: body }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Department', id },
         { type: 'Department', id: 'LIST' },
+        ...DERIVED_CACHE_TAGS.organization,
       ],
     }),
     deleteDepartment: builder.mutation<void, number>({
       query: (id) => ({ url: `/api/v1/departments/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Department', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Department', id: 'LIST' }, ...DERIVED_CACHE_TAGS.organization],
     }),
     deleteDepartments: builder.mutation<void, number[]>({
       query: (ids) => ({ url: '/api/v1/departments', method: 'DELETE', data: ids }),
-      invalidatesTags: [{ type: 'Department', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Department', id: 'LIST' }, ...DERIVED_CACHE_TAGS.organization],
     }),
     checkDepartmentCodeAvailability: builder.query<{ available: boolean }, string>({
       query: (code) => ({
