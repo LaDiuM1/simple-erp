@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import { api } from '@/shared/api/baseApi';
-import axiosInstance from '@/shared/api/axiosInstance';
-import { useAppSelector } from '@/app/hooks';
 import {
   DERIVED_CACHE_TAGS,
   PROFILE_CACHE_TAG,
 } from '@/shared/api/cacheDependencies';
+import { todayStamp } from '@/shared/api/excelDownload';
+import { useBlobDownload } from '@/shared/api/useBlobDownload';
 import type { PageResponse } from '@/shared/types/api';
 import type {
   EmployeeCreateRequest,
@@ -140,48 +140,14 @@ export const {
  * 토큰 주입 + 브라우저 다운로드 트리거까지 처리.
  */
 export function useDownloadEmployeesExcel() {
-  const token = useAppSelector((s) => s.auth.accessToken);
+  const download = useBlobDownload();
 
   return useCallback(
-    async (params: Omit<EmployeeSearchParams, 'page' | 'size'>) => {
-      const response = await axiosInstance.get('/api/v1/employees/excel', {
-        params: cleanParams(params),
-        responseType: 'blob',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      const filename = extractFilename(response.headers['content-disposition'])
-        ?? `employees_${todayStamp()}.xlsx`;
-
-      triggerBrowserDownload(response.data, filename);
-    },
-    [token],
+    (params: Omit<EmployeeSearchParams, 'page' | 'size'>) => download({
+      url: '/api/v1/employees/excel',
+      fallbackName: `employees_${todayStamp()}.xlsx`,
+      params: cleanParams(params),
+    }),
+    [download],
   );
-}
-
-function triggerBrowserDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-function extractFilename(contentDisposition: string | undefined): string | null {
-  if (!contentDisposition) return null;
-  const match = contentDisposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-  if (!match) return null;
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
-}
-
-function todayStamp(): string {
-  const d = new Date();
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 }

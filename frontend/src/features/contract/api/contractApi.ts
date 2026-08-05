@@ -1,9 +1,8 @@
 import { useCallback } from 'react';
 import { api } from '@/shared/api/baseApi';
-import axiosInstance from '@/shared/api/axiosInstance';
-import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
-import { useAppSelector } from '@/app/hooks';
 import { DASHBOARD_CACHE_TAGS } from '@/shared/api/cacheDependencies';
+import { todayStamp } from '@/shared/api/excelDownload';
+import { useBlobDownload } from '@/shared/api/useBlobDownload';
 import type { PageResponse } from '@/shared/types/api';
 import { equipmentApi } from '@/features/equipment/api/equipmentApi';
 import type { EquipmentSummary } from '@/features/equipment/types';
@@ -219,21 +218,14 @@ export const {
  * 엑셀 파일은 binary 응답이라 RTK Query baseQuery(JSON 파싱)와 맞지 않아 axios로 직접 호출.
  */
 export function useDownloadContractsExcel() {
-  const token = useAppSelector((s) => s.auth.accessToken);
+  const download = useBlobDownload();
 
   return useCallback(
-    async (params: Omit<ContractSearchParams, 'page' | 'size'>) => {
-      const response = await axiosInstance.get('/api/v1/contracts/excel', {
-        params: cleanParams(params),
-        responseType: 'blob',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      const filename = extractFilename(response.headers['content-disposition'])
-        ?? `contracts_${todayStamp()}.xlsx`;
-
-      triggerBrowserDownload(response.data, filename);
-    },
-    [token],
+    (params: Omit<ContractSearchParams, 'page' | 'size'>) => download({
+      url: '/api/v1/contracts/excel',
+      fallbackName: `contracts_${todayStamp()}.xlsx`,
+      params: cleanParams(params),
+    }),
+    [download],
   );
 }

@@ -56,9 +56,7 @@ export function useDrivePage() {
     setSearchParams(folderId === null ? {} : { folderId: String(folderId) });
 
   const onDownloadFile = (file: DriveFileItem) => {
-    downloadDriveFile(file.id, file.name).catch(() => {
-      snackbar.error('파일 다운로드에 실패했습니다.');
-    });
+    void downloadDriveFile(file.id, file.name);
   };
 
   /**

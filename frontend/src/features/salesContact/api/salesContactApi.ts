@@ -1,9 +1,8 @@
 import { useCallback } from 'react';
 import { api } from '@/shared/api/baseApi';
-import axiosInstance from '@/shared/api/axiosInstance';
-import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
-import { useAppSelector } from '@/app/hooks';
 import { DASHBOARD_CACHE_TAGS } from '@/shared/api/cacheDependencies';
+import { todayStamp } from '@/shared/api/excelDownload';
+import { useBlobDownload } from '@/shared/api/useBlobDownload';
 import type { PageResponse } from '@/shared/types/api';
 import type { ExcelUploadResult } from '@/shared/ui/ExcelUpload';
 import type {
@@ -206,24 +205,16 @@ export const {
  * 필터 + 정렬 그대로 전송 (page/size 무시 — 필터링된 전체).
  */
 export function useDownloadSalesContactsExcel() {
-  const token = useAppSelector((s) => s.auth.accessToken);
+  const download = useBlobDownload();
 
   return useCallback(
-    async (params: SalesContactListFilters & { sort?: string }) => {
-      const response = await axiosInstance.get('/api/v1/sales-contacts/excel', {
-        params: cleanParams(params),
-        paramsSerializer: { indexes: null },
-        responseType: 'blob',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      const filename =
-        extractFilename(response.headers['content-disposition']) ??
-        `sales-contacts_${todayStamp()}.xlsx`;
-
-      triggerBrowserDownload(response.data, filename);
-    },
-    [token],
+    (params: SalesContactListFilters & { sort?: string }) => download({
+      url: '/api/v1/sales-contacts/excel',
+      fallbackName: `sales-contacts_${todayStamp()}.xlsx`,
+      params: cleanParams(params),
+      paramsSerializer: { indexes: null },
+    }),
+    [download],
   );
 }
 
@@ -231,15 +222,12 @@ export function useDownloadSalesContactsExcel() {
  * 업로드 양식 (.xlsx) 다운로드 — 다운로드와 동일한 헤더 / 폭 / 톤. binary 응답이라 axios 직접 호출.
  */
 export function useDownloadSalesContactsTemplate() {
-  const token = useAppSelector((s) => s.auth.accessToken);
+  const download = useBlobDownload();
 
   return useCallback(async () => {
-    const response = await axiosInstance.get('/api/v1/sales-contacts/excel/template', {
-      responseType: 'blob',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    await download({
+      url: '/api/v1/sales-contacts/excel/template',
+      fallbackName: 'sales-contacts_template.xlsx',
     });
-    const filename = extractFilename(response.headers['content-disposition'])
-      ?? 'sales-contacts_template.xlsx';
-    triggerBrowserDownload(response.data, filename);
-  }, [token]);
+  }, [download]);
 }

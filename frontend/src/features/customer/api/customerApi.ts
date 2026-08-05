@@ -1,9 +1,8 @@
 import { useCallback } from 'react';
 import { api } from '@/shared/api/baseApi';
-import axiosInstance from '@/shared/api/axiosInstance';
-import { extractFilename, todayStamp, triggerBrowserDownload } from '@/shared/api/excelDownload';
-import { useAppSelector } from '@/app/hooks';
 import { DERIVED_CACHE_TAGS } from '@/shared/api/cacheDependencies';
+import { todayStamp } from '@/shared/api/excelDownload';
+import { useBlobDownload } from '@/shared/api/useBlobDownload';
 import type { PageResponse } from '@/shared/types/api';
 import type { ExcelUploadResult } from '@/shared/ui/ExcelUpload';
 import type {
@@ -149,22 +148,15 @@ export const {
  * 엑셀 파일은 binary 응답이라 RTK Query baseQuery(JSON 파싱)와 맞지 않아 axios로 직접 호출.
  */
 export function useDownloadCustomersExcel() {
-  const token = useAppSelector((s) => s.auth.accessToken);
+  const download = useBlobDownload();
 
   return useCallback(
-    async (params: Omit<CustomerSearchParams, 'page' | 'size'>) => {
-      const response = await axiosInstance.get('/api/v1/customers/excel', {
-        params: cleanParams(params),
-        responseType: 'blob',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      const filename = extractFilename(response.headers['content-disposition'])
-        ?? `customers_${todayStamp()}.xlsx`;
-
-      triggerBrowserDownload(response.data, filename);
-    },
-    [token],
+    (params: Omit<CustomerSearchParams, 'page' | 'size'>) => download({
+      url: '/api/v1/customers/excel',
+      fallbackName: `customers_${todayStamp()}.xlsx`,
+      params: cleanParams(params),
+    }),
+    [download],
   );
 }
 
@@ -172,15 +164,12 @@ export function useDownloadCustomersExcel() {
  * 업로드 양식 (.xlsx) 다운로드 — 다운로드와 동일한 헤더 / 폭 / 톤. binary 응답이라 axios 직접 호출.
  */
 export function useDownloadCustomersTemplate() {
-  const token = useAppSelector((s) => s.auth.accessToken);
+  const download = useBlobDownload();
 
   return useCallback(async () => {
-    const response = await axiosInstance.get('/api/v1/customers/excel/template', {
-      responseType: 'blob',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    await download({
+      url: '/api/v1/customers/excel/template',
+      fallbackName: 'customers_template.xlsx',
     });
-    const filename = extractFilename(response.headers['content-disposition'])
-      ?? 'customers_template.xlsx';
-    triggerBrowserDownload(response.data, filename);
-  }, [token]);
+  }, [download]);
 }
