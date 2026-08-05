@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useRef, type ReactNode } from 'react';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
 import Radio from '@mui/material/Radio';
@@ -21,17 +21,19 @@ import {
   MobileDetailValue,
   MobilePrimaryRow,
   StyledTableContainer,
+  computeResponsiveColumnLayout,
   renderCellContent,
   renderTruncatableCell,
   type ColumnConfig,
+  useElementWidth,
 } from '@/shared/ui/GenericList';
-import { computeColumnWidths } from '@/shared/ui/GenericList/utils';
 import { SearchTableArea } from './CommonSearchModal.styles';
 
 interface Props<TRow> {
   rows: TRow[];
   columns: ColumnConfig<TRow>[];
   rowKey: (row: TRow) => number;
+  rowLabel?: (row: TRow) => string;
   isLoading: boolean;
   emptyMessage: string;
   page: number;
@@ -86,6 +88,8 @@ export default function SearchTable<TRow>({
 }: Props<TRow>) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const tableAreaRef = useRef<HTMLDivElement>(null);
+  const tableViewportWidth = useElementWidth(tableAreaRef);
 
   const visibleColumns = useMemo(
     () => (isMobile ? columns.filter((c) => !c.hideOnMobile) : columns),
@@ -97,10 +101,10 @@ export default function SearchTable<TRow>({
   // 본문 자체로 스크롤하고 filter / pagination 은 sticky 로 항상 노출 (CommonSearchModal.styles 참조).
   const areaStyle = isMobile
     ? undefined
-    : { height: ROW_HEIGHT * pageSize + HEADER_HEIGHT };
+    : { minHeight: ROW_HEIGHT * pageSize + HEADER_HEIGHT };
 
   return (
-    <SearchTableArea style={areaStyle}>
+    <SearchTableArea ref={tableAreaRef} style={areaStyle}>
       {isMobile ? (
         <MobileList
           columns={visibleColumns}
@@ -130,6 +134,7 @@ export default function SearchTable<TRow>({
           rowActions={rowActions}
           emptyMessage={emptyMessage}
           isLoading={isLoading}
+          viewportWidth={tableViewportWidth}
         />
       )}
 
@@ -156,6 +161,7 @@ interface DesktopProps<TRow> {
   rowActions?: (row: TRow) => ReactNode;
   emptyMessage: string;
   isLoading: boolean;
+  viewportWidth: number;
 }
 
 function DesktopTable<TRow>({
@@ -172,22 +178,30 @@ function DesktopTable<TRow>({
   rowActions,
   emptyMessage,
   isLoading,
+  viewportWidth,
 }: DesktopProps<TRow>) {
   const ToggleControl = multiple ? Checkbox : Radio;
   const isSelectMode = mode === 'select';
   const showSelectCol = isSelectMode && selectionStyle === 'checkbox';
   const showActionsCol = mode === 'manage' && !!rowActions;
   const extraColCount = (showSelectCol ? 1 : 0) + 1 + (showActionsCol ? 1 : 0);
-  const domainColWidths = computeColumnWidths(columns);
+  const reservedWidth = NO_COL_WIDTH
+    + (showSelectCol ? SELECT_COL_WIDTH : 0)
+    + (showActionsCol ? ACTION_COL_WIDTH : 0);
+  const { columnWidths, tableWidth } = computeResponsiveColumnLayout(columns, {
+    viewportWidth,
+    reservedWidth,
+    flexUnitWidth: 120,
+  });
 
   return (
     <StyledTableContainer>
-      <Table sx={{ tableLayout: 'fixed', width: '100%', minWidth: 560 }}>
+      <Table sx={{ tableLayout: 'fixed', width: tableWidth, minWidth: tableWidth }}>
         <colgroup>
           {showSelectCol && <col style={{ width: SELECT_COL_WIDTH }} />}
           <col style={{ width: NO_COL_WIDTH }} />
           {columns.map((col, idx) => (
-            <col key={col.key} style={{ width: domainColWidths[idx] }} />
+            <col key={col.key} style={{ width: columnWidths[idx] }} />
           ))}
           {showActionsCol && <col style={{ width: ACTION_COL_WIDTH }} />}
         </colgroup>

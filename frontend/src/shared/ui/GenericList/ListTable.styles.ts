@@ -37,7 +37,7 @@ export const HeaderCell = styled(TableCell)(({ theme }) => ({
   color: theme.palette.text.secondary,
   whiteSpace: 'nowrap',
   borderBottom: `1px solid ${theme.palette.divider}`,
-  padding: '0.625rem 1.25rem',
+  padding: '0.625rem 1rem',
   backgroundColor: theme.palette.headerBg,
   position: 'sticky',
   top: 0,
@@ -66,8 +66,8 @@ export const BodyRow = styled(TableRow, {
     backgroundColor: clickable ? theme.palette.action.hover : theme.palette.background.default,
   },
   '& > td': {
-    paddingLeft: '1.25rem',
-    paddingRight: '1.25rem',
+    paddingLeft: '1rem',
+    paddingRight: '1rem',
     borderBottom: `1px solid ${theme.palette.divider}`,
   },
   '&:last-child > td': {

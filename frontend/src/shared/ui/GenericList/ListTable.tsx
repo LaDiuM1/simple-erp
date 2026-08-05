@@ -32,7 +32,8 @@ import {
 import EmptyState from './EmptyState';
 import { renderCellContent, renderTruncatableCell } from './cellRender';
 import { useFillRowHeight } from './useFillRowHeight';
-import { computeColumnWidths } from './utils';
+import { useElementWidth } from './useElementWidth';
+import { computeResponsiveColumnLayout } from './utils';
 import type { CellContext, ColumnConfig, DeleteConfirmMessages, SortState } from './types';
 import type { ListSelectionState } from './useListSelection';
 
@@ -115,6 +116,7 @@ export default function ListTable<TRow>({
   const cellCtx: CellContext = { filters };
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const tableViewportWidth = useElementWidth(scrollAreaRef);
   /** 데스크탑 행 높이 — 컨테이너 높이 / pageSize, 단 minHeight 미만이면 자연 스크롤. */
   const rowHeight = useFillRowHeight(scrollAreaRef, pageSize, { minHeight: 28 });
 
@@ -258,6 +260,7 @@ export default function ListTable<TRow>({
             onToggleAll={onToggleAll}
             onRowClick={onRowClick}
             cellCtx={cellCtx}
+            viewportWidth={tableViewportWidth}
           />
         )}
       </TableScrollArea>
@@ -304,6 +307,7 @@ interface DesktopProps<TRow> {
   onToggleAll?: () => void;
   onRowClick?: (row: TRow) => void;
   cellCtx: CellContext;
+  viewportWidth: number;
 }
 
 function DesktopTable<TRow>({
@@ -325,17 +329,23 @@ function DesktopTable<TRow>({
   onToggleAll,
   onRowClick,
   cellCtx,
+  viewportWidth,
 }: DesktopProps<TRow>) {
   const extraColCount = (showCheckboxCol ? 1 : 0) + 1; // checkbox + No
-  const domainColWidths = computeColumnWidths(columns);
+  const reservedWidth = NO_COL_WIDTH + (showCheckboxCol ? CHECKBOX_COL_WIDTH : 0);
+  const { columnWidths, tableWidth } = computeResponsiveColumnLayout(columns, {
+    viewportWidth,
+    reservedWidth,
+    minTableWidth: TABLE_MIN_WIDTH,
+  });
   return (
     <StyledTableContainer>
-      <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', minWidth: TABLE_MIN_WIDTH }}>
+      <Table size="small" sx={{ tableLayout: 'fixed', width: tableWidth, minWidth: tableWidth }}>
         <colgroup>
           {showCheckboxCol && <col style={{ width: CHECKBOX_COL_WIDTH }} />}
           <col style={{ width: NO_COL_WIDTH }} />
           {columns.map((col, idx) => (
-            <col key={col.key} style={{ width: domainColWidths[idx] }} />
+            <col key={col.key} style={{ width: columnWidths[idx] }} />
           ))}
         </colgroup>
         <TableHead ref={headerRef}>
@@ -474,4 +484,3 @@ function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, is
     </>
   );
 }
-

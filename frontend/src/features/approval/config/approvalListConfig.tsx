@@ -56,7 +56,7 @@ export const approvalListColumns: ColumnConfig<ApprovalSummary>[] = [
     sortDirection: 'desc',
     defaultSort: true,
     hideOnMobile: true,
-    width: 150,
+    width: 168,
     render: (a) => formatDateTime(a.createdAt),
   },
 ];

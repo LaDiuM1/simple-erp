@@ -46,15 +46,15 @@ export const ModalFixedRow = styled(Box)(({ theme }) => ({
 /**
  * 본문 (테이블 / 카드) 영역.
  *
- *  - 데스크탑: SearchTable 이 inline `height: ROW_HEIGHT × pageSize + HEADER_HEIGHT` 로 고정 →
- *    데이터 양 / 페이지 이동에 무관하게 항상 같은 height (모달 사이즈 흔들림 없음).
+ *  - 데스크탑: SearchTable 이 `ROW_HEIGHT × pageSize + HEADER_HEIGHT` 를 최소 높이로 유지해
+ *    데이터 양 / 페이지 이동에 따른 흔들림을 막고, 가로 스크롤바가 필요하면 그만큼 확장한다.
  *  - 모바일: 자연 stack (카드 합).
  *
- * `overflow: hidden` — 자체 스크롤바를 절대 노출하지 않음. content 가 정확히 fit 되는 경우
- * sub-pixel rounding 으로 인한 의미 없는 스크롤바가 등장하는 문제 차단. 뷰포트가 부족해 진짜
- * 스크롤이 필요한 경우는 ModalContent 가 단독으로 흡수 (filter / pagination 은 sticky 유지).
+ * 고정 폭 열을 축소해야 하는 중간 폭에서는 가로 스크롤만 이 영역이 담당한다. 세로 스크롤은
+ * ModalContent 가 단독으로 흡수해 filter / pagination 의 sticky 동작을 유지한다.
  */
 export const SearchTableArea = styled(Box)({
   position: 'relative',
-  overflow: 'hidden',
+  overflowX: 'auto',
+  overflowY: 'hidden',
 });

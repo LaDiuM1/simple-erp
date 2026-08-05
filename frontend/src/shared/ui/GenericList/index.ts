@@ -1,7 +1,8 @@
 export { default } from './GenericList';
 export type { GenericListProps } from './GenericList';
 
-export { computeColumnWidths, mapIdName } from './utils';
+export { computeColumnWidths, computeResponsiveColumnLayout, mapIdName } from './utils';
+export type { ResponsiveColumnLayout } from './utils';
 
 /** 내부 building blocks — CommonSearchModal 등 다른 합성 위젯에서 재사용. */
 export { default as ListSearchFilter } from './ListSearchFilter';
@@ -31,6 +32,7 @@ export {
 
 export { default as EmptyState } from './EmptyState';
 export { renderCellContent, renderTruncatableCell } from './cellRender';
+export { useElementWidth } from './useElementWidth';
 export { useFillRowHeight } from './useFillRowHeight';
 
 /** 필터바의 검색 input 톤 — 다른 곳에서 readonly clickable 트리거 등 동일 톤이 필요할 때 import. */

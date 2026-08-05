@@ -53,6 +53,10 @@ export const afterServiceListColumns: ColumnConfig<AfterServiceSummary>[] = [
     label: '설비',
     hideOnMobile: true,
     flex: 1.2,
+    tooltip: (m) =>
+      m.equipmentId == null
+        ? undefined
+        : equipmentLabelOf(m.equipmentModelName, m.equipmentSerialNo),
     render: (m) =>
       m.equipmentId == null ? (
         <Muted />

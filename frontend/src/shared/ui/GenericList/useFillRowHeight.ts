@@ -37,10 +37,7 @@ export function useFillRowHeight(
 
   useEffect(() => {
     const el = scrollAreaRef.current;
-    if (!el || rowCount <= 0) {
-      setHeight(minHeight);
-      return;
-    }
+    if (!el || rowCount <= 0) return;
 
     const measure = () => {
       const head = el.querySelector<HTMLElement>('thead');
@@ -50,13 +47,16 @@ export function useFillRowHeight(
       setHeight(Math.min(maxHeight, Math.max(minHeight, ideal)));
     };
 
-    measure();
+    const frameId = window.requestAnimationFrame(measure);
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     const head = el.querySelector<HTMLElement>('thead');
     if (head) observer.observe(head);
-    return () => observer.disconnect();
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      observer.disconnect();
+    };
   }, [scrollAreaRef, rowCount, minHeight, maxHeight, safetyPx]);
 
-  return height;
+  return rowCount <= 0 ? minHeight : height;
 }
