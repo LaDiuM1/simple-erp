@@ -2,6 +2,7 @@ import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import { FormSection } from '@/shared/ui/GenericForm';
+import { MAX_MONEY_AMOUNT } from '@/shared/validation/money';
 import {
   SERVICE_STATUS_LABELS,
   SERVICE_STATUS,
@@ -99,7 +100,7 @@ export default function ProcessSection({ form }: Props) {
             ?? (isPaid ? '유상 확정 건 — 고객 청구액을 입력해주세요.' : '유상 확정 시에만 입력합니다.')
           }
           placeholder="0"
-          slotProps={{ htmlInput: { min: 1 } }}
+          slotProps={{ htmlInput: { min: 1, max: MAX_MONEY_AMOUNT } }}
         />
         <TextField
           size="small"

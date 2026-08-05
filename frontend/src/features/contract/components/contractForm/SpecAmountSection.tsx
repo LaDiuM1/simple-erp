@@ -2,6 +2,7 @@ import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import { FormSection } from '@/shared/ui/GenericForm';
+import { MAX_MONEY_AMOUNT } from '@/shared/validation/money';
 import { OUTPUT_UNIT_LABELS, type OutputUnit } from '@/features/contract/types';
 import type { ContractFormStateBase } from '@/features/contract/hooks/contractFormState';
 import { FieldFull, FieldGrid, FieldPair } from './contractForm.styles';
@@ -67,7 +68,7 @@ export default function SpecAmountSection({ form }: Props) {
           error={validation.isInvalid('initialAmount')}
           helperText={validation.errorMessage('initialAmount')}
           placeholder="0"
-          slotProps={{ htmlInput: { min: 0 } }}
+          slotProps={{ htmlInput: { min: 0, max: MAX_MONEY_AMOUNT } }}
         />
         <TextField
           size="small"
@@ -83,7 +84,7 @@ export default function SpecAmountSection({ form }: Props) {
             ?? '협상 / 옵션 변경이 반영된 최종가 — 미수금 산출 기준.'
           }
           placeholder="0"
-          slotProps={{ htmlInput: { min: 0 } }}
+          slotProps={{ htmlInput: { min: 0, max: MAX_MONEY_AMOUNT } }}
         />
         <FieldFull>
           <TextField

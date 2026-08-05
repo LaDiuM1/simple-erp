@@ -30,6 +30,7 @@ import {
   type ServiceExpenseRequest,
 } from '@/features/afterService/types';
 import { eligibleEngineerOptions } from '@/features/afterService/utils/eligibleEngineerOptions';
+import { MAX_MONEY_AMOUNT, validateMoneyAmount } from '@/shared/validation/money';
 
 interface FormValues {
   category: string;
@@ -87,8 +88,9 @@ export default function ExpenseFormModal({ open, onClose, afterServiceId, expens
     e.preventDefault();
     if (isSaving) return;
 
-    if (values.amount.trim() === '' || Number.isNaN(Number(values.amount))) {
-      snackbar.error('금액을 입력해주세요.');
+    const amountError = validateMoneyAmount(values.amount, true);
+    if (amountError) {
+      snackbar.error(amountError);
       return;
     }
 
@@ -150,7 +152,7 @@ export default function ExpenseFormModal({ open, onClose, afterServiceId, expens
                 onChange={(e) => update('amount', e.target.value)}
                 sx={{ flex: 1 }}
                 placeholder="0"
-                slotProps={{ htmlInput: { min: 0 } }}
+                slotProps={{ htmlInput: { min: 0, max: MAX_MONEY_AMOUNT } }}
               />
             </Stack>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>

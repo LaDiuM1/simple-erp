@@ -19,6 +19,8 @@ import {
   useUpdateContractPaymentMutation,
 } from '@/features/contract/api/contractApi';
 import type { ContractPayment, ContractPaymentRequest } from '@/features/contract/types';
+import { validatePaymentAmounts } from '@/features/contract/validation/paymentValidation';
+import { MAX_MONEY_AMOUNT } from '@/shared/validation/money';
 
 interface FormValues {
   label: string;
@@ -80,6 +82,11 @@ export default function PaymentFormModal({ open, onClose, contractId, payment }:
 
     if (values.label.trim() === '') {
       snackbar.error('회차 라벨을 입력해주세요.');
+      return;
+    }
+    const paymentError = validatePaymentAmounts(values);
+    if (paymentError) {
+      snackbar.error(paymentError);
       return;
     }
 
@@ -144,7 +151,7 @@ export default function PaymentFormModal({ open, onClose, contractId, payment }:
                 value={values.plannedAmount}
                 onChange={(e) => update('plannedAmount', e.target.value)}
                 sx={{ flex: 1 }}
-                slotProps={{ htmlInput: { min: 0 } }}
+                slotProps={{ htmlInput: { min: 0, max: MAX_MONEY_AMOUNT } }}
               />
             </Stack>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
@@ -164,7 +171,7 @@ export default function PaymentFormModal({ open, onClose, contractId, payment }:
                 value={values.paidAmount}
                 onChange={(e) => update('paidAmount', e.target.value)}
                 sx={{ flex: 1 }}
-                slotProps={{ htmlInput: { min: 0 } }}
+                slotProps={{ htmlInput: { min: 0, max: MAX_MONEY_AMOUNT } }}
               />
             </Stack>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
@@ -184,7 +191,7 @@ export default function PaymentFormModal({ open, onClose, contractId, payment }:
                 value={values.invoiceAmount}
                 onChange={(e) => update('invoiceAmount', e.target.value)}
                 sx={{ flex: 1 }}
-                slotProps={{ htmlInput: { min: 0 } }}
+                slotProps={{ htmlInput: { min: 0, max: MAX_MONEY_AMOUNT } }}
               />
             </Stack>
             <TextField
