@@ -26,7 +26,7 @@ function ContractDetailContent({ contractId }: { contractId: number }) {
       <QueryGate queries={queries}>
         {({ detail }) => (
           <DetailRoot>
-            <GenericHeaderDetails fields={contractInfoFields(detail)} />
+            <GenericHeaderDetails fields={contractInfoFields(detail)} sticky={false} />
             <GenericTabbedTable tabs={tabsList} />
           </DetailRoot>
         )}

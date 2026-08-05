@@ -9,18 +9,24 @@ import Box from '@mui/material/Box';
  * 과 일치시키려면 sticky top 도 padding-top 의 음수값이어야 한다.
  * MainContent padding: xs=1rem, sm+=2rem.
  */
-export const HeaderDetailsRoot = styled(Box)(({ theme }) => ({
+interface RootProps {
+  sticky: boolean;
+}
+
+export const HeaderDetailsRoot = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'sticky',
+})<RootProps>(({ theme, sticky }) => ({
   backgroundColor: theme.palette.background.paper,
   borderBottom: `1px solid ${theme.palette.divider}`,
   display: 'flex',
   flexDirection: 'column',
-  position: 'sticky',
-  top: '-1rem',
+  position: sticky ? 'sticky' : 'static',
+  top: sticky ? '-1rem' : 'auto',
   [theme.breakpoints.up('sm')]: {
-    top: '-2rem',
+    top: sticky ? '-2rem' : 'auto',
   },
-  zIndex: 2,
-  boxShadow: '0 2px 6px -1px rgba(15, 23, 42, 0.05)',
+  zIndex: sticky ? 2 : 'auto',
+  boxShadow: sticky ? '0 2px 6px -1px rgba(15, 23, 42, 0.05)' : 'none',
 }));
 
 interface TableProps {
