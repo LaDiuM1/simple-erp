@@ -18,6 +18,10 @@ import {
 } from '@/features/drive/api/driveApi';
 import type { DriveFileItem, DriveFolderItem } from '@/features/drive/types';
 import type { DriveModalProps } from '@/features/drive/components/DriveModals/DriveModals';
+import {
+  getUploadFileSizeError,
+  UPLOAD_FILE_SIZE_GUIDE,
+} from '@/shared/utils/uploadFileSize';
 
 /**
  * 드라이브 page hook — 폴더 탐색 상태 + browse query + 업로드 / 다운로드 / 삭제 handler + 모달 state.
@@ -67,6 +71,12 @@ export function useDrivePage() {
     const input = e.target;
     const files = Array.from(input.files ?? []);
     if (files.length === 0) return;
+    const sizeError = getUploadFileSizeError(files);
+    if (sizeError) {
+      snackbar.error(sizeError);
+      input.value = '';
+      return;
+    }
 
     let uploadedCount = 0;
     let firstErrorMessage: string | null = null;
@@ -126,7 +136,7 @@ export function useDrivePage() {
           design: 'create',
           label: uploadProgress
             ? `${uploadProgress.current}/${uploadProgress.total} 업로드 중...`
-            : '파일 업로드',
+            : `파일 업로드 · ${UPLOAD_FILE_SIZE_GUIDE}`,
           icon: <UploadFileOutlinedIcon />,
           loading: uploadProgress !== null,
           onClick: () => fileInputRef.current?.click(),

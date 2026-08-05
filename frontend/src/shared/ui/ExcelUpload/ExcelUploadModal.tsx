@@ -11,6 +11,10 @@ import {
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { getErrorMessage } from '@/shared/api/error';
 import {
+  getUploadFileSizeError,
+  UPLOAD_FILE_SIZE_GUIDE,
+} from '@/shared/utils/uploadFileSize';
+import {
   DropZone,
   DropZoneHint,
   DropZoneLabel,
@@ -73,6 +77,7 @@ export default function ExcelUploadModal({
 }: Props) {
   const snackbar = useSnackbar();
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadInFlightRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const [result, setResult] = useState<ExcelUploadResult | null>(null);
 
@@ -96,13 +101,21 @@ export default function ExcelUploadModal({
   }, [open]);
 
   const handleFile = async (file: File) => {
+    if (isUploading || uploadInFlightRef.current) return;
+
     const lower = file.name.toLowerCase();
     if (!VALID_EXTENSIONS.some((ext) => lower.endsWith(ext))) {
       snackbar.error('.xlsx 파일만 업로드할 수 있습니다.');
       return;
     }
+    const sizeError = getUploadFileSizeError([file]);
+    if (sizeError) {
+      snackbar.error(sizeError);
+      return;
+    }
     const form = new FormData();
     form.append('file', file);
+    uploadInFlightRef.current = true;
     try {
       const r = await upload(form).unwrap();
       setResult(r);
@@ -111,12 +124,15 @@ export default function ExcelUploadModal({
       }
     } catch (err) {
       snackbar.error(getErrorMessage(err, '업로드 중 오류가 발생했습니다.'));
+    } finally {
+      uploadInFlightRef.current = false;
     }
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
+    if (isUploading || uploadInFlightRef.current) return;
     const file = e.dataTransfer.files?.[0];
     if (file) void handleFile(file);
   };
@@ -212,6 +228,8 @@ export default function ExcelUploadModal({
               onDrop={handleDrop}
               onClick={handleClickDropZone}
               role="button"
+              aria-busy={isUploading || undefined}
+              aria-disabled={isUploading || undefined}
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -228,11 +246,12 @@ export default function ExcelUploadModal({
                     ? '여기에 놓아 업로드'
                     : '파일을 끌어다 놓거나 클릭해 선택'}
               </DropZoneLabel>
-              <DropZoneHint>.xlsx 형식만 지원</DropZoneHint>
+              <DropZoneHint>.xlsx 형식 · {UPLOAD_FILE_SIZE_GUIDE}</DropZoneHint>
               <HiddenFileInput
                 ref={inputRef}
                 type="file"
                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                disabled={isUploading}
                 onChange={handleSelectFile}
               />
             </DropZone>

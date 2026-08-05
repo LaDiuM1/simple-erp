@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
 import CloseIcon from '@mui/icons-material/Close';
-import { isAxiosError } from 'axios';
-import axiosInstance from '@/shared/api/axiosInstance';
-import { useAppSelector } from '@/app/hooks';
+import { getErrorMessage } from '@/shared/api/error';
+import { useUploadStoredFileMutation } from '@/shared/api/storedFileApi';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar/useSnackbar';
 import { formatFileSize } from '@/shared/utils/formatFileSize';
-import type { ApiResponse } from '@/shared/types/api';
+import {
+  getUploadFileSizeError,
+} from '@/shared/utils/uploadFileSize';
 import {
   AttachButton,
   AttachedList,
@@ -25,14 +26,6 @@ export interface AttachedFile {
   size: number;
 }
 
-/** BE StoredFileInfo (`POST /api/v1/files` 응답) */
-interface StoredFileInfo {
-  id: number;
-  originalName: string;
-  contentType: string;
-  size: number;
-}
-
 interface Props {
   label?: string;
   value: AttachedFile[];
@@ -46,9 +39,6 @@ interface Props {
   single?: boolean;
 }
 
-/** BE multipart 한도 (application.properties max-file-size) 미러 — 초과분은 요청 전에 차단. */
-const MAX_UPLOAD_SIZE_BYTES = 30 * 1024 * 1024;
-
 /**
  * 파일 첨부 공용 필드 — 선택 즉시 스토리지 (`POST /api/v1/files`) 업로드 후 fileId 목록을 폼에 반영.
  * 전자결재 / 경비 영수증 / 게시판 첨부가 공용 사용.
@@ -56,16 +46,21 @@ const MAX_UPLOAD_SIZE_BYTES = 30 * 1024 * 1024;
 export default function FileAttachField({ label = '첨부 파일', value, onChange, disabled, single }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const token = useAppSelector((s) => s.auth.accessToken);
+  const [uploadStoredFile] = useUploadStoredFileMutation();
   const snackbar = useSnackbar();
+  const uploadBlocked = disabled || uploading;
 
   const handleSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (uploadBlocked) {
+      e.target.value = '';
+      return;
+    }
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const oversized = Array.from(files).find((file) => file.size > MAX_UPLOAD_SIZE_BYTES);
-    if (oversized) {
-      snackbar.error(`${oversized.name} — 파일당 최대 ${formatFileSize(MAX_UPLOAD_SIZE_BYTES)} 까지 업로드할 수 있습니다.`);
+    const sizeError = getUploadFileSizeError(Array.from(files));
+    if (sizeError) {
+      snackbar.error(sizeError);
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
@@ -74,20 +69,12 @@ export default function FileAttachField({ label = '첨부 파일', value, onChan
     try {
       const uploaded: AttachedFile[] = [];
       for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await axiosInstance.post<ApiResponse<StoredFileInfo>>('/api/v1/files', formData, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const info = response.data.data;
+        const info = await uploadStoredFile(file).unwrap();
         uploaded.push({ fileId: info.id, name: info.originalName, size: info.size });
       }
       onChange((prev) => (single ? uploaded.slice(-1) : [...prev, ...uploaded]));
     } catch (err) {
-      const serverMessage = isAxiosError(err)
-        ? (err.response?.data as { message?: string } | undefined)?.message
-        : undefined;
-      snackbar.error(serverMessage ?? '파일 업로드에 실패했습니다.');
+      snackbar.error(getErrorMessage(err, '파일 업로드에 실패했습니다.'));
     } finally {
       setUploading(false);
       // 같은 파일 재선택 가능하도록 초기화
@@ -105,12 +92,18 @@ export default function FileAttachField({ label = '첨부 파일', value, onChan
       <AttachButton
         variant="outlined"
         size="small"
-        disabled={disabled || uploading}
+        disabled={uploadBlocked}
         onClick={() => inputRef.current?.click()}
       >
         {uploading ? '업로드 중...' : '파일 선택'}
       </AttachButton>
-      <HiddenInput ref={inputRef} type="file" multiple={!single} onChange={handleSelect} />
+      <HiddenInput
+        ref={inputRef}
+        type="file"
+        multiple={!single}
+        disabled={uploadBlocked}
+        onChange={handleSelect}
+      />
       {value.length > 0 && (
         <AttachedList>
           {value.map((file) => (
