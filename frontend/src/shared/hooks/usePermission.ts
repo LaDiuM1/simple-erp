@@ -5,6 +5,13 @@ export interface MenuPermissionState {
   canWrite: boolean;
 }
 
+export interface MenuPermissionBoundaryState extends MenuPermissionState {
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  retry: () => void;
+}
+
 const NONE: MenuPermissionState = { canRead: false, canWrite: false };
 
 /**
@@ -19,4 +26,21 @@ export function usePermission(menuCode: string): MenuPermissionState {
   if (!matched) return NONE;
 
   return { canRead: matched.canRead, canWrite: matched.canWrite };
+}
+
+/** 라우트 진입 판단이 프로필 로딩 중 상태를 권한 없음으로 오판하지 않도록 조회 상태까지 노출한다. */
+export function usePermissionBoundary(menuCode: string): MenuPermissionBoundaryState {
+  const query = useGetMyProfileQuery();
+  const matched = query.data?.menuPermissions.find((p) => p.menuCode === menuCode);
+
+  return {
+    canRead: matched?.canRead ?? false,
+    canWrite: matched?.canWrite ?? false,
+    isLoading: query.isLoading || (!query.data && !query.isError),
+    isError: query.isError,
+    error: query.error,
+    retry: () => {
+      void query.refetch();
+    },
+  };
 }

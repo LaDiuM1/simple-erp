@@ -1,6 +1,8 @@
 import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from '@/shared/ui/layout/ProtectedRoute';
+import WritePermissionRoute from '@/shared/ui/layout/WritePermissionRoute';
+import { MENU_CODE } from '@/shared/config/menuConfig';
 import LoginPage from '@/pages/login/LoginPage';
 
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'));
@@ -84,58 +86,82 @@ export default function AppRoutes() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/employee/me" element={<EmployeeMePage />} />
         <Route path="/employees" element={<EmployeeListPage />} />
-        <Route path="/employees/new" element={<EmployeeCreatePage />} />
-        <Route path="/employees/:id/edit" element={<EmployeeEditPage />} />
         <Route path="/employees/:id" element={<EmployeeDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.EMPLOYEES} />}>
+          <Route path="/employees/new" element={<EmployeeCreatePage />} />
+          <Route path="/employees/:id/edit" element={<EmployeeEditPage />} />
+        </Route>
         <Route path="/departments" element={<DepartmentListPage />} />
         <Route path="/departments/hierarchy" element={<DepartmentHierarchyPage />} />
-        <Route path="/departments/new" element={<DepartmentCreatePage />} />
-        <Route path="/departments/:id/edit" element={<DepartmentEditPage />} />
         <Route path="/departments/:id" element={<DepartmentDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.DEPARTMENTS} />}>
+          <Route path="/departments/new" element={<DepartmentCreatePage />} />
+          <Route path="/departments/:id/edit" element={<DepartmentEditPage />} />
+        </Route>
         <Route path="/positions" element={<PositionListPage />} />
         <Route path="/positions/ranking" element={<PositionRankingPage />} />
-        <Route path="/positions/new" element={<PositionCreatePage />} />
-        <Route path="/positions/:id/edit" element={<PositionEditPage />} />
         <Route path="/positions/:id" element={<PositionDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.POSITIONS} />}>
+          <Route path="/positions/new" element={<PositionCreatePage />} />
+          <Route path="/positions/:id/edit" element={<PositionEditPage />} />
+        </Route>
         <Route path="/roles" element={<RoleListPage />} />
-        <Route path="/roles/new" element={<RoleCreatePage />} />
-        <Route path="/roles/:id/edit" element={<RoleEditPage />} />
         <Route path="/roles/:id" element={<RoleDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.ROLES} />}>
+          <Route path="/roles/new" element={<RoleCreatePage />} />
+          <Route path="/roles/:id/edit" element={<RoleEditPage />} />
+        </Route>
         <Route path="/code-rules" element={<CodeRuleListPage />} />
-        <Route path="/code-rules/:target/edit" element={<CodeRuleEditPage />} />
         <Route path="/code-rules/:target" element={<CodeRuleDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.CODE_RULES} />}>
+          <Route path="/code-rules/:target/edit" element={<CodeRuleEditPage />} />
+        </Route>
         <Route path="/customers" element={<CustomerListPage />} />
-        <Route path="/customers/new" element={<CustomerCreatePage />} />
-        <Route path="/customers/:id/edit" element={<CustomerEditPage />} />
         <Route path="/customers/:id" element={<CustomerDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.CUSTOMERS} />}>
+          <Route path="/customers/new" element={<CustomerCreatePage />} />
+          <Route path="/customers/:id/edit" element={<CustomerEditPage />} />
+        </Route>
         <Route path="/suppliers" element={<SupplierListPage />} />
-        <Route path="/suppliers/new" element={<SupplierCreatePage />} />
-        <Route path="/suppliers/:id/edit" element={<SupplierEditPage />} />
         <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.SUPPLIERS} />}>
+          <Route path="/suppliers/new" element={<SupplierCreatePage />} />
+          <Route path="/suppliers/:id/edit" element={<SupplierEditPage />} />
+        </Route>
         <Route path="/products" element={<ProductListPage />} />
         <Route path="/products/categories" element={<ProductCategoryPage />} />
-        <Route path="/products/new" element={<ProductCreatePage />} />
-        <Route path="/products/:id/edit" element={<ProductEditPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.PRODUCTS} />}>
+          <Route path="/products/new" element={<ProductCreatePage />} />
+          <Route path="/products/:id/edit" element={<ProductEditPage />} />
+        </Route>
         <Route path="/sales-customers" element={<SalesCustomerListPage />} />
         <Route path="/sales-customers/:customerId" element={<SalesCustomerDetailPage />} />
         <Route path="/sales-contacts" element={<SalesContactListPage />} />
-        <Route path="/sales-contacts/new" element={<SalesContactCreatePage />} />
-        <Route path="/sales-contacts/:id/edit" element={<SalesContactEditPage />} />
         <Route path="/sales-contacts/:id" element={<SalesContactDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.SALES_CONTACTS} />}>
+          <Route path="/sales-contacts/new" element={<SalesContactCreatePage />} />
+          <Route path="/sales-contacts/:id/edit" element={<SalesContactEditPage />} />
+        </Route>
         <Route path="/contracts" element={<ContractListPage />} />
-        <Route path="/contracts/new" element={<ContractCreatePage />} />
-        <Route path="/contracts/:id/edit" element={<ContractEditPage />} />
         <Route path="/contracts/:id" element={<ContractDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.CONTRACTS} />}>
+          <Route path="/contracts/new" element={<ContractCreatePage />} />
+          <Route path="/contracts/:id/edit" element={<ContractEditPage />} />
+        </Route>
         <Route path="/equipments" element={<EquipmentListPage />} />
-        <Route path="/equipments/new" element={<EquipmentCreatePage />} />
-        <Route path="/equipments/:id/edit" element={<EquipmentEditPage />} />
         <Route path="/equipments/:id" element={<EquipmentDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.EQUIPMENTS} />}>
+          <Route path="/equipments/new" element={<EquipmentCreatePage />} />
+          <Route path="/equipments/:id/edit" element={<EquipmentEditPage />} />
+        </Route>
         <Route path="/after-services" element={<AfterServiceListPage />} />
         <Route path="/after-services/engineers" element={<EngineerPage />} />
-        <Route path="/after-services/new" element={<AfterServiceCreatePage />} />
-        <Route path="/after-services/:id/edit" element={<AfterServiceEditPage />} />
         <Route path="/after-services/:id" element={<AfterServiceDetailPage />} />
+        <Route element={<WritePermissionRoute menuCode={MENU_CODE.AFTER_SERVICES} />}>
+          <Route path="/after-services/new" element={<AfterServiceCreatePage />} />
+          <Route path="/after-services/:id/edit" element={<AfterServiceEditPage />} />
+        </Route>
         <Route path="/approvals" element={<ApprovalListPage />} />
         <Route path="/approvals/new" element={<ApprovalCreatePage />} />
         <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
