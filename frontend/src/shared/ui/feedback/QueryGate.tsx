@@ -11,10 +11,10 @@ interface QueryLike<T> {
   refetch?: () => void;
 }
 
-type Queries = Record<string, QueryLike<unknown>>;
+type Queries = Record<string, QueryLike<unknown> | undefined>;
 
 type Unwrapped<Qs extends Queries> = {
-  [K in keyof Qs]: Qs[K] extends QueryLike<infer T> ? T : never;
+  [K in keyof Qs]: Exclude<Qs[K], undefined> extends QueryLike<infer T> ? T : never;
 };
 
 interface QueryGateProps<Qs extends Queries> {
@@ -28,7 +28,9 @@ export default function QueryGate<Qs extends Queries>({
   children,
   fullScreen = false,
 }: QueryGateProps<Qs>) {
-  const list = Object.values(queries);
+  const list = Object.values(queries).filter(
+    (query): query is QueryLike<unknown> => query !== undefined,
+  );
 
   const errored = list.find((q) => q.isError);
   if (errored) {
@@ -50,7 +52,9 @@ export default function QueryGate<Qs extends Queries>({
   }
 
   const unwrapped = Object.fromEntries(
-    Object.entries(queries).map(([k, q]) => [k, q.data]),
+    Object.entries(queries)
+      .filter((entry): entry is [string, QueryLike<unknown>] => entry[1] !== undefined)
+      .map(([key, query]) => [key, query.data]),
   ) as Unwrapped<Qs>;
 
   return <>{children(unwrapped)}</>;

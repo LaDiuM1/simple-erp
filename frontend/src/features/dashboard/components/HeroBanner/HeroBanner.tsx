@@ -1,33 +1,32 @@
-import { useEffect, useState } from 'react';
+import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded';
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
 import type { EmployeeProfileResponse } from '@/features/employee/types';
+import { useToday } from '@/shared/hooks/useToday';
 import {
-  ClockDate,
-  ClockText,
+  DateLabel,
+  DateMeta,
   HeroBadge,
   HeroDivider,
-  HeroEyebrow,
   HeroGreeting,
   HeroLeft,
   HeroRight,
   HeroRoot,
   HeroSubtext,
 } from './HeroBanner.styles';
-import { formatClockTime, formatTodayLong } from '../../utils/formatters';
+import { formatTodayLong } from '../../utils/formatters';
 
 interface Props {
   profile: EmployeeProfileResponse;
 }
 
 export default function HeroBanner({ profile }: Props) {
-  const now = useNow();
+  const today = useToday();
 
   return (
     <HeroRoot>
       <HeroLeft>
-        <HeroEyebrow>WELCOME BACK</HeroEyebrow>
         <HeroGreeting>
-          안녕하세요, <strong>{profile.name}</strong> 님
+          <strong>{profile.name}</strong>님, 오늘의 업무 현황이에요.
         </HeroGreeting>
         <HeroSubtext>
           <HeroBadge>
@@ -49,18 +48,12 @@ export default function HeroBanner({ profile }: Props) {
         </HeroSubtext>
       </HeroLeft>
       <HeroRight>
-        <ClockText>{formatClockTime(now)}</ClockText>
-        <ClockDate>{formatTodayLong(now)}</ClockDate>
+        <CalendarTodayRoundedIcon aria-hidden />
+        <DateMeta>
+          <DateLabel>오늘</DateLabel>
+          <span>{formatTodayLong(today)}</span>
+        </DateMeta>
       </HeroRight>
     </HeroRoot>
   );
-}
-
-function useNow(): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-  return now;
 }

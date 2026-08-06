@@ -1,30 +1,62 @@
 import { styled } from '@mui/material/styles';
+import type { CSSObject, Theme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
 export const SectionRoot = styled(Box)(({ theme }) => ({
   backgroundColor: theme.palette.background.paper,
   border: `1px solid ${theme.palette.divider}`,
-  borderRadius: 12,
-  padding: '0.875rem 1.375rem',
+  borderRadius: 10,
+  padding: '1rem 1.125rem',
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.5rem',
-  [theme.breakpoints.down('sm')]: { padding: '0.75rem 1rem' },
+  gap: '0.875rem',
+  minWidth: 0,
+  [theme.breakpoints.down('sm')]: { padding: '0.875rem 1rem' },
 }));
 
 export const SectionHeader = styled(Box)({
   display: 'flex',
-  alignItems: 'center',
+  alignItems: 'flex-start',
   justifyContent: 'space-between',
-  gap: '0.5rem',
+  gap: '0.75rem',
 });
 
-export const SectionTitle = styled(Typography)(({ theme }) => ({
+export const SectionHeading = styled(Box)({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.1875rem',
+  minWidth: 0,
+});
+
+export const SectionTitle = styled('h3')(({ theme }) => ({
+  margin: 0,
   fontSize: '0.9375rem',
   fontWeight: 600,
   color: theme.palette.text.primary,
   letterSpacing: '-0.005em',
+}));
+
+export const SectionDescription = styled(Typography)(({ theme }) => ({
+  fontSize: '0.75rem',
+  color: theme.palette.text.secondary,
+  lineHeight: 1.4,
+}));
+
+export const SectionCount = styled('span')(({ theme }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: 22,
+  height: 22,
+  padding: '0 0.375rem',
+  marginLeft: '0.375rem',
+  borderRadius: 9999,
+  backgroundColor: theme.palette.primarySubtle,
+  color: theme.palette.primary.dark,
+  fontSize: '0.6875rem',
+  fontWeight: 700,
+  verticalAlign: 'middle',
 }));
 
 export const SectionMore = styled('button')(({ theme }) => ({
@@ -47,6 +79,10 @@ export const SectionMore = styled('button')(({ theme }) => ({
     color: theme.palette.primary.main,
     backgroundColor: theme.palette.primarySubtle,
   },
+  '&:focus-visible': {
+    outline: `2px solid ${theme.palette.primary.main}`,
+    outlineOffset: 1,
+  },
 }));
 
 export const ItemList = styled('ul')({
@@ -57,21 +93,44 @@ export const ItemList = styled('ul')({
   flexDirection: 'column',
 });
 
-export const ItemRow = styled('li')(({ theme }) => ({
+export const ItemRow = styled('li')({
+  minWidth: 0,
+});
+
+const itemLayout = (theme: Theme): CSSObject => ({
+  appearance: 'none',
   display: 'flex',
   alignItems: 'center',
   gap: '0.875rem',
-  padding: '0.375rem 0.5rem',
+  padding: '0.5rem',
   borderTop: `1px solid ${theme.palette.divider}`,
-  cursor: 'pointer',
+  borderRight: 0,
+  borderBottom: 0,
+  borderLeft: 0,
+  background: 'none',
+  color: 'inherit',
+  fontFamily: 'inherit',
+  textAlign: 'left',
   transition: 'background-color 0.12s',
   margin: '0 -0.5rem',
+  width: 'calc(100% + 1rem)',
   borderRadius: 6,
-  '&:first-of-type': { borderTop: 'none' },
+  'li:first-of-type &': { borderTop: 'none' },
+});
+
+export const ItemContent = styled('div')(({ theme }) => itemLayout(theme));
+
+export const ItemAction = styled('button')(({ theme }) => ({
+  ...itemLayout(theme),
+  cursor: 'pointer',
   '&:hover': { backgroundColor: theme.palette.headerBg },
+  '&:focus-visible': {
+    outline: `2px solid ${theme.palette.primary.main}`,
+    outlineOffset: -2,
+  },
 }));
 
-export const ItemMain = styled(Box)({
+export const ItemMain = styled('span')({
   flex: 1,
   minWidth: 0,
   display: 'flex',
@@ -79,14 +138,14 @@ export const ItemMain = styled(Box)({
   gap: '0.125rem',
 });
 
-export const ItemTopLine = styled(Box)({
+export const ItemTopLine = styled('span')({
   display: 'flex',
   alignItems: 'center',
   gap: '0.5rem',
   minWidth: 0,
 });
 
-export const ItemTitle = styled(Typography)(({ theme }) => ({
+export const ItemTitle = styled('span')(({ theme }) => ({
   fontSize: '0.9375rem',
   fontWeight: 600,
   color: theme.palette.text.primary,
@@ -97,7 +156,7 @@ export const ItemTitle = styled(Typography)(({ theme }) => ({
   minWidth: 0,
 }));
 
-export const ItemMeta = styled(Box)(({ theme }) => ({
+export const ItemMeta = styled('span')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   fontSize: '0.8125rem',
@@ -106,7 +165,7 @@ export const ItemMeta = styled(Box)(({ theme }) => ({
   overflow: 'hidden',
 }));
 
-export const ItemTime = styled(Typography)(({ theme }) => ({
+export const ItemTime = styled('span')(({ theme }) => ({
   fontSize: '0.75rem',
   color: theme.palette.text.disabled,
   flexShrink: 0,
@@ -114,7 +173,7 @@ export const ItemTime = styled(Typography)(({ theme }) => ({
 }));
 
 export const EmptyState = styled(Box)(({ theme }) => ({
-  padding: '2rem 1rem',
+  padding: '1.75rem 1rem',
   textAlign: 'center',
   fontSize: '0.875rem',
   color: theme.palette.text.secondary,

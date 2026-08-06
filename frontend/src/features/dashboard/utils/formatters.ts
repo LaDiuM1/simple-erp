@@ -17,10 +17,6 @@ export function formatRelativeTime(iso: string): string {
   return `${target.getFullYear()}.${pad(target.getMonth() + 1)}.${pad(target.getDate())}`;
 }
 
-export function formatClockTime(date: Date): string {
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
-
 export function formatTodayLong(date: Date): string {
   return date.toLocaleDateString('ko-KR', {
     year: 'numeric',

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import DirectionsWalkRoundedIcon from '@mui/icons-material/DirectionsWalkRounded';
 import LocalPhoneRoundedIcon from '@mui/icons-material/LocalPhoneRounded';
@@ -8,6 +7,8 @@ import EmailRoundedIcon from '@mui/icons-material/EmailRounded';
 import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
 import {
   EmptyState,
+  ItemAction,
+  ItemContent,
   ItemList,
   ItemMain,
   ItemMeta,
@@ -15,11 +16,14 @@ import {
   ItemTime,
   ItemTitle,
   ItemTopLine,
+  SectionCount,
+  SectionDescription,
   SectionHeader,
+  SectionHeading,
   SectionMore,
   SectionRoot,
   SectionTitle,
-} from '../RecentSection.styles';
+} from '../DashboardCard.styles';
 import {
   ActivityIcon,
   ActivityTypeLabel,
@@ -34,6 +38,8 @@ import { formatRelativeTime } from '../../utils/formatters';
 
 interface Props {
   items: RecentSalesActivity[];
+  onNavigateList?: () => void;
+  onNavigateCustomer?: (customerId: number) => void;
 }
 
 const TYPE_ICON: Record<SalesActivityType, ReactNode> = {
@@ -44,51 +50,68 @@ const TYPE_ICON: Record<SalesActivityType, ReactNode> = {
   OTHER: <MoreHorizRoundedIcon sx={{ fontSize: 18 }} />,
 };
 
-export default function RecentActivities({ items }: Props) {
-  const navigate = useNavigate();
-
+export default function RecentActivities({ items, onNavigateList, onNavigateCustomer }: Props) {
   return (
     <SectionRoot>
       <SectionHeader>
-        <SectionTitle>최근 영업 활동</SectionTitle>
-        <SectionMore type="button" onClick={() => navigate('/sales-customers')}>
-          전체 보기
-          <ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />
-        </SectionMore>
+        <SectionHeading>
+          <SectionTitle>
+            최근 영업 활동
+            <SectionCount>{items.length}</SectionCount>
+          </SectionTitle>
+          <SectionDescription>최근 고객 접점과 담당자를 이어서 확인해요.</SectionDescription>
+        </SectionHeading>
+        {onNavigateList && (
+          <SectionMore type="button" onClick={onNavigateList}>
+            전체 보기
+            <ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />
+          </SectionMore>
+        )}
       </SectionHeader>
       {items.length === 0 ? (
         <EmptyState>등록된 영업 활동이 없습니다.</EmptyState>
       ) : (
         <ItemList>
-          {items.map((a) => (
-            <ItemRow
-              key={a.id}
-              onClick={() => navigate(`/sales-customers/${a.customerId}`)}
-            >
-              <ActivityIcon>{TYPE_ICON[a.type]}</ActivityIcon>
-              <ItemMain>
-                <ItemTopLine>
-                  <ItemTitle>{a.subject}</ItemTitle>
-                </ItemTopLine>
-                <ItemMeta>
-                  <ActivityTypeLabel>{SALES_ACTIVITY_TYPE_LABELS[a.type]}</ActivityTypeLabel>
-                  {a.customerName && (
-                    <>
-                      <MetaSeparator />
-                      <span>{a.customerName}</span>
-                    </>
-                  )}
-                  {a.ourEmployeeName && (
-                    <>
-                      <MetaSeparator />
-                      <span>{a.ourEmployeeName}</span>
-                    </>
-                  )}
-                </ItemMeta>
-              </ItemMain>
-              <ItemTime>{formatRelativeTime(a.activityDate)}</ItemTime>
-            </ItemRow>
-          ))}
+          {items.map((a) => {
+            const content = (
+              <>
+                <ActivityIcon>{TYPE_ICON[a.type]}</ActivityIcon>
+                <ItemMain>
+                  <ItemTopLine>
+                    <ItemTitle>{a.subject}</ItemTitle>
+                  </ItemTopLine>
+                  <ItemMeta>
+                    <ActivityTypeLabel>{SALES_ACTIVITY_TYPE_LABELS[a.type]}</ActivityTypeLabel>
+                    {a.customerName && (
+                      <>
+                        <MetaSeparator />
+                        <span>{a.customerName}</span>
+                      </>
+                    )}
+                    {a.ourEmployeeName && (
+                      <>
+                        <MetaSeparator />
+                        <span>{a.ourEmployeeName}</span>
+                      </>
+                    )}
+                  </ItemMeta>
+                </ItemMain>
+                <ItemTime>{formatRelativeTime(a.activityDate)}</ItemTime>
+              </>
+            );
+
+            return (
+              <ItemRow key={a.id}>
+                {onNavigateCustomer ? (
+                  <ItemAction type="button" onClick={() => onNavigateCustomer(a.customerId)}>
+                    {content}
+                  </ItemAction>
+                ) : (
+                  <ItemContent>{content}</ItemContent>
+                )}
+              </ItemRow>
+            );
+          })}
         </ItemList>
       )}
     </SectionRoot>

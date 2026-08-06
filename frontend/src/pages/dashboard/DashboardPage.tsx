@@ -10,8 +10,16 @@ import RecentActivities from '@/features/dashboard/components/RecentActivities/R
 import SalesOverview from '@/features/dashboard/components/SalesOverview/SalesOverview';
 import ServiceOverview from '@/features/dashboard/components/ServiceOverview/ServiceOverview';
 import WarrantyExpiring from '@/features/dashboard/components/WarrantyExpiring/WarrantyExpiring';
+import DashboardSectionHeading from '@/features/dashboard/components/DashboardSectionHeading/DashboardSectionHeading';
 import { useDashboardPage } from '@/features/dashboard/hooks/useDashboardPage';
-import { DashboardRoot, KpiGrid, RecentGrid, WidgetGrid } from './DashboardPage.styles';
+import {
+  DashboardGroup,
+  DashboardRoot,
+  KpiGrid,
+  OperationsGrid,
+  OperationsRail,
+  RecentGrid,
+} from './DashboardPage.styles';
 
 export default function DashboardPage() {
   const {
@@ -19,65 +27,136 @@ export default function DashboardPage() {
     widgets,
     monthLabel,
     onNavigateCustomers,
+    onNavigateCustomer,
     onNavigateSalesContacts,
     onNavigateEmployees,
     onNavigateSalesCustomers,
+    onNavigateSalesCustomer,
   } = useDashboardPage();
-
-  const hasWidgets = widgets.sales || widgets.service || widgets.warranty;
 
   return (
     <QueryGate queries={queries}>
       {({ profile, summary }) => (
-        <DashboardRoot>
-          <HeroBanner profile={profile} />
-
-          <KpiGrid>
-            <KpiCard
-              label="총 고객사"
-              value={summary.kpi.totalCustomers}
-              unit="개사"
-              icon={<BusinessRoundedIcon />}
-              onClick={onNavigateCustomers}
-            />
-            <KpiCard
-              label="영업 명부"
-              value={summary.kpi.totalSalesContacts}
-              unit="명"
-              icon={<ContactsRoundedIcon />}
-              onClick={onNavigateSalesContacts}
-            />
-            <KpiCard
-              label="재직 직원"
-              value={summary.kpi.activeEmployees}
-              unit="명"
-              icon={<GroupsRoundedIcon />}
-              onClick={onNavigateEmployees}
-            />
-            <KpiCard
-              label={`${monthLabel} 영업 활동`}
-              value={summary.kpi.monthlySalesActivities}
-              unit="건"
-              suffix="이번 달 누적"
-              icon={<TrendingUpRoundedIcon />}
-              onClick={onNavigateSalesCustomers}
-            />
-          </KpiGrid>
-
-          {hasWidgets && (
-            <WidgetGrid>
-              {widgets.sales && <SalesOverview data={widgets.sales} />}
-              {widgets.service && <ServiceOverview data={widgets.service} />}
-              {widgets.warranty && <WarrantyExpiring items={widgets.warranty} />}
-            </WidgetGrid>
-          )}
-
-          <RecentGrid>
-            <RecentCustomers items={summary.recentCustomers} />
-            <RecentActivities items={summary.recentActivities} />
-          </RecentGrid>
-        </DashboardRoot>
+        <DashboardContent
+          profile={profile}
+          summary={summary}
+          widgets={widgets}
+          monthLabel={monthLabel}
+          onNavigateCustomers={onNavigateCustomers}
+          onNavigateCustomer={onNavigateCustomer}
+          onNavigateSalesContacts={onNavigateSalesContacts}
+          onNavigateEmployees={onNavigateEmployees}
+          onNavigateSalesCustomers={onNavigateSalesCustomers}
+          onNavigateSalesCustomer={onNavigateSalesCustomer}
+        />
       )}
     </QueryGate>
+  );
+}
+
+type DashboardContentProps = Omit<ReturnType<typeof useDashboardPage>, 'queries'> & {
+  profile: Parameters<typeof HeroBanner>[0]['profile'];
+  summary: NonNullable<ReturnType<typeof useDashboardPage>['queries']['summary']['data']>;
+};
+
+function DashboardContent({
+  profile,
+  summary,
+  widgets,
+  monthLabel,
+  onNavigateCustomers,
+  onNavigateCustomer,
+  onNavigateSalesContacts,
+  onNavigateEmployees,
+  onNavigateSalesCustomers,
+  onNavigateSalesCustomer,
+}: DashboardContentProps) {
+  const hasOverview = Object.values(summary.kpi).some((value) => value !== undefined);
+  const hasRecent = summary.recentCustomers !== undefined || summary.recentActivities !== undefined;
+  const hasWidgets = widgets.sales || widgets.service || widgets.warranty;
+  const hasOperationsRail = widgets.service || widgets.warranty;
+
+  return (
+    <DashboardRoot>
+          <HeroBanner profile={profile} />
+
+          {hasOverview && <DashboardGroup aria-labelledby="dashboard-overview-heading">
+            <DashboardSectionHeading
+              id="dashboard-overview-heading"
+              title="한눈에 보기"
+              description="현재 조회 권한 범위에서 집계한 핵심 업무 지표예요."
+            />
+            <KpiGrid>
+              {summary.kpi.totalCustomers !== undefined && <KpiCard
+                label="관리 고객사"
+                value={summary.kpi.totalCustomers}
+                unit="개사"
+                icon={<BusinessRoundedIcon />}
+                onClick={onNavigateCustomers}
+              />}
+              {summary.kpi.totalSalesContacts !== undefined && <KpiCard
+                label="고객 담당자"
+                value={summary.kpi.totalSalesContacts}
+                unit="명"
+                icon={<ContactsRoundedIcon />}
+                onClick={onNavigateSalesContacts}
+              />}
+              {summary.kpi.activeEmployees !== undefined && <KpiCard
+                label="재직 인원"
+                value={summary.kpi.activeEmployees}
+                unit="명"
+                icon={<GroupsRoundedIcon />}
+                onClick={onNavigateEmployees}
+              />}
+              {summary.kpi.monthlySalesActivities !== undefined && <KpiCard
+                label={`${monthLabel} 영업 활동`}
+                value={summary.kpi.monthlySalesActivities}
+                unit="건"
+                suffix="이번 달 누적"
+                icon={<TrendingUpRoundedIcon />}
+                onClick={onNavigateSalesCustomers}
+              />}
+            </KpiGrid>
+          </DashboardGroup>}
+
+          {hasWidgets && (
+            <DashboardGroup aria-labelledby="dashboard-operations-heading">
+              <DashboardSectionHeading
+                id="dashboard-operations-heading"
+                title="운영 흐름"
+                description="매출 흐름과 서비스 일정을 함께 확인하고 다음 업무로 이동할 수 있어요."
+              />
+              <OperationsGrid>
+                {widgets.sales && <SalesOverview data={widgets.sales} />}
+                {hasOperationsRail && (
+                  <OperationsRail>
+                    {widgets.service && <ServiceOverview data={widgets.service} />}
+                    {widgets.warranty && <WarrantyExpiring items={widgets.warranty} />}
+                  </OperationsRail>
+                )}
+              </OperationsGrid>
+            </DashboardGroup>
+          )}
+
+          {hasRecent && <DashboardGroup aria-labelledby="dashboard-recent-heading">
+            <DashboardSectionHeading
+              id="dashboard-recent-heading"
+              title="최근 변화"
+              description="새로 등록된 고객사와 최신 영업 활동을 시간순으로 확인해요."
+            />
+            <RecentGrid>
+              {summary.recentCustomers !== undefined && <RecentCustomers
+                items={summary.recentCustomers}
+                onNavigateList={onNavigateCustomers}
+                onNavigateCustomer={onNavigateCustomer}
+              />}
+              {summary.recentActivities !== undefined && <RecentActivities
+                items={summary.recentActivities}
+                onNavigateList={onNavigateSalesCustomers}
+                onNavigateCustomer={onNavigateSalesCustomer}
+              />}
+            </RecentGrid>
+          </DashboardGroup>}
+    </DashboardRoot>
   );
 }

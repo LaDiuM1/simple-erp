@@ -5,10 +5,10 @@ import {
 } from '@/features/customer/types';
 
 export interface DashboardKpi {
-  totalCustomers: number;
-  totalSalesContacts: number;
-  activeEmployees: number;
-  monthlySalesActivities: number;
+  totalCustomers?: number;
+  totalSalesContacts?: number;
+  activeEmployees?: number;
+  monthlySalesActivities?: number;
 }
 
 export interface RecentCustomer {
@@ -44,8 +44,8 @@ export interface RecentSalesActivity {
 
 export interface DashboardSummary {
   kpi: DashboardKpi;
-  recentCustomers: RecentCustomer[];
-  recentActivities: RecentSalesActivity[];
+  recentCustomers?: RecentCustomer[];
+  recentActivities?: RecentSalesActivity[];
 }
 
 // --- 권한별 위젯 (CONTRACTS / AFTER_SERVICES / EQUIPMENTS read) ---

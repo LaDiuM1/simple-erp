@@ -1,7 +1,5 @@
 import { styled } from '@mui/material/styles';
-import Box from '@mui/material/Box';
-
-export const ActivityIcon = styled(Box)(({ theme }) => ({
+export const ActivityIcon = styled('span')(({ theme }) => ({
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',

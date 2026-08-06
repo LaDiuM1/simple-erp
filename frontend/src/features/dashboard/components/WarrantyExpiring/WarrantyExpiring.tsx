@@ -3,6 +3,7 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import WarrantyDateText from '@/features/equipment/components/WarrantyDateText';
 import {
   EmptyState,
+  ItemAction,
   ItemList,
   ItemMain,
   ItemMeta,
@@ -10,11 +11,14 @@ import {
   ItemTime,
   ItemTitle,
   ItemTopLine,
+  SectionCount,
+  SectionDescription,
   SectionHeader,
+  SectionHeading,
   SectionMore,
   SectionRoot,
   SectionTitle,
-} from '../RecentSection.styles';
+} from '../DashboardCard.styles';
 import type { ExpiringWarrantyItem } from '../../types';
 
 interface Props {
@@ -56,7 +60,13 @@ export default function WarrantyExpiring({ items }: Props) {
   return (
     <SectionRoot>
       <SectionHeader>
-        <SectionTitle>보증 만료 임박 설비 (90일 내)</SectionTitle>
+        <SectionHeading>
+          <SectionTitle>
+            확인할 보증 일정
+            <SectionCount>{items.length}</SectionCount>
+          </SectionTitle>
+          <SectionDescription>90일 안에 보증이 만료되는 설비예요.</SectionDescription>
+        </SectionHeading>
         <SectionMore type="button" onClick={() => navigate('/equipments')}>
           전체 보기
           <ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />
@@ -69,25 +79,27 @@ export default function WarrantyExpiring({ items }: Props) {
           {items.map((item) => {
             const warranty = imminentWarranty(item);
             return (
-              <ItemRow key={item.equipmentId} onClick={() => navigate(`/equipments/${item.equipmentId}`)}>
-                <ItemMain>
-                  <ItemTopLine>
-                    <ItemTitle>{item.customerName ?? '고객사 미상'}</ItemTitle>
-                  </ItemTopLine>
-                  <ItemMeta>
-                    {item.productModelName ?? '모델 미상'}
-                    {item.serialNo ? ` (${item.serialNo})` : ''}
-                  </ItemMeta>
-                </ItemMain>
-                <ItemTime>
-                  {warranty ? (
-                    <>
-                      {warranty.label} <WarrantyDateText endDate={warranty.endDate} />
-                    </>
-                  ) : (
-                    <WarrantyDateText endDate={null} />
-                  )}
-                </ItemTime>
+              <ItemRow key={item.equipmentId}>
+                <ItemAction onClick={() => navigate(`/equipments/${item.equipmentId}`)}>
+                  <ItemMain>
+                    <ItemTopLine>
+                      <ItemTitle>{item.customerName ?? '고객사 미상'}</ItemTitle>
+                    </ItemTopLine>
+                    <ItemMeta>
+                      {item.productModelName ?? '모델 미상'}
+                      {item.serialNo ? ` (${item.serialNo})` : ''}
+                    </ItemMeta>
+                  </ItemMain>
+                  <ItemTime>
+                    {warranty ? (
+                      <>
+                        {warranty.label} <WarrantyDateText endDate={warranty.endDate} />
+                      </>
+                    ) : (
+                      <WarrantyDateText endDate={null} />
+                    )}
+                  </ItemTime>
+                </ItemAction>
               </ItemRow>
             );
           })}

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { MENU_CODE } from '@/shared/config/menuConfig';
 import { usePermission } from '@/shared/hooks/usePermission';
+import { useToday } from '@/shared/hooks/useToday';
 import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 import {
   useGetDashboardSalesQuery,
@@ -16,9 +17,14 @@ import {
  */
 export function useDashboardPage() {
   const navigate = useNavigate();
+  const today = useToday();
   const profileQuery = useGetMyProfileQuery();
   const summaryQuery = useGetDashboardSummaryQuery();
 
+  const { canRead: canReadCustomers } = usePermission(MENU_CODE.CUSTOMERS);
+  const { canRead: canReadSalesContacts } = usePermission(MENU_CODE.SALES_CONTACTS);
+  const { canRead: canReadEmployees } = usePermission(MENU_CODE.EMPLOYEES);
+  const { canRead: canReadSalesCustomers } = usePermission(MENU_CODE.SALES_CUSTOMERS);
   const { canRead: canReadContracts } = usePermission(MENU_CODE.CONTRACTS);
   const { canRead: canReadAfterServices } = usePermission(MENU_CODE.AFTER_SERVICES);
   const { canRead: canReadEquipments } = usePermission(MENU_CODE.EQUIPMENTS);
@@ -27,19 +33,33 @@ export function useDashboardPage() {
   const serviceQuery = useGetDashboardServiceStatsQuery(undefined, { skip: !canReadAfterServices });
   const warrantyQuery = useGetDashboardWarrantyQuery(undefined, { skip: !canReadEquipments });
 
-  const monthLabel = `${new Date().getMonth() + 1}월`;
+  const monthLabel = `${today.getMonth() + 1}월`;
 
   return {
-    queries: { profile: profileQuery, summary: summaryQuery },
+    queries: {
+      profile: profileQuery,
+      summary: summaryQuery,
+      ...(canReadContracts ? { sales: salesQuery } : {}),
+      ...(canReadAfterServices ? { service: serviceQuery } : {}),
+      ...(canReadEquipments ? { warranty: warrantyQuery } : {}),
+    },
     widgets: {
       sales: canReadContracts ? salesQuery.data : undefined,
       service: canReadAfterServices ? serviceQuery.data : undefined,
       warranty: canReadEquipments ? warrantyQuery.data : undefined,
     },
     monthLabel,
-    onNavigateCustomers: () => navigate('/customers'),
-    onNavigateSalesContacts: () => navigate('/sales-contacts'),
-    onNavigateEmployees: () => navigate('/employees'),
-    onNavigateSalesCustomers: () => navigate('/sales-customers'),
+    onNavigateCustomers: canReadCustomers ? () => navigate('/customers') : undefined,
+    onNavigateCustomer: canReadCustomers
+      ? (customerId: number) => navigate(`/customers/${customerId}`)
+      : undefined,
+    onNavigateSalesContacts: canReadSalesContacts ? () => navigate('/sales-contacts') : undefined,
+    onNavigateEmployees: canReadEmployees ? () => navigate('/employees') : undefined,
+    onNavigateSalesCustomers: canReadSalesCustomers
+      ? () => navigate('/sales-customers')
+      : undefined,
+    onNavigateSalesCustomer: canReadSalesCustomers
+      ? (customerId: number) => navigate(`/sales-customers/${customerId}`)
+      : undefined,
   };
 }
