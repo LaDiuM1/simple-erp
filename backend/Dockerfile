@@ -21,7 +21,9 @@ FROM eclipse-temurin:25-jre AS runtime
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tzdata curl \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --system --home /app --shell /usr/sbin/nologin app
+    && useradd --system --home /app --shell /usr/sbin/nologin app \
+    && mkdir -p /app/data/files \
+    && chown -R app:app /app/data
 
 ENV TZ=Asia/Seoul
 WORKDIR /app

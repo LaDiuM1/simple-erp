@@ -53,7 +53,10 @@ services:
       JPA_FORMAT_SQL: ${JPA_FORMAT_SQL:-false}
       LOG_LEVEL_ROOT: ${LOG_LEVEL_ROOT:-INFO}
       LOG_LEVEL_APP: ${LOG_LEVEL_APP:-INFO}
+      STORAGE_BASE_PATH: /app/data/files
       TZ: ${TZ:-Asia/Seoul}
+    volumes:
+      - file_storage:/app/data/files
     deploy:
       resources:
         limits:
@@ -80,5 +83,6 @@ services:
 
 volumes:
   mariadb_data:
+  file_storage:
   caddy_data:
   caddy_config:
