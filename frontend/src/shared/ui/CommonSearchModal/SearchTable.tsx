@@ -1,4 +1,10 @@
-import { useMemo, useRef, type ReactNode } from 'react';
+import {
+  useId,
+  useMemo,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
 import Radio from '@mui/material/Radio';
@@ -7,7 +13,7 @@ import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import { useTheme } from '@mui/material/styles';
+import { styled, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import {
   BodyCell,
@@ -33,6 +39,7 @@ interface Props<TRow> {
   rows: TRow[];
   columns: ColumnConfig<TRow>[];
   rowKey: (row: TRow) => number;
+  /** 선택 컨트롤의 접근 가능한 후보명. 미지정 시 row id를 사용한다. */
   rowLabel?: (row: TRow) => string;
   isLoading: boolean;
   emptyMessage: string;
@@ -60,12 +67,60 @@ const SELECT_COL_WIDTH = 48;
 const ACTION_COL_WIDTH = 96;
 
 /**
- * 데스크탑 행 / 헤더 높이 (px) — 본문 영역을 정확히 `ROW_HEIGHT × pageSize + HEADER_HEIGHT` 로 고정.
+ * 데스크탑 행 / 헤더 높이 (px) — 본문 영역의 최소 높이를
+ * `ROW_HEIGHT × pageSize + HEADER_HEIGHT` 로 유지한다.
  * BodyCell 의 컴팩트 padding (≈29 자연 높이) 을 GenericList 메인 페이지의 `useFillRowHeight` 패턴이
  * 단독 결정하도록 의도된 값이라, 모달에서는 BodyRow 에 명시 height 를 부여해 medium 톤 (53) 강제.
  */
 const ROW_HEIGHT = 53;
 const HEADER_HEIGHT = 40;
+
+const TraySelectionInput = styled('input')({
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+});
+
+interface TraySelectionControlProps {
+  checked: boolean;
+  label: string;
+  multiple: boolean;
+  selectionGroupName: string;
+  onToggle: () => void;
+}
+
+function TraySelectionControl({
+  checked,
+  label,
+  multiple,
+  selectionGroupName,
+  onToggle,
+}: TraySelectionControlProps) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    event.stopPropagation();
+    event.preventDefault();
+    onToggle();
+  };
+
+  return (
+    <TraySelectionInput
+      type={multiple ? 'checkbox' : 'radio'}
+      checked={checked}
+      name={multiple ? undefined : selectionGroupName}
+      aria-label={label}
+      onChange={onToggle}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={handleKeyDown}
+    />
+  );
+}
 
 /**
  * 검색 / 관리 모달 내부 리스트 — GenericList 와 동일한 데스크탑 Table / 모바일 카드 split.
@@ -75,6 +130,7 @@ export default function SearchTable<TRow>({
   rows,
   columns,
   rowKey,
+  rowLabel,
   isLoading,
   emptyMessage,
   page,
@@ -88,6 +144,7 @@ export default function SearchTable<TRow>({
 }: Props<TRow>) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const selectionGroupName = `search-selection-${useId().replaceAll(':', '')}`;
   const tableAreaRef = useRef<HTMLDivElement>(null);
   const tableViewportWidth = useElementWidth(tableAreaRef);
 
@@ -96,7 +153,8 @@ export default function SearchTable<TRow>({
     [columns, isMobile],
   );
 
-  // 데스크탑은 본문 영역을 정확히 pageSize 행 분으로 고정 — 페이지 전환 / 데이터 양 변화에도 흔들림 없음.
+  // 데스크탑은 pageSize 행 분의 최소 높이를 유지하되, 중간 폭에서 생기는 가로 스크롤바가
+  // 마지막 행을 덮지 않도록 필요한 만큼 확장한다.
   // 모바일은 자연 stack (카드 합). 좁은 뷰포트에서 컨텐츠가 paper 를 넘으면 ModalContent 가
   // 본문 자체로 스크롤하고 filter / pagination 은 sticky 로 항상 노출 (CommonSearchModal.styles 참조).
   const areaStyle = isMobile
@@ -110,6 +168,8 @@ export default function SearchTable<TRow>({
           columns={visibleColumns}
           rows={rows}
           rowKey={rowKey}
+          rowLabel={rowLabel}
+          selectionGroupName={selectionGroupName}
           mode={mode}
           selectionStyle={selectionStyle}
           isSelected={isSelected}
@@ -124,6 +184,8 @@ export default function SearchTable<TRow>({
           columns={visibleColumns}
           rows={rows}
           rowKey={rowKey}
+          rowLabel={rowLabel}
+          selectionGroupName={selectionGroupName}
           page={page}
           pageSize={pageSize}
           mode={mode}
@@ -151,6 +213,8 @@ interface DesktopProps<TRow> {
   columns: ColumnConfig<TRow>[];
   rows: TRow[];
   rowKey: (row: TRow) => number;
+  rowLabel?: (row: TRow) => string;
+  selectionGroupName: string;
   page: number;
   pageSize: number;
   mode: 'select' | 'manage';
@@ -168,6 +232,8 @@ function DesktopTable<TRow>({
   columns,
   rows,
   rowKey,
+  rowLabel,
+  selectionGroupName,
   page,
   pageSize,
   mode,
@@ -183,6 +249,7 @@ function DesktopTable<TRow>({
   const ToggleControl = multiple ? Checkbox : Radio;
   const isSelectMode = mode === 'select';
   const showSelectCol = isSelectMode && selectionStyle === 'checkbox';
+  const isTraySelection = isSelectMode && selectionStyle === 'tray';
   const showActionsCol = mode === 'manage' && !!rowActions;
   const extraColCount = (showSelectCol ? 1 : 0) + 1 + (showActionsCol ? 1 : 0);
   const reservedWidth = NO_COL_WIDTH
@@ -231,6 +298,7 @@ function DesktopTable<TRow>({
           ) : (
             rows.map((row, idx) => {
               const id = rowKey(row);
+              const accessibleLabel = rowLabel?.(row) ?? String(id);
               const checked = isSelectMode ? !!isSelected?.(id) : false;
               const onClick = isSelectMode && onToggleSelect ? () => onToggleSelect(row) : undefined;
               return (
@@ -239,6 +307,7 @@ function DesktopTable<TRow>({
                   clickable={isSelectMode}
                   selected={checked}
                   onClick={onClick}
+                  data-tray-selection={isTraySelection ? '' : undefined}
                   style={{ height: ROW_HEIGHT }}
                 >
                   {showSelectCol && (
@@ -246,12 +315,23 @@ function DesktopTable<TRow>({
                       <ToggleControl
                         size="small"
                         checked={checked}
+                        name={multiple ? undefined : selectionGroupName}
+                        inputProps={{ 'aria-label': accessibleLabel }}
                         onChange={() => onToggleSelect?.(row)}
                         onClick={(e) => e.stopPropagation()}
                       />
                     </BodyCell>
                   )}
                   <BodyCell align="center" sx={{ color: 'text.secondary' }}>
+                    {isTraySelection && onClick && (
+                      <TraySelectionControl
+                        checked={checked}
+                        label={accessibleLabel}
+                        multiple={multiple}
+                        selectionGroupName={selectionGroupName}
+                        onToggle={onClick}
+                      />
+                    )}
                     {page * pageSize + idx + 1}
                   </BodyCell>
                   {columns.map((col) => (
@@ -281,6 +361,8 @@ interface MobileProps<TRow> {
   columns: ColumnConfig<TRow>[];
   rows: TRow[];
   rowKey: (row: TRow) => number;
+  rowLabel?: (row: TRow) => string;
+  selectionGroupName: string;
   mode: 'select' | 'manage';
   selectionStyle: 'checkbox' | 'tray';
   isSelected?: (id: number) => boolean;
@@ -295,6 +377,8 @@ function MobileList<TRow>({
   columns,
   rows,
   rowKey,
+  rowLabel,
+  selectionGroupName,
   mode,
   selectionStyle,
   isSelected,
@@ -307,6 +391,7 @@ function MobileList<TRow>({
   const ToggleControl = multiple ? Checkbox : Radio;
   const isSelectMode = mode === 'select';
   const showSelectCtrl = isSelectMode && selectionStyle === 'checkbox';
+  const isTraySelection = isSelectMode && selectionStyle === 'tray';
   const showActions = mode === 'manage' && !!rowActions;
   const primary = columns.find((c) => c.mobilePrimary) ?? columns[0];
   const details = columns.filter((c) => c.key !== primary?.key);
@@ -319,10 +404,25 @@ function MobileList<TRow>({
     <>
       {rows.map((row) => {
         const id = rowKey(row);
+        const accessibleLabel = rowLabel?.(row) ?? String(id);
         const checked = isSelectMode ? !!isSelected?.(id) : false;
         const onClick = isSelectMode && onToggleSelect ? () => onToggleSelect(row) : undefined;
         return (
-          <MobileCardItem key={id} clickable={isSelectMode} onClick={onClick}>
+          <MobileCardItem
+            key={id}
+            clickable={isSelectMode}
+            onClick={onClick}
+            data-tray-selection={isTraySelection ? '' : undefined}
+          >
+            {isTraySelection && onClick && (
+              <TraySelectionControl
+                checked={checked}
+                label={accessibleLabel}
+                multiple={multiple}
+                selectionGroupName={selectionGroupName}
+                onToggle={onClick}
+              />
+            )}
             <MobilePrimaryRow>
               <div style={{ minWidth: 0, flex: 1 }}>{renderCellContent(primary, row)}</div>
               <div style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
@@ -330,6 +430,8 @@ function MobileList<TRow>({
                   <ToggleControl
                     size="small"
                     checked={checked}
+                    name={multiple ? undefined : selectionGroupName}
+                    inputProps={{ 'aria-label': accessibleLabel }}
                     onChange={() => onToggleSelect?.(row)}
                   />
                 )}

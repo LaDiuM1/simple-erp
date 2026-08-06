@@ -4,6 +4,7 @@ import RouteRoundedIcon from '@mui/icons-material/RouteRounded';
 import { MENU_CODE, MENU_PATH } from '@/shared/config/menuConfig';
 import type { ListApiConfig } from '@/shared/ui/GenericList';
 import type { PageHeaderAction } from '@/shared/ui/layout/PageHeaderActions';
+import { usePermission } from '@/shared/hooks/usePermission';
 import {
   useDeleteSalesContactMutation,
   useDeleteSalesContactsMutation,
@@ -26,6 +27,7 @@ export function useSalesContactListPage(): {
   manageModal: { open: boolean; onClose: () => void };
 } {
   const navigate = useNavigate();
+  const { canWrite } = usePermission(MENU_CODE.SALES_CONTACTS);
   const [manageOpen, setManageOpen] = useState(false);
 
   const api: ListApiConfig<SalesContactSummary, SalesContactListFilters> = {
@@ -51,12 +53,12 @@ export function useSalesContactListPage(): {
   };
 
   const headerActions: PageHeaderAction[] = [
-    {
-      design: 'secondary',
+    ...(canWrite ? [{
+      design: 'secondary' as const,
       label: '컨택 경로 관리',
       icon: <RouteRoundedIcon />,
       onClick: () => setManageOpen(true),
-    },
+    }] : []),
     {
       design: 'create',
       label: '명부 등록',

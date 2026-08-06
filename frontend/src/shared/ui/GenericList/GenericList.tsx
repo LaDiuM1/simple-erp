@@ -11,12 +11,12 @@ import { ExcelUploadModal, type ExcelUploadResult } from '@/shared/ui/ExcelUploa
 import ListSearchFilter from './ListSearchFilter';
 import ListTable from './ListTable';
 import ListPagination from './ListPagination';
+import ListSurfaceToolbar from './ListSurfaceToolbar';
 import { useListState } from './useListState';
 import { useListSelection } from './useListSelection';
 import {
   BulkDeleteButton,
   ExcelDownloadButton,
-  FilterBarArea,
   FilterBarTrailing,
   ListRoot,
   ListSurface,
@@ -59,6 +59,8 @@ export interface GenericListProps<TRow, TFilters extends object> {
   api: ListApiConfig<TRow, TFilters>;
   searchFilter: FilterConfig[];
   column: ColumnConfig<TRow>[];
+  /** 필터와 상단 액션이 모두 불필요한 목록에서 상단 행 전체를 숨긴다. */
+  showFilterArea?: boolean;
 }
 
 /**
@@ -72,6 +74,7 @@ export default function GenericList<TRow, TFilters extends object>({
   api,
   searchFilter,
   column,
+  showFilterArea = true,
 }: GenericListProps<TRow, TFilters>) {
   const state = useListState<TFilters>({
     searchFilter,
@@ -89,7 +92,7 @@ export default function GenericList<TRow, TFilters extends object>({
   const useDeleteHook = api.useDelete ?? noopDeleteHook;
   const [deleteFn] = useDeleteHook();
 
-  const handleDelete = api.useDelete
+  const handleDelete = api.useDelete && canWrite
     ? async (row: TRow) => {
         try {
           const id = api.rowKey(row);
@@ -131,7 +134,7 @@ export default function GenericList<TRow, TFilters extends object>({
   const selectedCount = selection.selectedIds.length;
 
   const handleBulkDelete = async () => {
-    if (!api.useBulkDelete || selectedCount === 0) return;
+    if (!api.useBulkDelete || selectedCount === 0 || !canWrite) return;
     setIsBulkDeleting(true);
     try {
       await bulkDeleteFn(selection.selectedIds).unwrap();
@@ -162,7 +165,7 @@ export default function GenericList<TRow, TFilters extends object>({
   return (
     <ListRoot>
       <ListSurface>
-        <FilterBarArea>
+        <ListSurfaceToolbar visible={showFilterArea}>
           <ListSearchFilter
             searchFilter={searchFilter}
             filters={state.filters as Record<string, unknown>}
@@ -171,7 +174,8 @@ export default function GenericList<TRow, TFilters extends object>({
             }
             onReset={state.resetFilters}
             trailing={
-              (checkboxEnabled && selectedCount > 0) || api.useExcel ? (
+              (checkboxEnabled && selectedCount > 0) || api.useExcel
+                || (canWrite && api.useExcelUpload) ? (
                 <FilterBarTrailing>
                   {checkboxEnabled && selectedCount > 0 && (
                     <BulkDeleteButton
@@ -203,7 +207,7 @@ export default function GenericList<TRow, TFilters extends object>({
               ) : null
             }
           />
-        </FilterBarArea>
+        </ListSurfaceToolbar>
 
         <ListTable<TRow>
           menuCode={api.menuCode}
@@ -218,7 +222,7 @@ export default function GenericList<TRow, TFilters extends object>({
           isLoading={isLoading}
           isFetching={isFetching}
           emptyMessage={api.emptyMessage}
-          onEdit={api.onEdit}
+          onEdit={canWrite ? api.onEdit : undefined}
           onDelete={handleDelete}
           onRowClick={api.onRowClick}
           deleteConfirm={api.deleteConfirm}

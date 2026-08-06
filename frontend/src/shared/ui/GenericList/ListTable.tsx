@@ -1,4 +1,11 @@
-import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
@@ -24,6 +31,7 @@ import {
   MobileDetailRow,
   MobileDetailValue,
   MobilePrimaryRow,
+  RowPrimaryAction,
   StyledSortLabel,
   StyledTableContainer,
   TableScrollArea,
@@ -81,6 +89,12 @@ const CHECKBOX_COL_WIDTH = 48;
  * 100% 줌 / 표준 노트북 폭에서는 스크롤이 안 생기되, 그보다 좁아질 때만 스크롤이 보이도록 설정.
  */
 const TABLE_MIN_WIDTH = 1008;
+
+function activateWithKeyboard(event: KeyboardEvent<HTMLElement>, activate: () => void) {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  activate();
+}
 
 /**
  * 표 영역. 데스크탑은 Table, 모바일은 카드 리스트.
@@ -332,6 +346,7 @@ function DesktopTable<TRow>({
   viewportWidth,
 }: DesktopProps<TRow>) {
   const extraColCount = (showCheckboxCol ? 1 : 0) + 1; // checkbox + No
+  const primary = columns.find((column) => column.mobilePrimary) ?? columns[0];
   const reservedWidth = NO_COL_WIDTH + (showCheckboxCol ? CHECKBOX_COL_WIDTH : 0);
   const { columnWidths, tableWidth } = computeResponsiveColumnLayout(columns, {
     viewportWidth,
@@ -421,7 +436,23 @@ function DesktopTable<TRow>({
                   </BodyCell>
                   {columns.map((col) => (
                     <BodyCell key={col.key} align={col.align ?? 'left'}>
-                      {renderTruncatableCell(col, row, cellCtx)}
+                      {col.key === primary?.key && onRowClick ? (
+                        <RowPrimaryAction
+                          role="button"
+                          tabIndex={0}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onRowClick(row);
+                          }}
+                          onKeyDown={(event) =>
+                            activateWithKeyboard(event, () => onRowClick(row))
+                          }
+                        >
+                          {renderTruncatableCell(col, row, cellCtx)}
+                        </RowPrimaryAction>
+                      ) : (
+                        renderTruncatableCell(col, row, cellCtx)
+                      )}
                     </BodyCell>
                   ))}
                 </BodyRow>
@@ -462,7 +493,23 @@ function MobileCards<TRow>({ columns, rows, rowKey, rowActions, emptyMessage, is
           onClick={onRowClick ? () => onRowClick(row) : undefined}
         >
           <MobilePrimaryRow>
-            <div style={{ minWidth: 0, flex: 1 }}>{renderCellContent(primary, row, cellCtx)}</div>
+            {onRowClick ? (
+              <RowPrimaryAction
+                role="button"
+                tabIndex={0}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRowClick(row);
+                }}
+                onKeyDown={(event) => activateWithKeyboard(event, () => onRowClick(row))}
+              >
+                {renderCellContent(primary, row, cellCtx)}
+              </RowPrimaryAction>
+            ) : (
+              <div style={{ minWidth: 0, flex: 1 }}>
+                {renderCellContent(primary, row, cellCtx)}
+              </div>
+            )}
             {rowActions && (
               <div style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                 {rowActions(row, idx)}

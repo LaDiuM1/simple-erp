@@ -7,6 +7,7 @@ export type { ResponsiveColumnLayout } from './utils';
 /** 내부 building blocks — CommonSearchModal 등 다른 합성 위젯에서 재사용. */
 export { default as ListSearchFilter } from './ListSearchFilter';
 export { default as ListPagination } from './ListPagination';
+export { default as ListSurfaceToolbar } from './ListSurfaceToolbar';
 export { useListState } from './useListState';
 
 /**

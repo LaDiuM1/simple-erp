@@ -130,6 +130,7 @@ export default function CommonSearchModal<TRow, TFilters extends object>({
           rows={visibleRows}
           columns={column}
           rowKey={api.rowKey}
+          rowLabel={(row) => api.rowLabel?.(row) ?? String(api.rowKey(row))}
           mode="select"
           selectionStyle={selectionStyle}
           isSelected={isSelected}

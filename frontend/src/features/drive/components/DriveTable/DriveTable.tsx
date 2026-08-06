@@ -19,7 +19,7 @@ import {
 import { RowActions, formatDateTime } from '@/shared/ui/GenericTabbedTable';
 import { formatFileSize } from '@/shared/utils/formatFileSize';
 import type { DriveFileItem, DriveFolderItem } from '@/features/drive/types';
-import { FileNameText, FolderNameText } from './DriveTable.styles';
+import { FileNameButton, FolderNameButton } from './DriveTable.styles';
 
 const TABLE_MIN_WIDTH = 720;
 const ROW_HEIGHT = 44;
@@ -96,7 +96,15 @@ export default function DriveTable({
                       style={{ height: ROW_HEIGHT }}
                     >
                       <BodyCell>
-                        <FolderNameText>{folder.name}</FolderNameText>
+                        <FolderNameButton
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onOpenFolder(folder);
+                          }}
+                        >
+                          {folder.name}
+                        </FolderNameButton>
                       </BodyCell>
                       <BodyCell>
                         <Muted />
@@ -147,7 +155,15 @@ export default function DriveTable({
                       style={{ height: ROW_HEIGHT }}
                     >
                       <BodyCell>
-                        <FileNameText>{file.name}</FileNameText>
+                        <FileNameButton
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDownloadFile(file);
+                          }}
+                        >
+                          {file.name}
+                        </FileNameButton>
                       </BodyCell>
                       <BodyCell>{formatFileSize(file.size)}</BodyCell>
                       <BodyCell>{file.uploaderName ?? <Muted />}</BodyCell>

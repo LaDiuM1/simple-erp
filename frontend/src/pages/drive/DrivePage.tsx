@@ -1,6 +1,6 @@
 import PageHeaderActions from '@/shared/ui/layout/PageHeaderActions';
 import QueryGate from '@/shared/ui/feedback/QueryGate';
-import { ListRoot, ListSurface } from '@/shared/ui/GenericList';
+import { ListRoot, ListSurface, ListSurfaceToolbar } from '@/shared/ui/GenericList';
 import DriveBreadcrumb from '@/features/drive/components/DriveBreadcrumb/DriveBreadcrumb';
 import DriveTable from '@/features/drive/components/DriveTable/DriveTable';
 import DriveModals from '@/features/drive/components/DriveModals/DriveModals';
@@ -34,7 +34,9 @@ export default function DrivePage() {
         {({ browse }) => (
           <ListRoot>
             <ListSurface>
-              <DriveBreadcrumb breadcrumb={browse.breadcrumb} onNavigate={onNavigateFolder} />
+              <ListSurfaceToolbar visible={browse.breadcrumb.length > 0}>
+                <DriveBreadcrumb breadcrumb={browse.breadcrumb} onNavigate={onNavigateFolder} />
+              </ListSurfaceToolbar>
               <DriveTable
                 folders={browse.folders}
                 files={browse.files}

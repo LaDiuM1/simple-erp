@@ -65,6 +65,10 @@ export const BodyRow = styled(TableRow, {
   '&:hover': {
     backgroundColor: clickable ? theme.palette.action.hover : theme.palette.background.default,
   },
+  '&[data-tray-selection]:focus-within': {
+    outline: `2px solid ${theme.palette.primary.main}`,
+    outlineOffset: -2,
+  },
   '& > td': {
     paddingLeft: '1rem',
     paddingRight: '1rem',
@@ -128,6 +132,10 @@ export const MobileCardItem = styled(Box, {
   '&:hover': {
     backgroundColor: clickable ? theme.palette.action.hover : theme.palette.background.default,
   },
+  '&[data-tray-selection]:focus-within': {
+    outline: `2px solid ${theme.palette.primary.main}`,
+    outlineOffset: -2,
+  },
   '&:first-of-type': { borderTop: 'none' },
 }));
 
@@ -137,6 +145,22 @@ export const MobilePrimaryRow = styled(Box)({
   alignItems: 'flex-start',
   gap: '0.5rem',
 });
+
+/** 행 전체 클릭과 별개로 키보드 사용자가 상세 진입을 선택할 수 있는 첫 셀/제목 버튼. */
+export const RowPrimaryAction = styled('div')(({ theme }) => ({
+  display: 'block',
+  width: '100%',
+  minWidth: 0,
+  padding: 0,
+  color: 'inherit',
+  textAlign: 'inherit',
+  cursor: 'pointer',
+  borderRadius: 3,
+  '&:focus-visible': {
+    outline: `2px solid ${theme.palette.primary.main}`,
+    outlineOffset: 2,
+  },
+}));
 
 export const MobileDetailRow = styled(Box)({
   display: 'flex',
