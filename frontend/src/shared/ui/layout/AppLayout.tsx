@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { Suspense, useCallback, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -12,6 +12,8 @@ import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
 import { MENU_CONFIG } from '@/shared/config/menuConfig';
 import { getPageTitle } from '@/app/pageTitles';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
+import PageErrorBoundary from '@/shared/ui/feedback/PageErrorBoundary';
+import PageLoadingFallback from '@/shared/ui/feedback/PageLoadingFallback';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import PageHeader from './PageHeader';
 import {
@@ -183,7 +185,11 @@ export default function AppLayout() {
             }
           />
           <MainContent>
-            <Outlet context={{ pageHeaderActionsNode, setTitleOverride }} />
+            <PageErrorBoundary key={location.pathname}>
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Outlet context={{ pageHeaderActionsNode, setTitleOverride }} />
+              </Suspense>
+            </PageErrorBoundary>
           </MainContent>
         </ContentColumn>
       </LayoutBody>
