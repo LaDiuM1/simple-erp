@@ -2,7 +2,6 @@ package io.github.ladium1.erp.global.audit.internal.service;
 
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.internal.entity.AuditLog;
-import io.github.ladium1.erp.global.audit.internal.repository.AuditLogRepository;
 import io.github.ladium1.erp.global.menu.Menu;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,7 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,7 +22,7 @@ class AuditServiceTest {
     @InjectMocks
     private AuditService auditService;
 
-    @Mock private AuditLogRepository auditLogRepository;
+    @Mock private AuditLogWriter auditLogWriter;
 
     @Test
     @DisplayName("record 성공 — 모든 컬럼이 채워진 AuditLog 가 저장된다")
@@ -38,7 +37,7 @@ class AuditServiceTest {
 
         // then
         ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
-        verify(auditLogRepository).save(captor.capture());
+        verify(auditLogWriter).write(captor.capture());
 
         AuditLog saved = captor.getValue();
         assertThat(saved.getMenuCode()).isEqualTo(Menu.EMPLOYEES);
@@ -64,16 +63,16 @@ class AuditServiceTest {
 
         // then
         ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
-        verify(auditLogRepository).save(captor.capture());
+        verify(auditLogWriter).write(captor.capture());
         assertThat(captor.getValue().getTargetType()).isNull();
     }
 
     @Test
     @DisplayName("record 실패 — repository 예외는 swallow (도메인 트랜잭션 영향 X)")
-    void record_swallow_repository_exception() {
+    void record_swallow_writer_exception() {
         // given
-        given(auditLogRepository.save(any(AuditLog.class)))
-                .willThrow(new RuntimeException("DB down"));
+        willThrow(new RuntimeException("DB down"))
+                .given(auditLogWriter).write(any(AuditLog.class));
 
         // when & then — 예외가 호출자로 전파되지 않음
         auditService.record(
@@ -81,6 +80,6 @@ class AuditServiceTest {
                 "admin", null, null, null, null, null
         );
 
-        verify(auditLogRepository).save(any(AuditLog.class));
+        verify(auditLogWriter).write(any(AuditLog.class));
     }
 }

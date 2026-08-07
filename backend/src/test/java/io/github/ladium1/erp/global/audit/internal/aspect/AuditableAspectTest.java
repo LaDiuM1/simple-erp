@@ -17,6 +17,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Collections;
 
@@ -41,6 +42,10 @@ class AuditableAspectTest {
 
     @AfterEach
     void clearThreadLocals() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+        TransactionSynchronizationManager.setActualTransactionActive(false);
         SecurityContextHolder.clearContext();
         MDC.clear();
     }
@@ -156,6 +161,44 @@ class AuditableAspectTest {
                         eq("SYSTEM"), isNull(),
                         eq("Employee"), isNull(),
                         isNull(), isNull());
+    }
+
+    @Test
+    @DisplayName("트랜잭션 업무는 commit 이후에만 성공 감사 로그를 기록한다")
+    void records_transactional_action_only_after_commit() {
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        TransactionSynchronizationManager.initSynchronization();
+
+        target.create();
+
+        verify(auditService, org.mockito.Mockito.never()).record(
+                eq(Menu.EMPLOYEES), eq(AuditAction.CREATE),
+                eq("SYSTEM"), isNull(), eq("Employee"), eq(42L), isNull(), isNull()
+        );
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(org.springframework.transaction.support.TransactionSynchronization::afterCommit);
+        verify(auditService).record(
+                eq(Menu.EMPLOYEES), eq(AuditAction.CREATE),
+                eq("SYSTEM"), isNull(), eq("Employee"), eq(42L), isNull(), isNull()
+        );
+    }
+
+    @Test
+    @DisplayName("트랜잭션이 rollback되면 성공 감사 로그를 기록하지 않는다")
+    void does_not_record_transactional_action_after_rollback() {
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        TransactionSynchronizationManager.initSynchronization();
+
+        target.create();
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(sync -> sync.afterCompletion(
+                        org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK
+                ));
+
+        verify(auditService, org.mockito.Mockito.never()).record(
+                eq(Menu.EMPLOYEES), eq(AuditAction.CREATE),
+                eq("SYSTEM"), isNull(), eq("Employee"), eq(42L), isNull(), isNull()
+        );
     }
 
     private static void authenticate(String username) {

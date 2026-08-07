@@ -1,7 +1,9 @@
 package io.github.ladium1.erp.global.audit.internal.aspect;
 
 import io.github.ladium1.erp.global.audit.Auditable;
+import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.internal.service.AuditService;
+import io.github.ladium1.erp.global.menu.Menu;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.JoinPoint;
@@ -12,6 +14,8 @@ import org.slf4j.MDC;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -28,7 +32,7 @@ public class AuditableAspect {
 
     @AfterReturning(pointcut = "@annotation(auditable)", returning = "returned")
     public void recordAfterReturning(JoinPoint joinPoint, Auditable auditable, Object returned) {
-        auditService.record(
+        AuditRecord record = new AuditRecord(
                 auditable.menu(),
                 auditable.action(),
                 resolveActorLoginId(),
@@ -38,6 +42,17 @@ public class AuditableAspect {
                 MDC.get(TRACE_ID_KEY),
                 resolveIpAddress()
         );
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    record.save(auditService);
+                }
+            });
+            return;
+        }
+        record.save(auditService);
     }
 
     private static String resolveActorLoginId() {
@@ -83,5 +98,29 @@ public class AuditableAspect {
             return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    private record AuditRecord(
+            Menu menu,
+            AuditAction action,
+            String actorLoginId,
+            Long actorId,
+            String targetType,
+            Long targetId,
+            String traceId,
+            String ipAddress
+    ) {
+        void save(AuditService auditService) {
+            auditService.record(
+                    menu,
+                    action,
+                    actorLoginId,
+                    actorId,
+                    targetType,
+                    targetId,
+                    traceId,
+                    ipAddress
+            );
+        }
     }
 }
