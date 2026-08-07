@@ -36,6 +36,7 @@ EXPOSE 8080
 ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom"
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -fsS http://localhost:8080/actuator/health || exit 1
+    CMD curl -fsS http://localhost:8080/actuator/health/readiness \
+        | grep -Eq '^[[:space:]]*\{"status"[[:space:]]*:[[:space:]]*"UP"\}[[:space:]]*$' || exit 1
 
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]

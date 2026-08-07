@@ -48,7 +48,7 @@ jobs:
             # 헬스 검증 — 60초 polling
             echo "Waiting for backend health..."
             for i in $(seq 1 30); do
-              if curl -fsS http://localhost/actuator/health > /dev/null 2>&1; then
+              if curl -fsS http://localhost/actuator/health/readiness > /dev/null 2>&1; then
                 echo "✓ Backend healthy (after ${i} attempts)"
                 exit 0
               fi
