@@ -61,6 +61,7 @@ public class SecurityConfig {
                 // 전역 권한 설정 (세부 권한은 컨트롤러 위임)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/*/auth/**").permitAll()
+                        .requestMatchers("/api/v1/demo/status").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .anyRequest().authenticated()
                 )
