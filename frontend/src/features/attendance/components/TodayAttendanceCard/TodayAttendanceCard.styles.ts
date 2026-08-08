@@ -73,6 +73,13 @@ export const ButtonRow = styled(Box)({
   gap: '0.5rem',
 });
 
+export const PositionNotice = styled(Typography)(({ theme }) => ({
+  marginTop: '-0.375rem',
+  color: theme.palette.text.secondary,
+  fontSize: '0.75rem',
+  lineHeight: 1.45,
+}));
+
 const actionButtonBase = {
   height: 36,
   paddingLeft: '1rem',

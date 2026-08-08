@@ -12,9 +12,11 @@ import ServiceOverview from '@/features/dashboard/components/ServiceOverview/Ser
 import WarrantyExpiring from '@/features/dashboard/components/WarrantyExpiring/WarrantyExpiring';
 import DashboardSectionHeading from '@/features/dashboard/components/DashboardSectionHeading/DashboardSectionHeading';
 import { useDashboardPage } from '@/features/dashboard/hooks/useDashboardPage';
+import DemoExperienceGuide from '@/features/demo/components/DemoExperienceGuide';
 import {
   DashboardGroup,
   DashboardRoot,
+  DemoGuideRegion,
   KpiGrid,
   OperationsGrid,
   OperationsRail,
@@ -157,6 +159,10 @@ function DashboardContent({
               />}
             </RecentGrid>
           </DashboardGroup>}
+
+      <DemoGuideRegion>
+        <DemoExperienceGuide profile={profile} />
+      </DemoGuideRegion>
     </DashboardRoot>
   );
 }

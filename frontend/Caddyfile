@@ -18,6 +18,16 @@
 		max_size {$API_REQUEST_BODY_MAX_SIZE:32MB}
 	}
 
+	# 데모 상태는 backend reset/중지 중에도 정적 web 컨테이너에서 계속 제공한다.
+	# demo overlay 가 /srv/demo/status.json 을 원자적으로 교체하며, 기본 이미지는 disabled 상태다.
+	@demoStatus path /api/v1/demo/status
+	handle @demoStatus {
+		root * /srv
+		rewrite * /demo/status.json
+		header Cache-Control "no-store, max-age=0"
+		file_server
+	}
+
 	# 백엔드 API + actuator 헬스체크 → backend:8080
 	handle /api/* {
 		reverse_proxy backend:8080

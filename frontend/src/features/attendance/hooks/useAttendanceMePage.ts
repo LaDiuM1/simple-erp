@@ -15,11 +15,10 @@ import {
   ATTENDANCE_STATUS_PATH,
   LEAVES_PATH,
 } from '@/features/attendance/config/attendancePaths';
-import {
-  geolocationErrorMessage,
-  getCurrentPosition,
-} from '@/features/attendance/utils/geolocation';
+import { geolocationErrorMessage } from '@/features/attendance/utils/geolocation';
+import { resolveAttendancePosition } from '@/features/attendance/utils/resolveAttendancePosition';
 import { MONTH_FILTER_OPTIONS, yearFilterOptions } from '@/features/attendance/utils/periodOptions';
+import { useDemo } from '@/shared/demo/DemoContext';
 
 /**
  * 내 출퇴근 page hook — 오늘 카드 (GPS 출퇴근) + 월별 기록 조회 + headerActions 묶음.
@@ -30,6 +29,7 @@ export function useAttendanceMePage() {
   const { canWrite } = usePermission(MENU_CODE.ATTENDANCE);
   const snackbar = useSnackbar();
   const submit = useApiSubmit();
+  const demo = useDemo();
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -53,7 +53,11 @@ export function useAttendanceMePage() {
   const resolvePosition = async (kind: 'in' | 'out') => {
     setLocating(kind);
     try {
-      return await getCurrentPosition();
+      const position = await resolveAttendancePosition(demo.status);
+      if (!position && demo.status.enabled) {
+        snackbar.error('데모용 모의 위치가 준비되지 않아 출퇴근을 처리할 수 없습니다.');
+      }
+      return position;
     } catch (error) {
       snackbar.error(geolocationErrorMessage(error));
       return null;
@@ -66,7 +70,7 @@ export function useAttendanceMePage() {
     const position = await resolvePosition('in');
     if (!position) return;
     await submit(
-      checkIn({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+      checkIn(position),
       { success: '출근 처리되었습니다.' },
     );
   };
@@ -75,7 +79,7 @@ export function useAttendanceMePage() {
     const position = await resolvePosition('out');
     if (!position) return;
     await submit(
-      checkOut({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+      checkOut(position),
       { success: '퇴근 처리되었습니다.' },
     );
   };
@@ -99,11 +103,17 @@ export function useAttendanceMePage() {
     today: {
       attendance: todayAttendance,
       // isFetching 포함 — 체크 성공 직후 refetch 완료 전 재클릭 (BE 409) 방지.
-      isLoading: currentMonthQuery.isFetching,
+      isLoading: currentMonthQuery.isFetching
+        || (demo.status.enabled && !demo.status.simulatedLocation),
       isCheckingIn: locating === 'in' || isCheckingIn,
       isCheckingOut: locating === 'out' || isCheckingOut,
       onCheckIn: handleCheckIn,
       onCheckOut: handleCheckOut,
+      positionNotice: demo.status.enabled
+        ? demo.status.simulatedLocation
+          ? '데모에서는 실제 GPS 대신 공개된 합성 위치를 사용합니다.'
+          : '데모용 모의 위치가 준비되지 않아 출퇴근 기능이 잠겨 있습니다.'
+        : null,
     },
     monthFilter: {
       year,

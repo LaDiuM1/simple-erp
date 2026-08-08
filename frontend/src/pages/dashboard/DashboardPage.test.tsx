@@ -21,9 +21,13 @@ vi.mock('@/features/dashboard/hooks/useDashboardPage', () => ({
   useDashboardPage: mocks.useDashboardPage,
 }));
 
+vi.mock('@/features/demo/components/DemoExperienceGuide', () => ({
+  default: () => <div>추천 체험 흐름</div>,
+}));
+
 const profile: EmployeeProfileResponse = {
   id: 1,
-  loginId: 'manager',
+  loginId: 'demo.manager',
   name: '김서현',
   departmentName: '경영지원팀',
   positionName: '팀장',

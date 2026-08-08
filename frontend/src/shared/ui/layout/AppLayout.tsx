@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, type ReactNode, useCallback, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -42,7 +42,11 @@ interface ProfileSummary {
 
 const initialExpandedGroups = () => new Set<string>(MENU_CONFIG.map((g) => g.code));
 
-export default function AppLayout() {
+interface AppLayoutProps {
+  environmentBanner?: ReactNode;
+}
+
+export default function AppLayout({ environmentBanner }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [pageHeaderActionsNode, setPageHeaderActionsNode] = useState<HTMLElement | null>(null);
@@ -175,6 +179,7 @@ export default function AppLayout() {
         </Sidebar>
 
         <ContentColumn>
+          {environmentBanner}
           <PageHeader
             title={pageTitle}
             actions={

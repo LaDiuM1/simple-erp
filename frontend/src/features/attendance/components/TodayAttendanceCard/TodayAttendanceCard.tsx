@@ -16,6 +16,7 @@ import {
   StatLabel,
   StatSub,
   StatValue,
+  PositionNotice,
 } from './TodayAttendanceCard.styles';
 
 export interface TodayAttendanceCardProps {
@@ -27,6 +28,8 @@ export interface TodayAttendanceCardProps {
   isCheckingOut: boolean;
   onCheckIn: () => void;
   onCheckOut: () => void;
+  /** 데모 환경에서는 브라우저 GPS를 요청하지 않고 합성 좌표를 사용한다. */
+  positionNotice?: string | null;
 }
 
 /**
@@ -40,6 +43,7 @@ export default function TodayAttendanceCard({
   isCheckingOut,
   onCheckIn,
   onCheckOut,
+  positionNotice,
 }: TodayAttendanceCardProps) {
   const checkInTime = formatTime(attendance?.checkInAt ?? null);
   const checkOutTime = formatTime(attendance?.checkOutAt ?? null);
@@ -82,6 +86,7 @@ export default function TodayAttendanceCard({
           {isCheckingOut ? '처리 중...' : '퇴근'}
         </CheckOutButton>
       </ButtonRow>
+      {positionNotice && <PositionNotice>{positionNotice}</PositionNotice>}
     </CardRoot>
   );
 }

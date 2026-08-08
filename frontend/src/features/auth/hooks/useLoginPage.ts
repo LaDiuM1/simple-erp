@@ -6,6 +6,7 @@ import { useLoginMutation } from '@/features/auth/api/authApi';
 import { performLogin } from '@/features/auth/store/authActions';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { getErrorMessage } from '@/shared/api/error';
+import type { DemoPublicAccount } from '@/shared/demo/demoContract';
 
 /**
  * 로그인 page hook — 이미 로그인된 상태 신호 / 입력값 / 에러 / submit 핸들러 묶음.
@@ -19,7 +20,7 @@ export function useLoginPage() {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
 
-  const [login, { isLoading, error }] = useLoginMutation();
+  const [login, { isLoading, error, reset }] = useLoginMutation();
   const errorMessage = getErrorMessage(error) ?? null;
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
@@ -32,6 +33,12 @@ export function useLoginPage() {
     }
   };
 
+  const fillCredentials = (account: DemoPublicAccount) => {
+    setLoginId(account.loginId);
+    setPassword(account.password);
+    reset();
+  };
+
   return {
     isAuthenticated: !!accessToken,
     loginId,
@@ -40,6 +47,7 @@ export function useLoginPage() {
     setPassword,
     isLoading,
     errorMessage,
+    fillCredentials,
     handleSubmit,
   };
 }

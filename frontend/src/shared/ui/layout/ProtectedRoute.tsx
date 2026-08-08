@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
 import { useGetMyProfileQuery } from '@/features/employee/api/employeeApi';
@@ -6,7 +7,11 @@ import LoadingScreen from '@/shared/ui/feedback/LoadingScreen';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import AppLayout from './AppLayout';
 
-export default function ProtectedRoute() {
+interface ProtectedRouteProps {
+  environmentBanner?: ReactNode;
+}
+
+export default function ProtectedRoute({ environmentBanner }: ProtectedRouteProps) {
   const accessToken = useAppSelector((s) => s.auth.accessToken);
   const { isLoading, isError, error, refetch } = useGetMyProfileQuery(undefined, {
     skip: !accessToken,
@@ -18,5 +23,5 @@ export default function ProtectedRoute() {
   if (isLoading) return <LoadingScreen />;
   if (isError) return <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />;
 
-  return <AppLayout />;
+  return <AppLayout environmentBanner={environmentBanner} />;
 }

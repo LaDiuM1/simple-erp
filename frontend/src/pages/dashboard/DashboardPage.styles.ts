@@ -56,3 +56,7 @@ export const OperationsRail = styled(Box)({
   minWidth: 0,
   '&:empty': { display: 'none' },
 });
+
+export const DemoGuideRegion = styled(Box)({
+  maxWidth: 720,
+});

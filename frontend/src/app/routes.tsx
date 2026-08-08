@@ -1,8 +1,9 @@
 import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import DemoEnvironmentBanner from '@/features/demo/components/DemoEnvironmentBanner';
+import { MENU_CODE } from '@/shared/config/menuConfig';
 import ProtectedRoute from '@/shared/ui/layout/ProtectedRoute';
 import WritePermissionRoute from '@/shared/ui/layout/WritePermissionRoute';
-import { MENU_CODE } from '@/shared/config/menuConfig';
 import LoginPage from '@/pages/login/LoginPage';
 
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'));
@@ -82,7 +83,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route element={<ProtectedRoute />}>
+      <Route element={<ProtectedRoute environmentBanner={<DemoEnvironmentBanner />} />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/employee/me" element={<EmployeeMePage />} />
         <Route path="/employees" element={<EmployeeListPage />} />

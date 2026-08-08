@@ -1,0 +1,20 @@
+{
+  "status": 200,
+  "message": "데모 기능이 비활성화되어 있습니다.",
+  "data": {
+    "enabled": false,
+    "environmentName": "PRODUCTION",
+    "state": "READY",
+    "stateChangedAt": null,
+    "generation": null,
+    "candidateGeneration": null,
+    "lastResetAt": null,
+    "nextResetAt": null,
+    "warningBeforeSeconds": 300,
+    "writeLockBeforeSeconds": 120,
+    "writeLocked": false,
+    "notice": "",
+    "uploadEnabled": true,
+    "publicAccounts": []
+  }
+}

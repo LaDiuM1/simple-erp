@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import Collapse from '@mui/material/Collapse';
 import { useLoginPage } from '@/features/auth/hooks/useLoginPage';
+import DemoLoginCard from '@/features/demo/components/DemoLoginCard';
 import {
   AppSubtitle,
   AppTitle,
@@ -25,6 +26,7 @@ export default function LoginPage() {
     setPassword,
     isLoading,
     errorMessage,
+    fillCredentials,
     handleSubmit,
   } = useLoginPage();
 
@@ -72,10 +74,17 @@ export default function LoginPage() {
             <ErrorBox>{errorMessage}</ErrorBox>
           </Collapse>
 
-          <SubmitButton type="submit" variant="contained" fullWidth disabled={isLoading}>
+          <SubmitButton
+            type="submit"
+            variant="contained"
+            fullWidth
+            disabled={isLoading}
+          >
             {isLoading ? '로그인 중...' : '로그인'}
           </SubmitButton>
         </LoginForm>
+
+        <DemoLoginCard onFill={fillCredentials} />
       </LoginCard>
     </LoginContainer>
   );
