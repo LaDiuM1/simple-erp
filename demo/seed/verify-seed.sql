@@ -1,0 +1,1336 @@
+-- Zero-row success contract: any returned row is a seed violation.
+SET NAMES utf8mb4;
+SET time_zone = '+09:00';
+SET @verify_now = (SELECT reset_at FROM demo_seed_manifest WHERE id=1);
+SET @verify_today = (SELECT DATE(reset_at) FROM demo_seed_manifest WHERE id=1);
+SET @verify_month = STR_TO_DATE(DATE_FORMAT(@verify_today, '%Y-%m-01'), '%Y-%m-%d');
+
+DROP TEMPORARY TABLE IF EXISTS demo_seed_violations;
+CREATE TEMPORARY TABLE demo_seed_violations (
+  check_name varchar(100) NOT NULL,
+  record_id varchar(100) NOT NULL,
+  detail varchar(500) NOT NULL
+);
+
+-- Canonical schema and exact/ranged dataset cardinality.
+INSERT INTO demo_seed_violations
+SELECT 'schema.table_count', 'schema', CONCAT('expected 43, got ', COUNT(*))
+FROM information_schema.tables
+WHERE table_schema=DATABASE() AND table_name<>'demo_seed_violations'
+HAVING COUNT(*)<>43;
+
+INSERT INTO demo_seed_violations
+SELECT 'schema.application_enum', CONCAT(table_name,'.',column_name), column_type
+FROM information_schema.columns
+WHERE table_schema=DATABASE() AND data_type='enum' AND table_name<>'event_publication';
+
+INSERT INTO demo_seed_violations
+SELECT 'manifest.singleton', 'demo_seed_manifest', CONCAT('rows=',COUNT(*)) FROM demo_seed_manifest HAVING COUNT(*)<>1;
+INSERT INTO demo_seed_violations
+SELECT 'manifest.version', CAST(id AS char), CONCAT(seed_version,'/',schema_version,'/',scenario_version)
+FROM demo_seed_manifest
+WHERE id<>1 OR seed_version<>'2026.08.08.1' OR schema_version<>'7a6925e0-post-migrator-v1' OR scenario_version<>'demo-v2';
+INSERT INTO demo_seed_violations
+SELECT 'manifest.reset_at', CAST(id AS char), CAST(reset_at AS char)
+FROM demo_seed_manifest
+WHERE reset_at>UTC_TIMESTAMP(6)+INTERVAL 9 HOUR+INTERVAL 5 MINUTE
+   OR reset_at<UTC_TIMESTAMP(6)+INTERVAL 9 HOUR-INTERVAL 30 MINUTE;
+
+INSERT INTO demo_seed_violations
+SELECT 'count.roles','roles',CAST(COUNT(*) AS char) FROM roles HAVING COUNT(*)<>3 UNION ALL
+SELECT 'count.role_menus','role_menus',CAST(COUNT(*) AS char) FROM role_menus HAVING COUNT(*)<>52 UNION ALL
+SELECT 'count.acquisition_sources','acquisition_sources',CAST(COUNT(*) AS char) FROM acquisition_sources HAVING COUNT(*)<>8 UNION ALL
+SELECT 'count.departments','departments',CAST(COUNT(*) AS char) FROM departments HAVING COUNT(*)<>8 UNION ALL
+SELECT 'count.positions','positions',CAST(COUNT(*) AS char) FROM positions HAVING COUNT(*)<>7 UNION ALL
+SELECT 'count.employees','employees',CAST(COUNT(*) AS char) FROM employees HAVING COUNT(*)<>22 UNION ALL
+SELECT 'count.code_rules','code_rules',CAST(COUNT(*) AS char) FROM code_rules HAVING COUNT(*)<>5 UNION ALL
+SELECT 'count.code_rule_attribute_mappings','code_rule_attribute_mappings',CAST(COUNT(*) AS char) FROM code_rule_attribute_mappings HAVING COUNT(*)<>0 UNION ALL
+SELECT 'count.code_sequences','code_sequences',CAST(COUNT(*) AS char) FROM code_sequences HAVING COUNT(*) NOT BETWEEN 6 AND 8 UNION ALL
+SELECT 'count.categories','product_categories',CAST(COUNT(*) AS char) FROM product_categories HAVING COUNT(*)<>10 UNION ALL
+SELECT 'count.suppliers','suppliers',CAST(COUNT(*) AS char) FROM suppliers HAVING COUNT(*)<>8 UNION ALL
+SELECT 'count.products','products',CAST(COUNT(*) AS char) FROM products HAVING COUNT(*)<>32 UNION ALL
+SELECT 'count.customers','customers',CAST(COUNT(*) AS char) FROM customers HAVING COUNT(*)<>48 UNION ALL
+SELECT 'count.contacts','sales_contacts',CAST(COUNT(*) AS char) FROM sales_contacts HAVING COUNT(*)<>72 UNION ALL
+SELECT 'count.employments','sales_contact_employments',CAST(COUNT(*) AS char) FROM sales_contact_employments HAVING COUNT(*)<>84 UNION ALL
+SELECT 'count.contact_sources','sales_contact_sources',CAST(COUNT(*) AS char) FROM sales_contact_sources HAVING COUNT(*)<>96 UNION ALL
+SELECT 'count.assignments','sales_assignments',CAST(COUNT(*) AS char) FROM sales_assignments HAVING COUNT(*)<>60 UNION ALL
+SELECT 'count.activities','sales_activities',CAST(COUNT(*) AS char) FROM sales_activities HAVING COUNT(*)<>144 UNION ALL
+SELECT 'count.contracts','contracts',CAST(COUNT(*) AS char) FROM contracts HAVING COUNT(*)<>42 UNION ALL
+SELECT 'count.payments','contract_payments',CAST(COUNT(*) AS char) FROM contract_payments HAVING COUNT(*)<>84 UNION ALL
+SELECT 'count.notes','contract_notes',CAST(COUNT(*) AS char) FROM contract_notes HAVING COUNT(*)<>56 UNION ALL
+SELECT 'count.equipments','equipments',CAST(COUNT(*) AS char) FROM equipments HAVING COUNT(*)<>17 UNION ALL
+SELECT 'count.engineers','engineers',CAST(COUNT(*) AS char) FROM engineers HAVING COUNT(*)<>9 UNION ALL
+SELECT 'count.after_services','after_services',CAST(COUNT(*) AS char) FROM after_services HAVING COUNT(*)<>45 UNION ALL
+SELECT 'count.visits','service_visits',CAST(COUNT(*) AS char) FROM service_visits HAVING COUNT(*)<>60 UNION ALL
+SELECT 'count.service_expenses','service_expenses',CAST(COUNT(*) AS char) FROM service_expenses HAVING COUNT(*)<>90 UNION ALL
+SELECT 'count.approvals','approval_documents',CAST(COUNT(*) AS char) FROM approval_documents HAVING COUNT(*)<>36 UNION ALL
+SELECT 'count.steps','approval_steps',CAST(COUNT(*) AS char) FROM approval_steps HAVING COUNT(*)<>52 UNION ALL
+SELECT 'count.approval_files','approval_document_attachments',CAST(COUNT(*) AS char) FROM approval_document_attachments HAVING COUNT(*)<>14 UNION ALL
+SELECT 'count.claims','expense_claims',CAST(COUNT(*) AS char) FROM expense_claims HAVING COUNT(*)<>12 UNION ALL
+SELECT 'count.expense_items','expense_items',CAST(COUNT(*) AS char) FROM expense_items HAVING COUNT(*)<>30 UNION ALL
+SELECT 'count.leave_requests','leave_requests',CAST(COUNT(*) AS char) FROM leave_requests HAVING COUNT(*)<>16 UNION ALL
+SELECT 'count.leave_balances','leave_balances',CAST(COUNT(*) AS char) FROM leave_balances HAVING COUNT(*)<>20 UNION ALL
+SELECT 'count.attendances','attendances',CAST(COUNT(*) AS char) FROM attendances HAVING COUNT(*) NOT BETWEEN 380 AND 450 UNION ALL
+SELECT 'count.posts','posts',CAST(COUNT(*) AS char) FROM posts HAVING COUNT(*)<>28 UNION ALL
+SELECT 'count.comments','post_comments',CAST(COUNT(*) AS char) FROM post_comments HAVING COUNT(*)<>64 UNION ALL
+SELECT 'count.post_files','post_attachment_files',CAST(COUNT(*) AS char) FROM post_attachment_files HAVING COUNT(*)<>4 UNION ALL
+SELECT 'count.folders','drive_folders',CAST(COUNT(*) AS char) FROM drive_folders HAVING COUNT(*)<>10 UNION ALL
+SELECT 'count.drive_files','drive_files',CAST(COUNT(*) AS char) FROM drive_files HAVING COUNT(*)<>12 UNION ALL
+SELECT 'count.stored_files','stored_files',CAST(COUNT(*) AS char) FROM stored_files HAVING COUNT(*)<>30 UNION ALL
+SELECT 'count.audit','audit_logs',CAST(COUNT(*) AS char) FROM audit_logs HAVING COUNT(*)<>90 UNION ALL
+SELECT 'count.event_publication','event_publication',CAST(COUNT(*) AS char) FROM event_publication HAVING COUNT(*)<>0;
+
+-- File ownership is derived independently from every business reference. Raw
+-- reference multiplicity is allowed only when all rows resolve to one owner tuple.
+DROP TEMPORARY TABLE IF EXISTS demo_file_owner_references;
+CREATE TEMPORARY TABLE demo_file_owner_references (
+  file_id bigint NOT NULL,
+  owner_type varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  owner_id bigint NOT NULL,
+  uploader_id bigint NOT NULL
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO demo_file_owner_references
+SELECT storage_file_id, 'DRIVE_FILE', id, uploader_id FROM drive_files
+UNION ALL
+SELECT a.file_id, 'BOARD_POST', a.post_id, p.author_id
+FROM post_attachment_files a JOIN posts p ON p.id=a.post_id
+UNION ALL
+SELECT a.file_id,
+       IF(d.doc_type='EXPENSE','EXPENSE_CLAIM','APPROVAL_DOCUMENT'),
+       IF(d.doc_type='EXPENSE',d.ref_id,d.id),
+       d.drafter_id
+FROM approval_document_attachments a
+JOIN approval_documents d ON d.id=a.document_id
+UNION ALL
+SELECT i.receipt_file_id, 'EXPENSE_CLAIM', i.claim_id, c.claimant_id
+FROM expense_items i JOIN expense_claims c ON c.id=i.claim_id
+WHERE i.receipt_file_id IS NOT NULL;
+
+DROP TEMPORARY TABLE IF EXISTS demo_file_owner_contract;
+CREATE TEMPORARY TABLE demo_file_owner_contract AS
+SELECT file_id,
+       MIN(owner_type) AS owner_type,
+       MIN(owner_id) AS owner_id,
+       MIN(uploader_id) AS uploader_id,
+       COUNT(DISTINCT owner_type,owner_id,uploader_id) AS distinct_owner_count,
+       COUNT(*) AS raw_reference_count
+FROM demo_file_owner_references
+GROUP BY file_id;
+
+INSERT INTO demo_seed_violations
+SELECT 'file.reference_missing',r.file_id,
+       CONCAT_WS('/',r.owner_type,r.owner_id,r.uploader_id)
+FROM demo_file_owner_references r
+LEFT JOIN stored_files f ON f.id=r.file_id
+WHERE f.id IS NULL;
+
+INSERT INTO demo_seed_violations
+SELECT 'file.owner_contract',f.id,
+       CONCAT('stored=',CONCAT_WS('/',f.status,f.owner_type,f.owner_id,f.uploader_id),
+              ':expected=',CONCAT_WS('/',c.owner_type,c.owner_id,c.uploader_id),
+              ':distinct=',COALESCE(c.distinct_owner_count,0),
+              ':raw=',COALESCE(c.raw_reference_count,0))
+FROM stored_files f
+LEFT JOIN demo_file_owner_contract c ON c.file_id=f.id
+WHERE f.status<>'CLAIMED'
+   OR f.owner_type IS NULL OR f.owner_id IS NULL OR f.uploader_id IS NULL
+   OR c.file_id IS NULL OR c.distinct_owner_count<>1
+   OR f.owner_type<>c.owner_type OR f.owner_id<>c.owner_id OR f.uploader_id<>c.uploader_id;
+
+INSERT INTO demo_seed_violations
+SELECT 'file.owner_type',id,owner_type
+FROM stored_files
+WHERE owner_type NOT IN ('DRIVE_FILE','BOARD_POST','APPROVAL_DOCUMENT','EXPENSE_CLAIM');
+
+-- Enum-backed VARCHAR columns must still contain only application enum names.
+INSERT INTO demo_seed_violations SELECT 'enum.employee.status',id,status FROM employees WHERE status NOT IN ('ACTIVE','LEAVE','RESIGNED');
+INSERT INTO demo_seed_violations SELECT 'enum.role_menu.menu_code',id,menu_code FROM role_menus WHERE menu_code NOT IN ('EMPLOYEES','DEPARTMENTS','POSITIONS','CUSTOMERS','SUPPLIERS','PRODUCTS','SALES_CONTACTS','SALES_CUSTOMERS','CONTRACTS','EQUIPMENTS','AFTER_SERVICES','ROLES','CODE_RULES','APPROVALS','EXPENSES','ATTENDANCE','BOARDS','DRIVE');
+INSERT INTO demo_seed_violations SELECT 'enum.role_menu.data_scope',id,data_scope FROM role_menus WHERE data_scope NOT IN ('ALL','DEPARTMENT','DEPARTMENT_TREE','SELF');
+INSERT INTO demo_seed_violations SELECT 'enum.code_rule.target',id,target FROM code_rules WHERE target NOT IN ('DEPARTMENT','POSITION','CUSTOMER','CONTRACT','AFTER_SERVICE');
+INSERT INTO demo_seed_violations SELECT 'enum.code_rule.input_mode',id,input_mode FROM code_rules WHERE input_mode NOT IN ('AUTO','MANUAL','AUTO_OR_MANUAL');
+INSERT INTO demo_seed_violations SELECT 'enum.code_mapping.target',id,target FROM code_rule_attribute_mappings WHERE target NOT IN ('DEPARTMENT','POSITION','CUSTOMER','CONTRACT','AFTER_SERVICE');
+INSERT INTO demo_seed_violations SELECT 'enum.code_sequence.target',id,target FROM code_sequences WHERE target NOT IN ('DEPARTMENT','POSITION','CUSTOMER','CONTRACT','AFTER_SERVICE');
+INSERT INTO demo_seed_violations SELECT 'enum.customer.type',id,type FROM customers WHERE type NOT IN ('POTENTIAL','GENERAL','KEY_ACCOUNT','PARTNER');
+INSERT INTO demo_seed_violations SELECT 'enum.customer.status',id,status FROM customers WHERE status NOT IN ('ACTIVE','INACTIVE','SUSPENDED');
+INSERT INTO demo_seed_violations
+SELECT 'domain.contract_customer_status',c.id,CONCAT(c.contract_no,':',cu.status)
+FROM contracts c JOIN customers cu ON cu.id=c.customer_id
+WHERE cu.status<>'ACTIVE';
+INSERT INTO demo_seed_violations SELECT 'enum.acquisition_source.type',id,type FROM acquisition_sources WHERE type NOT IN ('EXHIBITION','REFERRAL','WEB','OTHER');
+INSERT INTO demo_seed_violations SELECT 'enum.employment.departure_type',id,departure_type FROM sales_contact_employments WHERE departure_type IS NOT NULL AND departure_type NOT IN ('JOB_CHANGE','RETIREMENT','OTHER');
+INSERT INTO demo_seed_violations SELECT 'enum.activity.type',id,type FROM sales_activities WHERE type NOT IN ('VISIT','CALL','MEETING','EMAIL','OTHER');
+INSERT INTO demo_seed_violations SELECT 'enum.contract.output_unit',id,output_unit FROM contracts WHERE output_unit IS NOT NULL AND output_unit NOT IN ('KW','TON');
+INSERT INTO demo_seed_violations SELECT 'enum.contract.support_status',id,support_program_status FROM contracts WHERE support_program_status NOT IN ('NONE','APPLIED','SELECTED','REJECTED');
+INSERT INTO demo_seed_violations SELECT 'enum.contract.status',id,status FROM contracts WHERE status NOT IN ('CONTRACTED','ORDERED','ARRIVED','INSTALLING','INSTALLED','SETTLED','CANCELED');
+INSERT INTO demo_seed_violations SELECT 'enum.equipment.output_unit',id,output_unit FROM equipments WHERE output_unit IS NOT NULL AND output_unit NOT IN ('KW','TON');
+INSERT INTO demo_seed_violations
+SELECT 'domain.equipment_output',e.id,CONCAT_WS('/',e.output_value,e.output_unit,c.output_value,c.output_unit)
+FROM equipments e JOIN contracts c ON c.id=e.contract_id
+WHERE NOT (e.output_value<=>c.output_value) OR NOT (e.output_unit<=>c.output_unit);
+INSERT INTO demo_seed_violations SELECT 'enum.engineer.type',id,type FROM engineers WHERE type NOT IN ('INTERNAL','OUTSOURCED','MANUFACTURER');
+INSERT INTO demo_seed_violations SELECT 'enum.as.type',id,type FROM after_services WHERE type NOT IN ('REPAIR','INSTALL_SUPPORT','TRAINING','INTERPRET','TUNING');
+INSERT INTO demo_seed_violations SELECT 'enum.as.status',id,status FROM after_services WHERE status NOT IN ('RECEIVED','ASSIGNED','IN_PROGRESS','COMPLETED');
+INSERT INTO demo_seed_violations SELECT 'enum.as.warranty',id,warranty_decision FROM after_services WHERE warranty_decision NOT IN ('UNDECIDED','FREE','PAID');
+INSERT INTO demo_seed_violations SELECT 'enum.service_expense.category',id,category FROM service_expenses WHERE category NOT IN ('DAILY_WAGE','LODGING','MEAL','PARTS','ETC');
+INSERT INTO demo_seed_violations SELECT 'enum.service_expense.payer',id,payer_type FROM service_expenses WHERE payer_type NOT IN ('COMPANY','ENGINEER');
+INSERT INTO demo_seed_violations SELECT 'enum.approval.doc_type',id,doc_type FROM approval_documents WHERE doc_type NOT IN ('GENERAL','EXPENSE','LEAVE');
+INSERT INTO demo_seed_violations SELECT 'enum.approval.status',id,status FROM approval_documents WHERE status NOT IN ('IN_PROGRESS','APPROVED','REJECTED','CANCELED');
+INSERT INTO demo_seed_violations SELECT 'enum.approval_step.status',id,status FROM approval_steps WHERE status NOT IN ('PENDING','APPROVED','REJECTED');
+INSERT INTO demo_seed_violations SELECT 'enum.expense.status',id,status FROM expense_claims WHERE status NOT IN ('IN_PROGRESS','APPROVED','REJECTED');
+INSERT INTO demo_seed_violations SELECT 'enum.expense.category',id,category FROM expense_items WHERE category NOT IN ('TRANSPORT','MEAL','LODGING','SUPPLIES','ETC');
+INSERT INTO demo_seed_violations SELECT 'enum.leave.type',id,leave_type FROM leave_requests WHERE leave_type NOT IN ('ANNUAL','HALF_DAY_AM','HALF_DAY_PM','SICK','ETC');
+INSERT INTO demo_seed_violations SELECT 'enum.leave.status',id,status FROM leave_requests WHERE status NOT IN ('IN_PROGRESS','APPROVED','REJECTED');
+INSERT INTO demo_seed_violations SELECT 'enum.post.category',id,category FROM posts WHERE category NOT IN ('MEETING','NOTICE','FREE');
+INSERT INTO demo_seed_violations SELECT 'enum.audit.menu_code',id,menu_code FROM audit_logs WHERE menu_code NOT IN ('EMPLOYEES','DEPARTMENTS','POSITIONS','CUSTOMERS','SUPPLIERS','PRODUCTS','SALES_CONTACTS','SALES_CUSTOMERS','CONTRACTS','EQUIPMENTS','AFTER_SERVICES','ROLES','CODE_RULES','APPROVALS','EXPENSES','ATTENDANCE','BOARDS','DRIVE');
+
+INSERT INTO demo_seed_violations
+SELECT 'schema.equipment_contract_unique','contract_id','nullable one-to-one index absent'
+FROM dual
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM information_schema.statistics
+  WHERE table_schema=DATABASE()
+    AND table_name='equipments'
+    AND column_name='contract_id'
+    AND non_unique=0
+);
+INSERT INTO demo_seed_violations SELECT 'enum.audit.action',id,action FROM audit_logs WHERE action NOT IN ('CREATE','UPDATE','DELETE');
+
+-- JPA FK and every application-level bare-ID reference.
+INSERT INTO demo_seed_violations SELECT 'orphan.department.parent',d.id,'parent_id' FROM departments d LEFT JOIN departments p ON p.id=d.parent_id WHERE d.parent_id IS NOT NULL AND p.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.role_menu.role',rm.id,'role_id' FROM role_menus rm LEFT JOIN roles r ON r.id=rm.role_id WHERE r.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.employee.role',e.id,'role_id' FROM employees e LEFT JOIN roles r ON r.id=e.role_id WHERE e.role_id IS NOT NULL AND r.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.employee.department',e.id,'department_id' FROM employees e LEFT JOIN departments d ON d.id=e.department_id WHERE e.department_id IS NOT NULL AND d.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.employee.position',e.id,'position_id' FROM employees e LEFT JOIN positions p ON p.id=e.position_id WHERE e.position_id IS NOT NULL AND p.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.product.category',p.id,'category_id' FROM products p LEFT JOIN product_categories c ON c.id=p.category_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.product.supplier',p.id,'supplier_id' FROM products p LEFT JOIN suppliers s ON s.id=p.supplier_id WHERE s.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.employment.contact',x.id,'contact_id' FROM sales_contact_employments x LEFT JOIN sales_contacts c ON c.id=x.contact_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.employment.customer',x.id,'customer_id' FROM sales_contact_employments x LEFT JOIN customers c ON c.id=x.customer_id WHERE x.customer_id IS NOT NULL AND c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.contact_source.contact',x.id,'contact_id' FROM sales_contact_sources x LEFT JOIN sales_contacts c ON c.id=x.contact_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.contact_source.source',x.id,'source_id' FROM sales_contact_sources x LEFT JOIN acquisition_sources s ON s.id=x.source_id WHERE s.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.assignment.customer',x.id,'customer_id' FROM sales_assignments x LEFT JOIN customers c ON c.id=x.customer_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.assignment.employee',x.id,'employee_id' FROM sales_assignments x LEFT JOIN employees e ON e.id=x.employee_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.activity.customer',x.id,'customer_id' FROM sales_activities x LEFT JOIN customers c ON c.id=x.customer_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.activity.employee',x.id,'our_employee_id' FROM sales_activities x LEFT JOIN employees e ON e.id=x.our_employee_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.activity.contact',x.id,'customer_contact_id' FROM sales_activities x LEFT JOIN sales_contacts c ON c.id=x.customer_contact_id WHERE x.customer_contact_id IS NOT NULL AND c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.contract.customer',x.id,'customer_id' FROM contracts x LEFT JOIN customers c ON c.id=x.customer_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.contract.employee',x.id,'employee_id' FROM contracts x LEFT JOIN employees e ON e.id=x.employee_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.contract.supplier',x.id,'supplier_id' FROM contracts x LEFT JOIN suppliers s ON s.id=x.supplier_id WHERE s.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.contract.product',x.id,'product_id' FROM contracts x LEFT JOIN products p ON p.id=x.product_id WHERE p.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.payment.contract',x.id,'contract_id' FROM contract_payments x LEFT JOIN contracts c ON c.id=x.contract_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.note.contract',x.id,'contract_id' FROM contract_notes x LEFT JOIN contracts c ON c.id=x.contract_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.note.author',x.id,'author_employee_id' FROM contract_notes x LEFT JOIN employees e ON e.id=x.author_employee_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.equipment.customer',x.id,'customer_id' FROM equipments x LEFT JOIN customers c ON c.id=x.customer_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.equipment.contract',x.id,'contract_id' FROM equipments x LEFT JOIN contracts c ON c.id=x.contract_id WHERE x.contract_id IS NOT NULL AND c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.equipment.supplier',x.id,'supplier_id' FROM equipments x LEFT JOIN suppliers s ON s.id=x.supplier_id WHERE s.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.equipment.product',x.id,'product_id' FROM equipments x LEFT JOIN products p ON p.id=x.product_id WHERE p.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.engineer.employee',x.id,'employee_id' FROM engineers x LEFT JOIN employees e ON e.id=x.employee_id WHERE x.employee_id IS NOT NULL AND e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.as.customer',x.id,'customer_id' FROM after_services x LEFT JOIN customers c ON c.id=x.customer_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.as.equipment',x.id,'equipment_id' FROM after_services x LEFT JOIN equipments e ON e.id=x.equipment_id WHERE x.equipment_id IS NOT NULL AND e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.as.engineer',x.id,'assigned_engineer_id' FROM after_services x LEFT JOIN engineers e ON e.id=x.assigned_engineer_id WHERE x.assigned_engineer_id IS NOT NULL AND e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.visit.as',x.id,'after_service_id' FROM service_visits x LEFT JOIN after_services a ON a.id=x.after_service_id WHERE a.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.visit.engineer',x.id,'engineer_id' FROM service_visits x LEFT JOIN engineers e ON e.id=x.engineer_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.service_expense.as',x.id,'after_service_id' FROM service_expenses x LEFT JOIN after_services a ON a.id=x.after_service_id WHERE a.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.service_expense.engineer',x.id,'engineer_id' FROM service_expenses x LEFT JOIN engineers e ON e.id=x.engineer_id WHERE x.engineer_id IS NOT NULL AND e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.approval.drafter',x.id,'drafter_id' FROM approval_documents x LEFT JOIN employees e ON e.id=x.drafter_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.step.document',x.id,'document_id' FROM approval_steps x LEFT JOIN approval_documents d ON d.id=x.document_id WHERE d.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.step.approver',x.id,'approver_id' FROM approval_steps x LEFT JOIN employees e ON e.id=x.approver_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.approval_file.document',CONCAT(x.document_id,':',x.attachment_order),'document_id' FROM approval_document_attachments x LEFT JOIN approval_documents d ON d.id=x.document_id WHERE d.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.approval_file.file',CONCAT(x.document_id,':',x.attachment_order),'file_id' FROM approval_document_attachments x LEFT JOIN stored_files f ON f.id=x.file_id WHERE f.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.claim.claimant',x.id,'claimant_id' FROM expense_claims x LEFT JOIN employees e ON e.id=x.claimant_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.claim.approval',x.id,'approval_document_id' FROM expense_claims x LEFT JOIN approval_documents d ON d.id=x.approval_document_id WHERE x.approval_document_id IS NOT NULL AND d.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.item.claim',x.id,'claim_id' FROM expense_items x LEFT JOIN expense_claims c ON c.id=x.claim_id WHERE c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.item.receipt',x.id,'receipt_file_id' FROM expense_items x LEFT JOIN stored_files f ON f.id=x.receipt_file_id WHERE x.receipt_file_id IS NOT NULL AND f.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.leave.employee',x.id,'employee_id' FROM leave_requests x LEFT JOIN employees e ON e.id=x.employee_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.leave.approval',x.id,'approval_document_id' FROM leave_requests x LEFT JOIN approval_documents d ON d.id=x.approval_document_id WHERE x.approval_document_id IS NOT NULL AND d.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.balance.employee',x.id,'employee_id' FROM leave_balances x LEFT JOIN employees e ON e.id=x.employee_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.attendance.employee',x.id,'employee_id' FROM attendances x LEFT JOIN employees e ON e.id=x.employee_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.post.author',x.id,'author_id' FROM posts x LEFT JOIN employees e ON e.id=x.author_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.comment.post',x.id,'post_id' FROM post_comments x LEFT JOIN posts p ON p.id=x.post_id WHERE p.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.comment.author',x.id,'author_id' FROM post_comments x LEFT JOIN employees e ON e.id=x.author_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.post_file.post',CONCAT(x.post_id,':',x.attachment_order),'post_id' FROM post_attachment_files x LEFT JOIN posts p ON p.id=x.post_id WHERE p.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.post_file.file',CONCAT(x.post_id,':',x.attachment_order),'file_id' FROM post_attachment_files x LEFT JOIN stored_files f ON f.id=x.file_id WHERE f.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.folder.parent',x.id,'parent_id' FROM drive_folders x LEFT JOIN drive_folders p ON p.id=x.parent_id WHERE x.parent_id IS NOT NULL AND p.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.folder.creator',x.id,'created_by' FROM drive_folders x LEFT JOIN employees e ON e.id=x.created_by WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.drive_file.folder',x.id,'folder_id' FROM drive_files x LEFT JOIN drive_folders f ON f.id=x.folder_id WHERE x.folder_id IS NOT NULL AND f.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.drive_file.storage',x.id,'storage_file_id' FROM drive_files x LEFT JOIN stored_files f ON f.id=x.storage_file_id WHERE f.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.drive_file.uploader',x.id,'uploader_id' FROM drive_files x LEFT JOIN employees e ON e.id=x.uploader_id WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.stored_file.uploader',x.id,'uploader_id' FROM stored_files x LEFT JOIN employees e ON e.id=x.uploader_id WHERE x.uploader_id IS NOT NULL AND e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.audit.actor',x.id,'actor_id' FROM audit_logs x LEFT JOIN employees e ON e.id=x.actor_id WHERE x.actor_id IS NOT NULL AND e.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.audit.customer_target',x.id,'target_id' FROM audit_logs x LEFT JOIN customers c ON c.id=x.target_id WHERE x.target_type='Customer' AND c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.audit.contract_target',x.id,'target_id' FROM audit_logs x LEFT JOIN contracts c ON c.id=x.target_id WHERE x.target_type='Contract' AND c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.audit.after_service_target',x.id,'target_id' FROM audit_logs x LEFT JOIN after_services a ON a.id=x.target_id WHERE x.target_type='AfterService' AND a.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.audit.approval_target',x.id,'target_id' FROM audit_logs x LEFT JOIN approval_documents d ON d.id=x.target_id WHERE x.target_type='ApprovalDocument' AND d.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.audit.expense_target',x.id,'target_id' FROM audit_logs x LEFT JOIN expense_claims c ON c.id=x.target_id WHERE x.target_type='ExpenseClaim' AND c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.audit.leave_target',x.id,'target_id' FROM audit_logs x LEFT JOIN leave_requests l ON l.id=x.target_id WHERE x.target_type='LeaveRequest' AND l.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'orphan.audit.post_target',x.id,'target_id' FROM audit_logs x LEFT JOIN posts p ON p.id=x.target_id WHERE x.target_type='Post' AND p.id IS NULL;
+INSERT INTO demo_seed_violations
+SELECT 'audit.target_catalog',id,CONCAT_WS('/',menu_code,target_type,target_id)
+FROM audit_logs
+WHERE menu_code<>ELT(MOD(id-1,7)+1,
+        'CUSTOMERS','CONTRACTS','AFTER_SERVICES','APPROVALS',
+        'EXPENSES','ATTENDANCE','BOARDS')
+   OR target_type<>ELT(MOD(id-1,7)+1,
+        'Customer','Contract','AfterService','ApprovalDocument',
+        'ExpenseClaim','LeaveRequest','Post')
+   OR target_id<>1+MOD(
+        id*17+MOD(id-1,7)*11,
+        CAST(ELT(MOD(id-1,7)+1,48,42,45,36,12,16,28) AS unsigned)
+      );
+
+-- Cross-table semantic consistency.
+INSERT INTO demo_seed_violations
+WITH RECURSIVE department_paths AS (
+  SELECT id origin_id,parent_id current_id,CAST(CONCAT('/',id,'/') AS char(1000)) path,0 cycle,0 depth
+  FROM departments
+  UNION ALL
+  SELECT p.origin_id,d.parent_id,
+         CONCAT(p.path,d.id,'/'),
+         LOCATE(CONCAT('/',d.id,'/'),p.path)>0,
+         p.depth+1
+  FROM department_paths p
+  JOIN departments d ON d.id=p.current_id
+  WHERE p.current_id IS NOT NULL AND p.cycle=0 AND p.depth<100
+)
+SELECT 'department.cycle',origin_id,'parent hierarchy contains a cycle'
+FROM department_paths WHERE cycle=1 GROUP BY origin_id;
+
+INSERT INTO demo_seed_violations
+WITH RECURSIVE folder_paths AS (
+  SELECT id origin_id,parent_id current_id,CAST(CONCAT('/',id,'/') AS char(1000)) path,0 cycle,0 depth
+  FROM drive_folders
+  UNION ALL
+  SELECT p.origin_id,d.parent_id,
+         CONCAT(p.path,d.id,'/'),
+         LOCATE(CONCAT('/',d.id,'/'),p.path)>0,
+         p.depth+1
+  FROM folder_paths p
+  JOIN drive_folders d ON d.id=p.current_id
+  WHERE p.current_id IS NOT NULL AND p.cycle=0 AND p.depth<100
+)
+SELECT 'drive_folder.cycle',origin_id,'parent hierarchy contains a cycle'
+FROM folder_paths WHERE cycle=1 GROUP BY origin_id;
+
+INSERT INTO demo_seed_violations
+SELECT 'activity.contact_customer',a.id,'contact has no employment at activity customer'
+FROM sales_activities a LEFT JOIN sales_contact_employments e
+  ON e.contact_id=a.customer_contact_id
+ AND e.customer_id=a.customer_id
+ AND DATE(a.activity_date) BETWEEN e.start_date AND COALESCE(e.end_date,'9999-12-31')
+WHERE a.customer_contact_id IS NOT NULL AND e.id IS NULL;
+
+INSERT INTO demo_seed_violations
+SELECT 'employment.company_xor',id,'customer_id/external_company_name must be xor'
+FROM sales_contact_employments
+WHERE (customer_id IS NULL)=(external_company_name IS NULL) OR end_date<start_date OR (end_date IS NULL AND (departure_type IS NOT NULL OR departure_note IS NOT NULL));
+INSERT INTO demo_seed_violations
+SELECT 'employment.overlap',h.id,CONCAT('active=',a.id,':',h.end_date,'>=',a.start_date)
+FROM sales_contact_employments h
+JOIN sales_contact_employments a ON a.contact_id=h.contact_id AND a.end_date IS NULL
+WHERE h.end_date IS NOT NULL AND h.end_date>=a.start_date;
+INSERT INTO demo_seed_violations
+SELECT 'employment.customer_representative',c.id,
+       CONCAT_WS('/',c.representative,sc.name,e.department,e.position)
+FROM customers c
+LEFT JOIN sales_contacts sc ON sc.id=c.id
+LEFT JOIN sales_contact_employments e
+  ON e.contact_id=sc.id AND e.customer_id=c.id AND e.end_date IS NULL
+WHERE sc.id IS NULL OR e.id IS NULL OR c.representative<>sc.name
+   OR e.department<>'경영관리' OR e.position<>'대표이사';
+INSERT INTO demo_seed_violations
+SELECT 'employment.current_role',e.id,
+       CONCAT_WS('/',e.contact_id,e.customer_id,e.department,e.position)
+FROM sales_contact_employments e
+WHERE e.end_date IS NULL AND (
+  e.customer_id<>MOD(e.contact_id-1,48)+1
+  OR (e.contact_id<=48 AND (e.department<>'경영관리' OR e.position<>'대표이사'))
+  OR (e.contact_id>48 AND (
+       e.department NOT IN ('생산기술팀','구매팀','설비보전팀')
+       OR e.position NOT IN ('부장','차장','과장')
+  ))
+);
+INSERT INTO demo_seed_violations
+SELECT 'contact.first_meeting_catalog',id,CAST(met_at AS char)
+FROM sales_contacts
+WHERE met_at<>DATE_SUB(
+  @verify_today,
+  INTERVAL (420+MOD(id*id*80+id+29,307)) DAY
+);
+INSERT INTO demo_seed_violations
+SELECT 'contact.first_meeting_unique','contacts',CAST(COUNT(DISTINCT met_at) AS char)
+FROM sales_contacts HAVING COUNT(DISTINCT met_at)<>72;
+INSERT INTO demo_seed_violations
+SELECT 'contact.first_meeting_top10_pattern','contacts',
+       GROUP_CONCAT(DATE_FORMAT(met_at,'%Y-%m-%d') ORDER BY id)
+FROM (
+  SELECT id,met_at,
+         DATEDIFF(met_at,LAG(met_at) OVER (ORDER BY id)) direction
+  FROM sales_contacts WHERE id<=10
+) top_contacts
+HAVING COUNT(DISTINCT met_at)<>10
+   OR SUM(direction>0)=0 OR SUM(direction<0)=0
+   OR SUM(ABS(direction)=1)=9;
+INSERT INTO demo_seed_violations
+SELECT 'employment.start_catalog',id,CAST(start_date AS char)
+FROM sales_contact_employments
+WHERE id<=72 AND start_date<>DATE_SUB(
+  @verify_today,
+  INTERVAL (740+MOD(id*id*80+id+31,307)) DAY
+);
+INSERT INTO demo_seed_violations
+SELECT 'employment.start_unique','current',CAST(COUNT(DISTINCT start_date) AS char)
+FROM sales_contact_employments WHERE id<=72
+HAVING COUNT(DISTINCT start_date)<>72;
+INSERT INTO demo_seed_violations
+SELECT 'employment.meeting_order',e.id,CONCAT_WS('/',e.start_date,c.met_at)
+FROM sales_contact_employments e
+JOIN sales_contacts c ON c.id=e.contact_id
+WHERE e.id<=72 AND e.start_date>c.met_at;
+
+INSERT INTO demo_seed_violations
+SELECT 'assignment.period',id,'invalid assignment period' FROM sales_assignments WHERE end_date<start_date OR (end_date IS NOT NULL AND is_primary=1);
+INSERT INTO demo_seed_violations
+SELECT 'assignment.primary',c.id,CONCAT('active primary=',COUNT(a.id))
+FROM customers c
+LEFT JOIN sales_assignments a ON a.customer_id=c.id AND a.end_date IS NULL AND a.is_primary=1
+GROUP BY c.id HAVING COUNT(a.id)<>1;
+INSERT INTO demo_seed_violations
+SELECT 'assignment.overlap',h.id,CONCAT('active=',a.id,':',h.end_date,'>=',a.start_date)
+FROM sales_assignments h
+JOIN sales_assignments a ON a.customer_id=h.customer_id AND a.end_date IS NULL
+WHERE h.end_date IS NOT NULL AND h.end_date>=a.start_date;
+INSERT INTO demo_seed_violations
+SELECT 'assignment.sales_owner',a.id,CONCAT_WS('/',e.name,d.name,e.status)
+FROM sales_assignments a
+JOIN employees e ON e.id=a.employee_id
+JOIN departments d ON d.id=e.department_id
+JOIN positions p ON p.id=e.position_id
+WHERE d.name NOT IN ('수도권영업팀','중부영업팀')
+   OR e.status<>'ACTIVE' OR p.name='인턴';
+
+INSERT INTO demo_seed_violations
+SELECT 'activity.time',id,CONCAT(activity_date,'/',created_at,'/',updated_at)
+FROM sales_activities
+WHERE activity_date>UTC_TIMESTAMP(6)+INTERVAL 9 HOUR
+   OR created_at<activity_date
+   OR created_at>updated_at;
+INSERT INTO demo_seed_violations
+SELECT 'activity.primary_owner',a.id,CONCAT_WS('/',a.customer_id,a.our_employee_id,p.employee_id)
+FROM sales_activities a
+LEFT JOIN sales_assignments p
+  ON p.customer_id=a.customer_id AND p.is_primary=1 AND p.end_date IS NULL
+WHERE p.id IS NULL OR a.our_employee_id<>p.employee_id;
+INSERT INTO demo_seed_violations
+SELECT 'activity.contact_role',a.id,
+       CONCAT_WS('/',a.customer_id,a.type,a.customer_contact_id)
+FROM sales_activities a
+WHERE a.customer_contact_id<>
+      IF(a.customer_id<=24 AND a.type IN ('VISIT','CALL','MEETING','EMAIL'),
+         48+a.customer_id,a.customer_id);
+INSERT INTO demo_seed_violations
+SELECT 'activity.operational_contact_coverage',c.id,'no working-level activity'
+FROM sales_contacts c
+LEFT JOIN sales_activities a ON a.customer_contact_id=c.id
+WHERE c.id BETWEEN 49 AND 72
+GROUP BY c.id HAVING COUNT(a.id)=0;
+INSERT INTO demo_seed_violations
+SELECT 'activity.customer_count',customer_id,CONCAT('actual=',COUNT(*))
+FROM sales_activities
+GROUP BY customer_id
+HAVING COUNT(*)<>CAST(ELT(customer_id,
+  2,3,5,2,4,1,2,4,1,3,4,1,
+  3,5,2,3,5,2,3,5,2,4,1,3,
+  4,1,3,4,1,3,5,2,3,5,2,4,
+  5,2,4,1,3,4,1,3,5,1,3,5
+) AS unsigned);
+INSERT INTO demo_seed_violations
+SELECT 'activity.customer_missing',c.id,'no activity'
+FROM customers c LEFT JOIN sales_activities a ON a.customer_id=c.id
+GROUP BY c.id HAVING COUNT(a.id)=0;
+INSERT INTO demo_seed_violations
+SELECT 'activity.count_distribution',expected_count,
+       CONCAT('customers=',COUNT(*),':expected=',expected_customers)
+FROM (
+  SELECT c.id,COUNT(a.id) expected_count,
+         CASE COUNT(a.id) WHEN 3 THEN 12 ELSE 9 END expected_customers
+  FROM customers c LEFT JOIN sales_activities a ON a.customer_id=c.id
+  GROUP BY c.id
+) counts
+GROUP BY expected_count,expected_customers
+HAVING expected_count NOT BETWEEN 1 AND 5 OR COUNT(*)<>expected_customers;
+INSERT INTO demo_seed_violations
+SELECT 'activity.recent_customer_coverage',c.id,
+       CONCAT('recent=',SUM(a.activity_date>=@verify_month))
+FROM customers c JOIN sales_activities a ON a.customer_id=c.id
+GROUP BY c.id HAVING SUM(a.activity_date>=@verify_month)<>1;
+
+INSERT INTO demo_seed_violations
+SELECT 'contract.product_supplier',c.id,'contract supplier differs from product supplier' FROM contracts c JOIN products p ON p.id=c.product_id WHERE c.supplier_id<>p.supplier_id;
+INSERT INTO demo_seed_violations
+SELECT 'contract.primary_owner',c.id,CONCAT_WS('/',c.customer_id,c.employee_id,a.employee_id)
+FROM contracts c
+LEFT JOIN sales_assignments a
+  ON a.customer_id=c.customer_id AND a.is_primary=1 AND a.end_date IS NULL
+WHERE a.id IS NULL OR c.employee_id<>a.employee_id;
+INSERT INTO demo_seed_violations
+SELECT 'contract.date_order',id,'milestone order invalid' FROM contracts
+WHERE (order_date IS NOT NULL AND order_date<contract_date)
+   OR (arrival_date IS NOT NULL AND (order_date IS NULL OR arrival_date<order_date))
+   OR (installed_date IS NOT NULL AND (arrival_date IS NULL OR installed_date<arrival_date))
+   OR (settled_date IS NOT NULL AND (installed_date IS NULL OR settled_date<installed_date));
+INSERT INTO demo_seed_violations
+SELECT 'contract.status_dates',id,status FROM contracts
+WHERE (status='CONTRACTED' AND (order_date IS NOT NULL OR arrival_date IS NOT NULL OR installed_date IS NOT NULL OR settled_date IS NOT NULL))
+   OR (status='ORDERED' AND (order_date IS NULL OR arrival_date IS NOT NULL OR installed_date IS NOT NULL OR settled_date IS NOT NULL))
+   OR (status='ARRIVED' AND (arrival_date IS NULL OR installed_date IS NOT NULL OR settled_date IS NOT NULL))
+   OR (status='INSTALLING' AND (arrival_date IS NULL OR installed_date IS NOT NULL OR settled_date IS NOT NULL))
+   OR (status='INSTALLED' AND (installed_date IS NULL OR settled_date IS NOT NULL))
+   OR (status='SETTLED' AND (installed_date IS NULL OR settled_date IS NULL));
+INSERT INTO demo_seed_violations
+SELECT 'contract.future_actual',id,CONCAT_WS('/',order_date,arrival_date,installed_date,settled_date)
+FROM contracts
+WHERE order_date>@verify_today OR arrival_date>@verify_today OR installed_date>@verify_today OR settled_date>@verify_today;
+INSERT INTO demo_seed_violations
+SELECT 'contract.amount',id,CONCAT(initial_amount,'/',final_amount,'/',output_value)
+FROM contracts
+WHERE final_amount<=0 OR initial_amount IS NULL OR initial_amount<0 OR initial_amount>final_amount
+   OR output_value IS NULL OR output_value<=0 OR output_unit IS NULL
+   OR created_at>updated_at OR DATE(created_at)>contract_date;
+INSERT INTO demo_seed_violations
+SELECT 'contract.overpaid',c.id,CONCAT('final=',c.final_amount,', paid=',COALESCE(SUM(p.paid_amount),0))
+FROM contracts c LEFT JOIN contract_payments p ON p.contract_id=c.id GROUP BY c.id,c.final_amount HAVING COALESCE(SUM(p.paid_amount),0)>c.final_amount;
+INSERT INTO demo_seed_violations
+SELECT 'contract.code',id,contract_no FROM contracts WHERE contract_no NOT REGEXP CONCAT('^CT',YEAR(contract_date),'-[0-9]{3}$');
+INSERT INTO demo_seed_violations
+SELECT 'payment.amount_date',id,CONCAT_WS('/',planned_amount,invoice_amount,paid_amount,planned_date,invoice_date,paid_date)
+FROM contract_payments
+WHERE planned_amount<0 OR invoice_amount<0 OR paid_amount<0
+   OR invoice_date>@verify_today OR paid_date>@verify_today
+   OR created_at>updated_at;
+
+INSERT INTO demo_seed_violations
+SELECT 'equipment.contract_snapshot',e.id,'customer/supplier/product/install mismatch'
+FROM equipments e JOIN contracts c ON c.id=e.contract_id
+WHERE e.customer_id<>c.customer_id OR e.supplier_id<>c.supplier_id OR e.product_id<>c.product_id OR NOT (e.installed_date<=>c.installed_date);
+INSERT INTO demo_seed_violations
+SELECT 'equipment.warranty_math',id,'persisted end date differs from start + months' FROM equipments
+WHERE NOT (oscillator_warranty_end_date <=> IF(warranty_start_date IS NULL OR oscillator_warranty_months IS NULL,NULL,DATE_ADD(warranty_start_date,INTERVAL oscillator_warranty_months MONTH)))
+   OR NOT (general_warranty_end_date <=> IF(warranty_start_date IS NULL OR general_warranty_months IS NULL,NULL,DATE_ADD(warranty_start_date,INTERVAL general_warranty_months MONTH)));
+INSERT INTO demo_seed_violations
+SELECT 'equipment.cardinality',c.id,CONCAT(c.status,':',COUNT(e.id)) FROM contracts c LEFT JOIN equipments e ON e.contract_id=c.id
+GROUP BY c.id,c.status HAVING (c.status IN ('INSTALLED','SETTLED') AND COUNT(e.id)<>1) OR (c.status NOT IN ('INSTALLED','SETTLED') AND COUNT(e.id)<>0);
+
+INSERT INTO demo_seed_violations SELECT 'as.customer_equipment',a.id,'customer mismatch' FROM after_services a JOIN equipments e ON e.id=a.equipment_id WHERE a.customer_id<>e.customer_id;
+INSERT INTO demo_seed_violations SELECT 'as.billing',id,'billing only allowed for PAID' FROM after_services WHERE warranty_decision<>'PAID' AND billing_amount IS NOT NULL;
+INSERT INTO demo_seed_violations SELECT 'as.billing_amount',id,CAST(billing_amount AS char) FROM after_services WHERE warranty_decision='PAID' AND (billing_amount IS NULL OR billing_amount<=0);
+INSERT INTO demo_seed_violations SELECT 'as.completion',id,status FROM after_services WHERE (status='COMPLETED')<>(completed_date IS NOT NULL);
+INSERT INTO demo_seed_violations SELECT 'as.assignment',id,status FROM after_services WHERE (status='RECEIVED' AND assigned_engineer_id IS NOT NULL) OR (status<>'RECEIVED' AND assigned_engineer_id IS NULL);
+INSERT INTO demo_seed_violations SELECT 'as.code',id,receipt_no FROM after_services WHERE receipt_no NOT REGEXP CONCAT('^AS',YEAR(received_date),'-[0-9]{4}$');
+INSERT INTO demo_seed_violations SELECT 'as.future_actual',id,CONCAT_WS('/',received_date,completed_date) FROM after_services WHERE received_date>@verify_today OR completed_date>@verify_today OR created_at>updated_at;
+INSERT INTO demo_seed_violations
+SELECT 'as.type_distribution',t.type,
+       CONCAT('actual=',COUNT(a.id),':expected=',t.expected_count)
+FROM (
+  SELECT 'REPAIR' type,14 expected_count UNION ALL
+  SELECT 'INSTALL_SUPPORT',11 UNION ALL
+  SELECT 'TRAINING',8 UNION ALL
+  SELECT 'INTERPRET',5 UNION ALL
+  SELECT 'TUNING',7
+) t
+LEFT JOIN after_services a ON a.type=t.type
+GROUP BY t.type,t.expected_count HAVING COUNT(a.id)<>t.expected_count;
+INSERT INTO demo_seed_violations
+SELECT 'visit.date_state',v.id,CONCAT(a.status,':',v.visit_date)
+FROM service_visits v JOIN after_services a ON a.id=v.after_service_id
+WHERE a.status NOT IN ('IN_PROGRESS','COMPLETED') OR v.visit_date<a.received_date
+   OR v.visit_date>@verify_today OR (a.completed_date IS NOT NULL AND v.visit_date>a.completed_date)
+   OR v.created_at>v.updated_at;
+INSERT INTO demo_seed_violations
+SELECT 'service_expense.date_state',x.id,CONCAT(a.status,':',x.paid_date,':',x.amount)
+FROM service_expenses x JOIN after_services a ON a.id=x.after_service_id
+WHERE a.status NOT IN ('IN_PROGRESS','COMPLETED') OR x.paid_date<a.received_date
+   OR x.paid_date>@verify_today OR (a.completed_date IS NOT NULL AND x.paid_date>a.completed_date)
+   OR x.amount<0 OR x.created_at>x.updated_at;
+INSERT INTO demo_seed_violations
+SELECT 'service_expense.type_amount',x.id,CONCAT(a.type,':',x.amount)
+FROM service_expenses x JOIN after_services a ON a.id=x.after_service_id
+WHERE x.amount<>(CASE a.type
+  WHEN 'REPAIR' THEN 110000 WHEN 'INSTALL_SUPPORT' THEN 85000
+  WHEN 'TRAINING' THEN 55000 WHEN 'INTERPRET' THEN 65000
+  WHEN 'TUNING' THEN 75000 END) + MOD(x.id,6)*12000;
+
+-- Approval state machine and linked domain status.
+INSERT INTO demo_seed_violations
+SELECT 'approval.steps',d.id,
+       CONCAT('count=',COUNT(s.id),':min=',COALESCE(MIN(s.step_order),0),
+              ':max=',COALESCE(MAX(s.step_order),0),':current=',d.current_step_order)
+FROM approval_documents d
+LEFT JOIN approval_steps s ON s.document_id=d.id
+GROUP BY d.id,d.current_step_order
+HAVING COUNT(s.id)=0 OR MIN(s.step_order)<>1 OR MAX(s.step_order)<>COUNT(s.id)
+    OR d.current_step_order NOT BETWEEN 1 AND MAX(s.step_order);
+INSERT INTO demo_seed_violations
+SELECT 'approval.state',d.id,CONCAT(d.status,':current=',d.current_step_order)
+FROM approval_documents d JOIN (
+  SELECT document_id,COUNT(*) total,MAX(step_order) max_order,
+         SUM(status='APPROVED') approved_count,SUM(status='PENDING') pending_count,SUM(status='REJECTED') rejected_count,
+         SUM(status='REJECTED' AND step_order=(SELECT current_step_order FROM approval_documents ad WHERE ad.id=approval_steps.document_id)) rejected_current
+  FROM approval_steps GROUP BY document_id
+) s ON s.document_id=d.id
+WHERE (d.status='IN_PROGRESS' AND NOT (s.approved_count=d.current_step_order-1 AND s.pending_count=s.total-d.current_step_order+1 AND s.rejected_count=0))
+   OR (d.status='APPROVED' AND NOT (s.approved_count=s.total AND d.current_step_order=s.max_order))
+   OR (d.status='REJECTED' AND NOT (s.approved_count=d.current_step_order-1 AND s.rejected_count=1 AND s.rejected_current=1 AND s.pending_count=s.total-d.current_step_order))
+   OR (d.status='CANCELED' AND NOT (s.pending_count=s.total AND d.current_step_order=1));
+INSERT INTO demo_seed_violations SELECT 'approval.decided_at',id,status FROM approval_steps WHERE (status='PENDING' AND decided_at IS NOT NULL) OR (status<>'PENDING' AND decided_at IS NULL);
+INSERT INTO demo_seed_violations
+SELECT 'approval.time',s.id,CONCAT_WS('/',d.created_at,s.created_at,s.decided_at,s.updated_at)
+FROM approval_steps s JOIN approval_documents d ON d.id=s.document_id
+WHERE d.created_at>d.updated_at OR s.created_at<d.created_at
+   OR s.created_at>s.updated_at OR s.decided_at<s.created_at
+   OR s.decided_at>UTC_TIMESTAMP(6)+INTERVAL 9 HOUR;
+INSERT INTO demo_seed_violations SELECT 'approval.expense_ref',d.id,'expense ref mismatch' FROM approval_documents d LEFT JOIN expense_claims c ON c.id=d.ref_id AND c.approval_document_id=d.id WHERE d.doc_type='EXPENSE' AND c.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'approval.leave_ref',d.id,'leave ref mismatch' FROM approval_documents d LEFT JOIN leave_requests l ON l.id=d.ref_id AND l.approval_document_id=d.id WHERE d.doc_type='LEAVE' AND l.id IS NULL;
+INSERT INTO demo_seed_violations SELECT 'approval.general_ref',id,'GENERAL ref must be null' FROM approval_documents WHERE doc_type='GENERAL' AND ref_id IS NOT NULL;
+INSERT INTO demo_seed_violations SELECT 'approval.domain_cancel',id,doc_type FROM approval_documents WHERE doc_type IN ('EXPENSE','LEAVE') AND status='CANCELED';
+INSERT INTO demo_seed_violations
+SELECT 'approval.expense_drafter',d.id,CONCAT(d.drafter_id,'/',c.claimant_id)
+FROM approval_documents d JOIN expense_claims c ON c.id=d.ref_id
+WHERE d.doc_type='EXPENSE' AND d.drafter_id<>c.claimant_id;
+INSERT INTO demo_seed_violations
+SELECT 'approval.leave_drafter',d.id,CONCAT(d.drafter_id,'/',l.employee_id)
+FROM approval_documents d JOIN leave_requests l ON l.id=d.ref_id
+WHERE d.doc_type='LEAVE' AND d.drafter_id<>l.employee_id;
+INSERT INTO demo_seed_violations
+SELECT 'approval.comment_semantics',s.id,CONCAT_WS('/',d.doc_type,s.status,s.comment)
+FROM approval_steps s JOIN approval_documents d ON d.id=s.document_id
+WHERE (s.status='PENDING' AND s.comment IS NOT NULL)
+   OR (s.status<>'PENDING' AND s.comment IS NULL)
+   OR (d.doc_type='EXPENSE' AND s.status<>'PENDING' AND s.comment NOT LIKE '%증빙%')
+   OR (d.doc_type IN ('GENERAL','LEAVE') AND s.comment REGEXP '(첨부|증빙)');
+
+INSERT INTO demo_seed_violations
+SELECT 'expense.total',c.id,CONCAT(c.total_amount,'/',COALESCE(SUM(i.amount),0),':items=',COUNT(i.id))
+FROM expense_claims c LEFT JOIN expense_items i ON i.claim_id=c.id
+GROUP BY c.id,c.total_amount
+HAVING COUNT(i.id)=0 OR c.total_amount<>COALESCE(SUM(i.amount),0);
+INSERT INTO demo_seed_violations SELECT 'expense.claim_amount',id,CAST(total_amount AS char) FROM expense_claims WHERE total_amount<=0 OR created_at>updated_at;
+INSERT INTO demo_seed_violations
+SELECT 'expense.item_time_amount',id,CONCAT(amount,':',expense_date,':',created_at)
+FROM expense_items
+WHERE amount<=0 OR expense_date>@verify_today OR DATE(created_at)<expense_date OR created_at>updated_at;
+INSERT INTO demo_seed_violations
+SELECT 'expense.status',c.id,CONCAT(c.status,'/',d.status) FROM expense_claims c JOIN approval_documents d ON d.id=c.approval_document_id
+WHERE d.status='CANCELED' OR c.status<>d.status;
+INSERT INTO demo_seed_violations
+SELECT 'expense.receipt_attachment',i.id,'receipt absent from approval attachments' FROM expense_items i JOIN expense_claims c ON c.id=i.claim_id
+LEFT JOIN approval_document_attachments a ON a.document_id=c.approval_document_id AND a.file_id=i.receipt_file_id WHERE i.receipt_file_id IS NOT NULL AND a.document_id IS NULL;
+INSERT INTO demo_seed_violations
+SELECT 'expense.receipt_per_claim',c.id,
+       CONCAT('items=',COUNT(i.id),':files=',COUNT(DISTINCT i.receipt_file_id),':with_receipt=',COUNT(i.receipt_file_id))
+FROM expense_claims c LEFT JOIN expense_items i ON i.claim_id=c.id
+GROUP BY c.id
+HAVING COUNT(i.id)=0 OR COUNT(DISTINCT i.receipt_file_id)<>1 OR COUNT(i.receipt_file_id)<>COUNT(i.id);
+INSERT INTO demo_seed_violations
+SELECT 'expense.receipt_reused',receipt_file_id,GROUP_CONCAT(DISTINCT claim_id ORDER BY claim_id)
+FROM expense_items
+WHERE receipt_file_id IS NOT NULL
+GROUP BY receipt_file_id
+HAVING COUNT(DISTINCT claim_id)<>1;
+INSERT INTO demo_seed_violations
+SELECT 'expense.receipt_catalog',c.id,CONCAT_WS('/',MIN(f.original_name),MIN(f.content_type))
+FROM expense_claims c
+JOIN expense_items i ON i.claim_id=c.id
+LEFT JOIN stored_files f ON f.id=i.receipt_file_id
+GROUP BY c.id
+HAVING COUNT(DISTINCT f.id)<>1
+    OR MIN(f.original_name)<>CONCAT('출장비_증빙묶음_',LPAD(c.id,2,'0'),'.png')
+    OR MIN(f.content_type)<>'image/png';
+
+INSERT INTO demo_seed_violations
+SELECT 'leave.status',l.id,CONCAT(l.status,'/',d.status) FROM leave_requests l JOIN approval_documents d ON d.id=l.approval_document_id
+WHERE d.status='CANCELED' OR l.status<>d.status;
+DROP TEMPORARY TABLE IF EXISTS demo_day_offsets;
+CREATE TEMPORARY TABLE demo_day_offsets (
+  day_offset int NOT NULL PRIMARY KEY
+);
+INSERT INTO demo_day_offsets
+SELECT ones.n + tens.n*10 + hundreds.n*100
+FROM (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) ones
+CROSS JOIN (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) tens
+CROSS JOIN (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3) hundreds;
+
+DROP TEMPORARY TABLE IF EXISTS demo_leave_weekdays;
+CREATE TEMPORARY TABLE demo_leave_weekdays (
+  leave_id bigint NOT NULL PRIMARY KEY,
+  weekdays int NOT NULL
+);
+INSERT INTO demo_leave_weekdays
+SELECT l.id,
+       COALESCE(SUM(o.day_offset<=DATEDIFF(l.end_date,l.start_date)
+                    AND WEEKDAY(DATE_ADD(l.start_date,INTERVAL o.day_offset DAY))<5),0)
+FROM leave_requests l
+LEFT JOIN demo_day_offsets o ON o.day_offset<=DATEDIFF(l.end_date,l.start_date)
+GROUP BY l.id;
+
+INSERT INTO demo_seed_violations
+SELECT 'leave.days',l.id,CONCAT(l.leave_type,':stored=',l.days,':weekdays=',w.weekdays)
+FROM leave_requests l JOIN demo_leave_weekdays w ON w.leave_id=l.id
+WHERE (l.leave_type IN ('HALF_DAY_AM','HALF_DAY_PM')
+       AND (l.days<>0.5 OR l.start_date<>l.end_date OR w.weekdays<>1))
+   OR (l.leave_type NOT IN ('HALF_DAY_AM','HALF_DAY_PM')
+       AND (w.weekdays=0 OR l.days<>w.weekdays));
+INSERT INTO demo_seed_violations
+SELECT 'leave.time',id,CONCAT(status,':',created_at,':',start_date,':',end_date)
+FROM leave_requests
+WHERE start_date>end_date OR DATE(created_at)>start_date OR created_at>updated_at
+   OR DATEDIFF(end_date,start_date)>399
+   OR (status='IN_PROGRESS' AND end_date<@verify_today);
+INSERT INTO demo_seed_violations
+SELECT 'leave.balance',b.employee_id,CONCAT('used=',b.used_days,', calculated=',COALESCE(x.used_days,0))
+FROM leave_balances b LEFT JOIN (
+  SELECT employee_id,YEAR(start_date) year,SUM(days) used_days
+  FROM leave_requests
+  WHERE status='APPROVED' AND leave_type IN ('ANNUAL','HALF_DAY_AM','HALF_DAY_PM')
+  GROUP BY employee_id,YEAR(start_date)
+) x ON x.employee_id=b.employee_id AND x.year=b.year
+WHERE b.year<>YEAR(@verify_today) OR b.used_days<>COALESCE(x.used_days,0) OR b.used_days<0 OR b.used_days>b.granted_days;
+
+INSERT INTO demo_seed_violations SELECT 'attendance.duplicate',CONCAT(employee_id,':',work_date),CAST(COUNT(*) AS char) FROM attendances GROUP BY employee_id,work_date HAVING COUNT(*)<>1;
+INSERT INTO demo_seed_violations SELECT 'attendance.time',id,'invalid time or coordinates' FROM attendances WHERE check_in_at IS NULL OR check_in_at>UTC_TIMESTAMP(6)+INTERVAL 9 HOUR OR check_out_at>UTC_TIMESTAMP(6)+INTERVAL 9 HOUR OR check_out_at<check_in_at OR DATE(check_in_at)<>work_date OR (check_out_at IS NOT NULL AND DATE(check_out_at)<>work_date) OR (check_out_at IS NULL AND (check_out_latitude IS NOT NULL OR check_out_longitude IS NOT NULL)) OR created_at>updated_at;
+INSERT INTO demo_seed_violations
+SELECT 'attendance.office_radius',id,CONCAT_WS('/',check_in_latitude,check_in_longitude,check_out_latitude,check_out_longitude)
+FROM attendances
+WHERE check_in_latitude NOT BETWEEN 37.5662 AND 37.5664
+   OR check_in_longitude NOT BETWEEN 126.9778 AND 126.9780
+   OR check_in_within_range+0<>1
+   OR (check_out_at IS NULL AND check_out_within_range+0<>0)
+   OR (check_out_at IS NOT NULL AND (
+        check_out_latitude NOT BETWEEN 37.5662 AND 37.5664
+        OR check_out_longitude NOT BETWEEN 126.9778 AND 126.9780
+        OR check_out_within_range+0<>1
+   ));
+INSERT INTO demo_seed_violations
+SELECT 'attendance.business_hours',id,CONCAT_WS('/',TIME(check_in_at),TIME(check_out_at))
+FROM attendances
+WHERE work_date<@verify_today
+  AND (TIME(check_in_at) NOT BETWEEN '08:38:00' AND '09:00:00'
+       OR TIME(check_out_at) NOT BETWEEN '17:35:00' AND '18:35:00');
+INSERT INTO demo_seed_violations
+SELECT 'attendance.employee_variation',employee_id,
+       CONCAT('rows=',COUNT(*),':in=',COUNT(DISTINCT TIME(check_in_at)),
+              ':out=',COUNT(DISTINCT TIME(check_out_at)),
+              ':locations=',COUNT(DISTINCT CONCAT(check_in_latitude,':',check_in_longitude)))
+FROM attendances
+WHERE work_date<@verify_today
+GROUP BY employee_id
+HAVING COUNT(*)>=10 AND (
+  COUNT(DISTINCT TIME(check_in_at))<8
+  OR COUNT(DISTINCT TIME(check_out_at))<8
+  OR COUNT(DISTINCT CONCAT(check_in_latitude,':',check_in_longitude))<5
+);
+INSERT INTO demo_seed_violations
+SELECT 'attendance.daily_variation',work_date,
+       CONCAT('rows=',COUNT(*),':in=',COUNT(DISTINCT TIME(check_in_at)),':out=',COUNT(DISTINCT TIME(check_out_at)))
+FROM attendances
+WHERE work_date<@verify_today
+GROUP BY work_date
+HAVING COUNT(*)>=5 AND (COUNT(DISTINCT TIME(check_in_at))<5 OR COUNT(DISTINCT TIME(check_out_at))<5);
+INSERT INTO demo_seed_violations SELECT 'attendance.manager_today','1',CAST(COUNT(*) AS char) FROM attendances WHERE employee_id=1 AND work_date=@verify_today HAVING COUNT(*)<>1;
+INSERT INTO demo_seed_violations SELECT 'attendance.staff_today','2',CAST(COUNT(*) AS char) FROM attendances WHERE employee_id=2 AND work_date=@verify_today HAVING COUNT(*)<>0;
+INSERT INTO demo_seed_violations
+SELECT 'attendance.manager_today_time',id,CONCAT_WS('/',created_at,check_in_at)
+FROM attendances
+WHERE employee_id=1 AND work_date=@verify_today
+  AND (
+    check_in_at<>LEAST(@verify_now,TIMESTAMP(@verify_today,'08:47:00'))
+    OR created_at<>check_in_at OR updated_at<>check_in_at
+    OR check_out_at IS NOT NULL
+  );
+
+-- User-visible historical timestamps use stable business clocks, never reset wall-clock.
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.reset_clock_leak',CONCAT('board:',id),CAST(created_at AS char)
+FROM posts WHERE DATE(created_at)<@verify_today AND TIME(created_at)=TIME(@verify_now);
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.reset_clock_leak',CONCAT('activity:',id),CAST(activity_date AS char)
+FROM sales_activities WHERE DATE(activity_date)<@verify_today AND TIME(activity_date)=TIME(@verify_now);
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.reset_clock_leak',CONCAT('approval:',id),CAST(created_at AS char)
+FROM approval_documents WHERE DATE(created_at)<@verify_today AND TIME(created_at)=TIME(@verify_now);
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.reset_clock_leak',CONCAT('stored_file:',id),CAST(created_at AS char)
+FROM stored_files WHERE DATE(created_at)<@verify_today AND TIME(created_at)=TIME(@verify_now);
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.reset_clock_leak',CONCAT('drive_file:',id),CAST(created_at AS char)
+FROM drive_files WHERE DATE(created_at)<@verify_today AND TIME(created_at)=TIME(@verify_now);
+
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.business_clock',CONCAT('board:',id),CAST(created_at AS char)
+FROM posts WHERE TIME(created_at) NOT BETWEEN '08:20:00' AND '17:20:00';
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.business_clock',CONCAT('activity:',id),CAST(activity_date AS char)
+FROM sales_activities
+WHERE DATE(activity_date)<@verify_today
+  AND activity_date<DATE_SUB(@verify_now,INTERVAL 49 SECOND)
+  AND TIME(activity_date) NOT BETWEEN '08:20:00' AND '17:20:00';
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.business_clock',CONCAT('approval:',id),CAST(created_at AS char)
+FROM approval_documents WHERE TIME(created_at) NOT BETWEEN '08:20:00' AND '17:20:00';
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.business_clock',CONCAT('stored_file:',id),CAST(created_at AS char)
+FROM stored_files WHERE TIME(created_at) NOT BETWEEN '08:20:00' AND '17:20:00';
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.business_clock',CONCAT('drive_file:',id),CAST(created_at AS char)
+FROM drive_files WHERE TIME(created_at) NOT BETWEEN '08:20:00' AND '17:20:00';
+
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.clock_diversity','boards',CAST(COUNT(DISTINCT TIME(created_at)) AS char)
+FROM posts HAVING COUNT(DISTINCT TIME(created_at))<20;
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.clock_diversity','activities',CAST(COUNT(DISTINCT TIME(activity_date)) AS char)
+FROM sales_activities HAVING COUNT(DISTINCT TIME(activity_date))<40;
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.clock_diversity','approvals',CAST(COUNT(DISTINCT TIME(created_at)) AS char)
+FROM approval_documents HAVING COUNT(DISTINCT TIME(created_at))<12;
+INSERT INTO demo_seed_violations
+SELECT 'timestamp.clock_diversity','drive_files',CAST(COUNT(DISTINCT TIME(created_at)) AS char)
+FROM drive_files HAVING COUNT(DISTINCT TIME(created_at))<10;
+
+INSERT INTO demo_seed_violations
+SELECT 'board.comment_time',c.id,CONCAT(p.created_at,'/',c.created_at)
+FROM post_comments c JOIN posts p ON p.id=c.post_id
+WHERE c.created_at<p.created_at OR c.created_at>c.updated_at OR p.created_at>p.updated_at;
+INSERT INTO demo_seed_violations
+SELECT 'board.repeated_title',MIN(id),title FROM posts GROUP BY title HAVING COUNT(*)<>1;
+INSERT INTO demo_seed_violations
+SELECT 'board.repeated_content',MIN(id),LEFT(content,200) FROM posts GROUP BY content HAVING COUNT(*)<>1;
+INSERT INTO demo_seed_violations
+SELECT 'board.generated_suffix',id,title FROM posts WHERE title REGEXP '\\([0-9]+차\\)$';
+INSERT INTO demo_seed_violations
+SELECT 'board.category_balance',category,CAST(COUNT(*) AS char)
+FROM posts GROUP BY category
+HAVING COUNT(*)<>CASE category WHEN 'MEETING' THEN 10 WHEN 'NOTICE' THEN 9 WHEN 'FREE' THEN 9 ELSE 0 END;
+
+DROP TEMPORARY TABLE IF EXISTS demo_expected_drive_folders;
+CREATE TEMPORARY TABLE demo_expected_drive_folders (
+  id bigint NOT NULL PRIMARY KEY,
+  name varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  parent_id bigint NULL
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO demo_expected_drive_folders VALUES
+  (1,'공용자료',NULL),(2,'프로젝트자료',1),(3,'기술자료',1),(4,'영업자료',1),
+  (5,'고객요구사항',4),(6,'서비스점검',3),(7,'교육자료',3),(8,'업무양식',1),
+  (9,'과거자료',1),(10,'이용안내',NULL);
+INSERT INTO demo_seed_violations
+SELECT 'drive.folder_missing',e.id,e.name
+FROM demo_expected_drive_folders e LEFT JOIN drive_folders a ON a.id=e.id
+WHERE a.id IS NULL;
+INSERT INTO demo_seed_violations
+SELECT 'drive.folder_catalog',a.id,CONCAT_WS('/',a.name,a.parent_id)
+FROM drive_folders a LEFT JOIN demo_expected_drive_folders e ON e.id=a.id
+WHERE e.id IS NULL OR a.name<>e.name OR NOT (a.parent_id<=>e.parent_id);
+
+DROP TEMPORARY TABLE IF EXISTS demo_expected_drive_files;
+CREATE TEMPORARY TABLE demo_expected_drive_files (
+  id bigint NOT NULL PRIMARY KEY,
+  folder_id bigint NOT NULL
+);
+INSERT INTO demo_expected_drive_files VALUES
+  (1,4),(2,6),(3,8),(4,2),(5,2),(6,7),
+  (7,5),(8,5),(9,5),(10,5),(11,10),(12,10);
+INSERT INTO demo_seed_violations
+SELECT 'drive.file_catalog',d.id,
+       CONCAT_WS('/',d.name,d.storage_file_id,d.uploader_id,d.folder_id)
+FROM drive_files d
+JOIN stored_files s ON s.id=d.storage_file_id
+LEFT JOIN demo_expected_drive_files e ON e.id=d.id
+WHERE e.id IS NULL OR d.storage_file_id<>d.id OR d.name<>s.original_name
+   OR d.uploader_id<>IF(MOD(d.id,2)=1,1,2) OR d.folder_id<>e.folder_id;
+INSERT INTO demo_seed_violations
+SELECT 'drive.file_time',d.id,CONCAT(s.created_at,'/',d.created_at)
+FROM drive_files d JOIN stored_files s ON s.id=d.storage_file_id
+WHERE d.created_at<s.created_at OR d.created_at>d.updated_at OR s.created_at>s.updated_at;
+
+-- Exact demo role and permission contract.
+INSERT INTO demo_seed_violations
+SELECT 'role.definition',id,CONCAT(code,':system=',system+0)
+FROM roles
+WHERE CONCAT_WS('|',code,name,description,system+0) NOT IN (
+  'MASTER|시스템 관리자|복구 운영 관리자 전용|1',
+  'DEMO_MANAGER|업무 관리자|전체 업무 흐름 관리|0',
+  'DEMO_STAFF|일반 사용자|기안·경비·근태 사용|0'
+);
+INSERT INTO demo_seed_violations
+SELECT 'role.cardinality','roles',CAST(COUNT(*) AS char)
+FROM roles HAVING COUNT(*)<>3;
+
+DROP TEMPORARY TABLE IF EXISTS demo_expected_menus;
+CREATE TEMPORARY TABLE demo_expected_menus (
+  menu_code varchar(50) COLLATE utf8mb4_unicode_ci PRIMARY KEY
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO demo_expected_menus VALUES
+  ('EMPLOYEES'),('DEPARTMENTS'),('POSITIONS'),('CUSTOMERS'),('SUPPLIERS'),('PRODUCTS'),
+  ('SALES_CONTACTS'),('SALES_CUSTOMERS'),('CONTRACTS'),('EQUIPMENTS'),('AFTER_SERVICES'),
+  ('ROLES'),('CODE_RULES'),('APPROVALS'),('EXPENSES'),('ATTENDANCE'),('BOARDS'),('DRIVE');
+
+DROP TEMPORARY TABLE IF EXISTS demo_expected_role_menus;
+CREATE TEMPORARY TABLE demo_expected_role_menus (
+  role_code varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  menu_code varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  can_read bit(1) NOT NULL,
+  can_write bit(1) NOT NULL,
+  data_scope varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (role_code,menu_code)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO demo_expected_role_menus
+SELECT 'MASTER',menu_code,1,1,'ALL' FROM demo_expected_menus;
+INSERT INTO demo_expected_role_menus
+SELECT 'DEMO_MANAGER',menu_code,1,menu_code NOT IN ('EMPLOYEES','ROLES','CODE_RULES'),'ALL'
+FROM demo_expected_menus;
+INSERT INTO demo_expected_role_menus
+SELECT 'DEMO_STAFF',menu_code,1,menu_code IN ('APPROVALS','EXPENSES','BOARDS'),
+       IF(menu_code IN ('SALES_CUSTOMERS','CONTRACTS'),'SELF','ALL')
+FROM demo_expected_menus
+WHERE menu_code NOT IN ('ROLES','CODE_RULES');
+
+INSERT INTO demo_seed_violations
+SELECT 'role.permission_missing',CONCAT(e.role_code,':',e.menu_code),'expected permission row absent'
+FROM demo_expected_role_menus e
+LEFT JOIN roles r ON r.code=e.role_code
+LEFT JOIN role_menus a ON a.role_id=r.id AND a.menu_code=e.menu_code
+WHERE a.id IS NULL;
+
+INSERT INTO demo_seed_violations
+SELECT 'role.permission_mismatch',CAST(a.id AS char),
+       CONCAT(r.code,':',a.menu_code,':read=',a.can_read+0,':write=',a.can_write+0,':scope=',a.data_scope)
+FROM role_menus a
+JOIN roles r ON r.id=a.role_id
+LEFT JOIN demo_expected_role_menus e ON e.role_code=r.code AND e.menu_code=a.menu_code
+WHERE e.role_code IS NULL
+   OR a.can_read+0<>e.can_read+0
+   OR a.can_write+0<>e.can_write+0
+   OR a.data_scope<>e.data_scope;
+
+-- Code sequence must be exactly the maximum already issued in each scope.
+INSERT INTO demo_seed_violations SELECT 'department.code',id,code FROM departments WHERE code NOT REGEXP '^D[0-9]{3}$';
+INSERT INTO demo_seed_violations SELECT 'position.code',id,code FROM positions WHERE code NOT REGEXP '^P[0-9]{3}$';
+INSERT INTO demo_seed_violations SELECT 'customer.code',id,code FROM customers WHERE code NOT REGEXP '^C[0-9]{4}$';
+
+DROP TEMPORARY TABLE IF EXISTS demo_expected_sequences;
+CREATE TEMPORARY TABLE demo_expected_sequences (
+  target varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  scope_key varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  current_seq bigint NOT NULL,
+  PRIMARY KEY (target,scope_key)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO demo_expected_sequences VALUES
+  ('DEPARTMENT','GLOBAL',(SELECT MAX(CAST(SUBSTRING(code,2) AS unsigned)) FROM departments)),
+  ('POSITION','GLOBAL',(SELECT MAX(CAST(SUBSTRING(code,2) AS unsigned)) FROM positions)),
+  ('CUSTOMER','GLOBAL',(SELECT MAX(CAST(SUBSTRING(code,2) AS unsigned)) FROM customers));
+INSERT INTO demo_expected_sequences
+SELECT 'CONTRACT',CAST(YEAR(contract_date) AS char),
+       MAX(CAST(SUBSTRING_INDEX(contract_no,'-',-1) AS unsigned))
+FROM contracts GROUP BY YEAR(contract_date);
+INSERT INTO demo_expected_sequences
+SELECT 'AFTER_SERVICE',CAST(YEAR(received_date) AS char),
+       MAX(CAST(SUBSTRING_INDEX(receipt_no,'-',-1) AS unsigned))
+FROM after_services GROUP BY YEAR(received_date);
+
+INSERT INTO demo_seed_violations
+SELECT 'sequence.missing',CONCAT(e.target,':',e.scope_key),CONCAT('expected=',e.current_seq)
+FROM demo_expected_sequences e
+LEFT JOIN code_sequences a ON a.target=e.target AND a.scope_key=e.scope_key
+WHERE a.id IS NULL;
+
+INSERT INTO demo_seed_violations
+SELECT IF(e.target IS NULL,'sequence.unexpected','sequence.value'),CAST(a.id AS char),
+       CONCAT(a.target,':',a.scope_key,':actual=',a.current_seq,':expected=',COALESCE(e.current_seq,'none'))
+FROM code_sequences a
+LEFT JOIN demo_expected_sequences e ON e.target=a.target AND e.scope_key=a.scope_key
+WHERE e.target IS NULL OR a.current_seq<>e.current_seq;
+INSERT INTO demo_seed_violations
+SELECT 'sequence.metadata',id,CONCAT(target,':',scope_key,':seq=',current_seq,':version=',version)
+FROM code_sequences
+WHERE current_seq<0 OR version<>0 OR created_at>updated_at;
+
+-- Dashboard/date coverage and demo account boundary.
+INSERT INTO demo_seed_violations
+SELECT 'dashboard.sales_month',m.months_ago,CONCAT('contracts=',COUNT(c.id))
+FROM (SELECT 0 months_ago UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5) m
+LEFT JOIN contracts c ON c.status<>'CANCELED' AND c.contract_date>=DATE_SUB(@verify_month,INTERVAL m.months_ago MONTH) AND c.contract_date<DATE_ADD(DATE_SUB(@verify_month,INTERVAL m.months_ago MONTH),INTERVAL 1 MONTH)
+GROUP BY m.months_ago HAVING COUNT(c.id)<IF(m.months_ago<=1,2,3);
+INSERT INTO demo_seed_violations SELECT 'dashboard.monthly_activity','current',CAST(COUNT(*) AS char) FROM sales_activities WHERE activity_date>=@verify_month HAVING COUNT(*)<12;
+INSERT INTO demo_seed_violations
+SELECT 'dashboard.recent_activity_diversity','top5',
+       CONCAT('customers=',COUNT(DISTINCT customer_id),
+              ':types=',COUNT(DISTINCT type),
+              ':subjects=',COUNT(DISTINCT subject),
+              ':visits=',SUM(type='VISIT'))
+FROM (
+  SELECT customer_id,type,subject,activity_date
+  FROM sales_activities
+  ORDER BY activity_date DESC
+  LIMIT 5
+) recent
+HAVING COUNT(*)<>5 OR COUNT(DISTINCT customer_id)<>5
+   OR COUNT(DISTINCT type)<3 OR COUNT(DISTINCT subject)<4
+   OR SUM(type='VISIT')>3;
+INSERT INTO demo_seed_violations SELECT 'dashboard.recent_customer','45days',CAST(COUNT(*) AS char) FROM customers WHERE created_at>=DATE_SUB(UTC_TIMESTAMP()+INTERVAL 9 HOUR,INTERVAL 45 DAY) HAVING COUNT(*)<5;
+INSERT INTO demo_seed_violations SELECT 'dashboard.expiring_warranty','90days',CAST(COUNT(*) AS char) FROM equipments WHERE general_warranty_end_date BETWEEN @verify_today AND DATE_ADD(@verify_today,INTERVAL 90 DAY) OR oscillator_warranty_end_date BETWEEN @verify_today AND DATE_ADD(@verify_today,INTERVAL 90 DAY) HAVING COUNT(*)<5;
+INSERT INTO demo_seed_violations
+SELECT 'dashboard.as_type',t.type,CAST(COUNT(a.id) AS char)
+FROM (SELECT 'REPAIR' type UNION ALL SELECT 'INSTALL_SUPPORT' UNION ALL SELECT 'TRAINING' UNION ALL SELECT 'INTERPRET' UNION ALL SELECT 'TUNING') t
+LEFT JOIN after_services a ON a.type=t.type AND a.received_date>=DATE_SUB(@verify_month,INTERVAL 5 MONTH)
+GROUP BY t.type HAVING COUNT(a.id)=0;
+
+INSERT INTO demo_seed_violations SELECT 'demo.manager','demo.manager','credential/role/status mismatch' FROM dual WHERE NOT EXISTS (SELECT 1 FROM employees e JOIN roles r ON r.id=e.role_id WHERE e.login_id='demo.manager' AND e.password='$2a$10$yGoM3b.6oo5BhmdLT1KCBOq002lxF9W5N.Zq6546SK24q4VmS2VKG' AND e.status='ACTIVE' AND r.code='DEMO_MANAGER');
+INSERT INTO demo_seed_violations SELECT 'demo.staff','demo.staff','credential/role/status mismatch' FROM dual WHERE NOT EXISTS (SELECT 1 FROM employees e JOIN roles r ON r.id=e.role_id WHERE e.login_id='demo.staff' AND e.password='$2a$10$GnmNeh1fcMAFoiFSkKw1cOkfLE.bIj1PIcHP69cCcmDlFKK5Qm6Xi' AND e.status='ACTIVE' AND r.code='DEMO_STAFF');
+INSERT INTO demo_seed_violations SELECT 'demo.login_count','demo.*',CAST(COUNT(*) AS char) FROM employees WHERE login_id LIKE 'demo.%' HAVING COUNT(*)<>2;
+INSERT INTO demo_seed_violations SELECT 'demo.extra_login_path',id,login_id FROM employees WHERE login_id NOT IN ('demo.manager','demo.staff') AND password IN ('$2a$10$yGoM3b.6oo5BhmdLT1KCBOq002lxF9W5N.Zq6546SK24q4VmS2VKG','$2a$10$GnmNeh1fcMAFoiFSkKw1cOkfLE.bIj1PIcHP69cCcmDlFKK5Qm6Xi');
+INSERT INTO demo_seed_violations SELECT 'demo.non_demo_locked',id,login_id FROM employees WHERE login_id NOT IN ('demo.manager','demo.staff') AND password<>'$2a$10$25XfA5OernCEENFnr7UyK.E2qIfwz8k1LmsNP3dscHOyW85RZ1sci';
+INSERT INTO demo_seed_violations SELECT 'demo.recovery_operator_seeded',login_id,'recovery operator must be startup-only' FROM employees WHERE role_id=1;
+INSERT INTO demo_seed_violations SELECT 'privacy.audit_ip',id,ip_address FROM audit_logs WHERE ip_address IS NOT NULL;
+INSERT INTO demo_seed_violations
+SELECT 'privacy.audit_actor',a.id,CONCAT(COALESCE(a.actor_login_id,'null'),'/',COALESCE(e.login_id,'null'))
+FROM audit_logs a LEFT JOIN employees e ON e.id=a.actor_id
+WHERE a.actor_id IS NULL OR e.id IS NULL OR a.actor_login_id<>e.login_id;
+INSERT INTO demo_seed_violations
+SELECT 'privacy.supplier',id,CONCAT(name,'/',name_ko,'/',country)
+FROM suppliers
+WHERE CONCAT_WS('|',name,name_ko,country) NOT IN (
+  'NOVAMACH INDUSTRIES|노바맥시온|대한민국',
+  'AURORA LASERWORKS|오로라레이저웍스|독일',
+  'BLUEMET SYSTEMS|블루메트시스템즈|대한민국',
+  'HANGYEOL AUTOMATION|한결오토메이션|일본',
+  'LUMINA FABTECH|루미나팹테크|이탈리아',
+  'DAON MACHINERY|다온머시너리|대한민국',
+  'IEUM ROBOTICS|이음로보틱스|대한민국',
+  'SAEBIT WELDING|새빛웰딩시스템|중국'
+);
+INSERT INTO demo_seed_violations
+SELECT 'privacy.employee',id,CONCAT_WS('/',name,email,phone)
+FROM employees
+WHERE name NOT REGEXP '^[가-힣]{3}$' OR email NOT LIKE '%.example'
+   OR phone<>CONCAT('010-0000-',LPAD(1000+MOD(id*3191+211,8000),4,'0'));
+INSERT INTO demo_seed_violations
+SELECT 'privacy.employee_catalog',id,CONCAT_WS('/',name,login_id)
+FROM employees
+WHERE CONCAT_WS('|',name,login_id) NOT IN (
+  '김도윤|demo.manager','이서연|demo.staff','박지훈|jihoon.park','최유진|yujin.choi',
+  '정민석|minseok.jung','강하윤|hayoon.kang','조현우|hyunwoo.cho','윤수빈|subin.yoon',
+  '장태준|taejun.jang','임채원|chaewon.lim','한서준|seojun.han','오지민|jimin.oh',
+  '서민준|minjun.seo','신예린|yerin.shin','권도현|dohyun.kwon','황가은|gaeun.hwang',
+  '안재원|jaewon.ahn','송나연|nayeon.song','류시우|siwoo.ryu','전하린|harin.jeon',
+  '문준혁|junhyeok.moon','백소윤|soyoon.baek'
+);
+INSERT INTO demo_seed_violations
+SELECT 'employee.display_dates',id,CONCAT_WS('/',birth_date,join_date)
+FROM employees
+WHERE birth_date<>DATE_SUB(
+        @verify_today,
+        INTERVAL (8300+MOD(id*id*113+id*487+613,5600)) DAY
+      )
+   OR join_date<>DATE_SUB(
+        @verify_today,
+        INTERVAL (240+MOD(id*id*59+id*173+41,1180)) DAY
+      );
+INSERT INTO demo_seed_violations
+SELECT 'employee.organization_catalog',id,CONCAT_WS('/',department_id,position_id)
+FROM employees
+WHERE department_id<>CAST(ELT(id,
+        6,5,8,5,6,7,7,7,7,7,7,5,6,8,8,5,6,7,8,5,6,7
+      ) AS unsigned)
+   OR position_id<>CAST(ELT(id,
+        2,5,5,4,4,5,4,5,4,5,6,5,4,5,6,4,5,4,5,5,6,6
+      ) AS unsigned);
+INSERT INTO demo_seed_violations
+SELECT 'employee.lifecycle_time',id,CONCAT_WS('/',join_date,created_at,updated_at)
+FROM employees
+WHERE DATE(created_at)<>join_date OR created_at>updated_at;
+
+DROP TEMPORARY TABLE IF EXISTS demo_expected_employee_addresses;
+CREATE TEMPORARY TABLE demo_expected_employee_addresses (
+  id bigint NOT NULL PRIMARY KEY,
+  road_address varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  detail_address varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  zip_code varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO demo_expected_employee_addresses VALUES
+  (1,'서울특별시 새온구 솔빛로 74','도담채 104동 1203호','98143'),
+  (2,'경기도 다온시 여울로 128','다온마루 202동 804호','98427'),
+  (3,'인천광역시 미르구 온샘로 31','미르하임 103동 1502호','98216'),
+  (4,'대전광역시 해온구 나래길 56','해온빌리지 201동 603호','98735'),
+  (5,'충청북도 가람시 도담로 142','가람채 105동 1101호','98308'),
+  (6,'부산광역시 윤슬구 새결로 89','윤슬마을 304동 1704호','98564'),
+  (7,'광주광역시 솔누리구 한빛로 23','솔누리파크 102동 902호','98097'),
+  (8,'대구광역시 온결구 이음길 117','온결하우스 203동 1403호','98921'),
+  (9,'서울특별시 새온구 나래로 153','새온리버 108동 702호','98612'),
+  (10,'경기도 다온시 온샘길 42','여울마을 301동 1301호','98273'),
+  (11,'인천광역시 미르구 도담로 96','미르파크 205동 1004호','98845'),
+  (12,'대전광역시 해온구 이음로 135','나래하임 101동 1602호','98391'),
+  (13,'충청북도 가람시 새결길 68','가람마루 302동 503호','98507'),
+  (14,'부산광역시 윤슬구 한빛로 27','윤슬채 106동 1901호','98184'),
+  (15,'광주광역시 솔누리구 여울길 164','솔빛마을 204동 1104호','98702'),
+  (16,'대구광역시 온결구 나래로 51','이음파크 107동 802호','98463'),
+  (17,'서울특별시 새온구 도담길 109','새온마루 303동 1401호','98038'),
+  (18,'경기도 다온시 솔빛로 36','다온하임 202동 602호','98816'),
+  (19,'인천광역시 미르구 새결로 147','온샘마을 105동 1803호','98259'),
+  (20,'대전광역시 해온구 한빛길 82','해온채 301동 904호','98671'),
+  (21,'충청북도 가람시 이음로 19','도담파크 103동 1201호','98346'),
+  (22,'부산광역시 윤슬구 여울로 121','윤슬하임 206동 1504호','98908');
+INSERT INTO demo_seed_violations
+SELECT 'employee.address_catalog',a.id,CONCAT_WS('/',a.road_address,a.detail_address,a.zip_code)
+FROM employees a
+LEFT JOIN demo_expected_employee_addresses e ON e.id=a.id
+WHERE e.id IS NULL OR a.road_address<>e.road_address
+   OR a.detail_address<>e.detail_address OR a.zip_code<>e.zip_code;
+INSERT INTO demo_seed_violations
+SELECT 'employee.address_catalog_missing',e.id,e.road_address
+FROM demo_expected_employee_addresses e
+LEFT JOIN employees a ON a.id=e.id
+WHERE a.id IS NULL;
+INSERT INTO demo_seed_violations
+SELECT 'privacy.contact',id,CONCAT_WS('/',name,email,personal_email,mobile_phone,office_phone)
+FROM sales_contacts
+WHERE name NOT REGEXP '^[가-힣]{3}$' OR name_en NOT REGEXP '^[A-Za-z]+ [A-Za-z]+$'
+   OR email<>CONCAT(LOWER(REPLACE(name_en,' ','.')),'@partners.example')
+   OR personal_email<>CONCAT(LOWER(REPLACE(name_en,' ','.')),'@contacts.example')
+   OR mobile_phone<>CONCAT('010-0001-',LPAD(1000+MOD(id*2879+503,8000),4,'0'))
+   OR office_phone<>CONCAT('02-0000-',LPAD(1000+MOD(id*3557+907,8000),4,'0'));
+
+DROP TEMPORARY TABLE IF EXISTS demo_expected_contact_surnames;
+CREATE TEMPORARY TABLE demo_expected_contact_surnames (
+  catalog_index tinyint unsigned NOT NULL PRIMARY KEY,
+  name_ko varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  name_en varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO demo_expected_contact_surnames VALUES
+  (1,'김','Kim'),(2,'이','Lee'),(3,'박','Park'),(4,'최','Choi'),
+  (5,'정','Jung'),(6,'강','Kang'),(7,'조','Cho'),(8,'윤','Yoon'),
+  (9,'장','Jang'),(10,'임','Lim'),(11,'한','Han'),(12,'오','Oh');
+
+DROP TEMPORARY TABLE IF EXISTS demo_expected_contact_given_names;
+CREATE TEMPORARY TABLE demo_expected_contact_given_names (
+  catalog_index tinyint unsigned NOT NULL PRIMARY KEY,
+  name_ko varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  name_en varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO demo_expected_contact_given_names VALUES
+  (1,'도현','Dohyeon'),(2,'서윤','Seoyun'),(3,'민재','Minjae'),
+  (4,'하린','Harin'),(5,'준서','Junseo'),(6,'지우','Jiwoo');
+
+DROP TEMPORARY TABLE IF EXISTS demo_expected_contacts;
+CREATE TEMPORARY TABLE demo_expected_contacts (
+  id bigint NOT NULL PRIMARY KEY,
+  name varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  name_en varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO demo_expected_contacts
+SELECT ids.id,
+       CONCAT(s.name_ko,g.name_ko),
+       CONCAT(g.name_en,' ',s.name_en)
+FROM (
+  SELECT id,MOD((id-1)*17+11,72) catalog_slot
+  FROM (
+    SELECT ones.n+tens.n*10+1 id
+    FROM (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) ones
+    CROSS JOIN (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7) tens
+  ) sequence_ids
+  WHERE id<=72
+) ids
+JOIN demo_expected_contact_surnames s ON s.catalog_index=MOD(ids.catalog_slot,12)+1
+JOIN demo_expected_contact_given_names g ON g.catalog_index=FLOOR(ids.catalog_slot/12)+1;
+
+INSERT INTO demo_seed_violations
+SELECT 'privacy.contact_catalog_missing',e.id,CONCAT_WS('/',e.name,e.name_en)
+FROM demo_expected_contacts e LEFT JOIN sales_contacts a ON a.id=e.id
+WHERE a.id IS NULL;
+INSERT INTO demo_seed_violations
+SELECT 'privacy.contact_catalog',a.id,CONCAT_WS('/',a.name,a.name_en)
+FROM sales_contacts a LEFT JOIN demo_expected_contacts e ON e.id=a.id
+WHERE e.id IS NULL OR a.name<>e.name OR a.name_en<>e.name_en;
+INSERT INTO demo_seed_violations
+SELECT 'privacy.employment_external',id,external_company_name
+FROM sales_contact_employments
+WHERE external_company_name IS NOT NULL AND external_company_name NOT IN (
+  '에버온모션','모노웨이브','루미코어','에이든팩토리','브릭스메카','오브릭시스템',
+  '네오담테크','파인루트','플로온기공','에코베인','로움산업','이노브릿지'
+);
+INSERT INTO demo_seed_violations
+SELECT 'privacy.acquisition_source',id,name
+FROM acquisition_sources WHERE name NOT IN (
+  '자동화 산업전','기존 고객 소개','홈페이지 기술 문의','파트너 공동 세미나',
+  '제품 뉴스레터','현장 기술 상담','공급사 추천','기타 영업 문의'
+);
+INSERT INTO demo_seed_violations
+SELECT 'privacy.customer_identity',id,CONCAT_WS('/',name,name_en,representative,email,website,phone,fax)
+FROM customers
+WHERE name NOT REGEXP '^[가-힣]{4,8}$' OR name_en IS NOT NULL
+   OR representative NOT REGEXP '^[가-힣]{3}$'
+   OR email NOT LIKE '%.example' OR website NOT LIKE 'https://%.example'
+   OR phone NOT REGEXP '^02-0000-[0-9]{4}$' OR fax NOT REGEXP '^02-0000-[0-9]{4}$';
+INSERT INTO demo_seed_violations
+SELECT 'privacy.customer_catalog',id,name
+FROM customers
+WHERE name NOT IN (
+  '미르온정밀','솔누리금속','해온기공','온결산업','아른테크','라움메탈',
+  '다솜정공','윤슬설비','누온레이저','가람프레임','모아진기계','세온플랜트',
+  '도담모션','하람스틸','리안정밀','새론기공','이루온메탈','담우산업',
+  '마루빛테크','오름정공','나래금속','늘품기계','한울프레임','다원설비',
+  '이로운테크','솔찬정밀','해들메탈','시온기공','라온웍스','온새미산업',
+  '미르재금속','가온정밀','보담기계','여울메탈','두온산업','아람정공',
+  '해담프레임','루온테크','모루기공','도란설비','이든정밀','소담메탈',
+  '가람솔루션','온빛기계','푸름산업','해솔정공','다온플랜트','새결테크'
+);
+INSERT INTO demo_seed_violations SELECT 'privacy.customer_registration',id,CONCAT(biz_reg_no,'/',corp_reg_no) FROM customers WHERE biz_reg_no NOT REGEXP '^000-00-[0-9]{5}$' OR corp_reg_no NOT REGEXP '^000000-00000[0-9]{2}$';
+INSERT INTO demo_seed_violations
+SELECT 'customer.display_catalog',id,
+       CONCAT_WS('/',road_address,detail_address,zip_code,email,phone,fax,trade_start_date)
+FROM customers
+WHERE LEFT(
+        road_address,
+        CHAR_LENGTH(road_address)-CHAR_LENGTH(SUBSTRING_INDEX(road_address,' ',-1))-1
+      ) NOT IN (
+        '경기도 새온시 산업로','충청남도 해담시 테크노로',
+        '경상북도 미르시 국가산단로','경상남도 온결시 공단중앙로',
+        '전북특별자치도 다온시 혁신산업로','전라남도 윤슬시 기업도시로',
+        '강원특별자치도 솔누리시 첨단로','충청북도 가람시 미래산업로'
+      )
+   OR CAST(SUBSTRING_INDEX(road_address,' ',-1) AS unsigned)
+      <>20+MOD(id*id*38+id*53+17,380)
+   OR detail_address<>CONCAT(
+        1+MOD(id*id*3+id*7+2,5),'공장 ',
+        101+MOD(id*id*42+id*65+9,780),'호'
+      )
+   OR zip_code<>LPAD(91000+MOD(id*id*173+id*283+731,8000),5,'0')
+   OR email<>CONCAT(
+        'office@',LOWER(name),'-',
+        LPAD(MOD(id*id*17+id*37+19,997),3,'0'),'.example'
+      )
+   OR website<>CONCAT(
+        'https://',LOWER(name),'-',
+        LPAD(MOD(id*id*17+id*37+19,997),3,'0'),'.example'
+      )
+   OR phone<>CONCAT(
+        '02-0000-',LPAD(1000+MOD(id*id*719+id*2539+1207,8000),4,'0')
+      )
+   OR fax<>CONCAT(
+        '02-0000-',LPAD(1000+MOD(id*id*997+id*3319+1801,8000),4,'0')
+      )
+   OR trade_start_date<>DATE_SUB(
+        @verify_today,
+        INTERVAL (150+MOD(id*id*43+id*97+31,1103)) DAY
+      );
+INSERT INTO demo_seed_violations
+SELECT 'privacy.engineer',id,CONCAT_WS('/',name,affiliation,phone,type,employee_id)
+FROM engineers
+WHERE phone NOT REGEXP '^010-0002-[0-9]{4}$'
+   OR affiliation NOT IN ('온결솔루션 기술지원팀','테크온서비스','오로라레이저웍스','루미나팹테크')
+   OR (type='INTERNAL')<>(employee_id IS NOT NULL);
+INSERT INTO demo_seed_violations
+SELECT 'privacy.engineer_catalog',id,CONCAT_WS('/',name,affiliation)
+FROM engineers
+WHERE CONCAT_WS('|',name,affiliation) NOT IN (
+  '조현우|온결솔루션 기술지원팀','윤수빈|온결솔루션 기술지원팀',
+  '장태준|온결솔루션 기술지원팀','임채원|온결솔루션 기술지원팀',
+  '한서준|온결솔루션 기술지원팀','정우진|테크온서비스','김세아|테크온서비스',
+  '마틴 베버|오로라레이저웍스','루카 로시|루미나팹테크'
+);
+INSERT INTO demo_seed_violations
+SELECT 'domain.internal_engineer_identity',e.id,CONCAT_WS('/',e.name,employee.name,d.name)
+FROM engineers e
+JOIN employees employee ON employee.id=e.employee_id
+JOIN departments d ON d.id=employee.department_id
+WHERE e.type='INTERNAL'
+  AND (e.name<>employee.name OR d.name<>'기술지원팀' OR e.affiliation<>'온결솔루션 기술지원팀');
+
+DROP TEMPORARY TABLE IF EXISTS demo_visible_text;
+CREATE TEMPORARY TABLE demo_visible_text (
+  record_type varchar(50) NOT NULL,
+  record_id bigint NOT NULL,
+  display_text text NOT NULL
+);
+INSERT INTO demo_visible_text SELECT 'employee',id,CONCAT_WS(' ',name,road_address,detail_address) FROM employees;
+INSERT INTO demo_visible_text SELECT 'supplier',id,CONCAT_WS(' ',name,name_ko,note) FROM suppliers;
+INSERT INTO demo_visible_text SELECT 'product',id,CONCAT_WS(' ',model_name,note) FROM products;
+INSERT INTO demo_visible_text SELECT 'customer',id,CONCAT_WS(' ',name,note,road_address,detail_address) FROM customers;
+INSERT INTO demo_visible_text SELECT 'contact',id,CONCAT_WS(' ',name,name_en,note) FROM sales_contacts;
+INSERT INTO demo_visible_text SELECT 'activity',id,CONCAT_WS(' ',subject,content) FROM sales_activities;
+INSERT INTO demo_visible_text SELECT 'contract',id,CONCAT_WS(' ',contract_no,logistics_note,option_text,support_program_name) FROM contracts;
+INSERT INTO demo_visible_text SELECT 'equipment',id,CONCAT_WS(' ',serial_no,install_address,note) FROM equipments;
+INSERT INTO demo_visible_text SELECT 'engineer',id,CONCAT_WS(' ',name,affiliation) FROM engineers;
+INSERT INTO demo_visible_text SELECT 'after_service',id,CONCAT_WS(' ',receipt_no,symptom) FROM after_services;
+INSERT INTO demo_visible_text SELECT 'approval',id,CONCAT_WS(' ',title,content) FROM approval_documents;
+INSERT INTO demo_visible_text SELECT 'expense',id,CONCAT_WS(' ',title) FROM expense_claims;
+INSERT INTO demo_visible_text SELECT 'leave',id,CONCAT_WS(' ',reason) FROM leave_requests;
+INSERT INTO demo_visible_text SELECT 'post',id,CONCAT_WS(' ',title,content) FROM posts;
+INSERT INTO demo_visible_text SELECT 'folder',id,name FROM drive_folders;
+INSERT INTO demo_visible_text SELECT 'file',id,original_name FROM stored_files;
+INSERT INTO demo_seed_violations
+SELECT 'privacy.visible_placeholder',CONCAT(record_type,':',record_id),LEFT(display_text,500)
+FROM demo_visible_text
+WHERE UPPER(display_text) REGEXP '(샘플|가상|합성|SAMPLE|SYNTH|PORTFOLIO|포트폴리오)';
+
+DROP TEMPORARY TABLE IF EXISTS demo_expected_files;
+CREATE TEMPORARY TABLE demo_expected_files (
+  id bigint NOT NULL PRIMARY KEY,
+  stored_name varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  original_name varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  content_type varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  size bigint NOT NULL,
+  created_days_ago int NOT NULL,
+  uploader_id bigint NOT NULL
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- BEGIN GENERATED FILE EXPECTATIONS
+INSERT INTO demo_expected_files VALUES
+  (1,'92af8b14-43bb-5fbf-84ba-f9a5de81a5ea','영업회의_현황_01.pdf','application/pdf',681,10,1),
+  (2,'619ec205-667f-5bf1-ab17-c4da366e625a','장비점검_일정_01.pdf','application/pdf',686,11,2),
+  (3,'61509201-027e-5ba8-bc4f-e8184f8e7e40','현장방문_체크리스트_01.pdf','application/pdf',681,12,1),
+  (4,'dc126c3d-e699-5094-a640-c1d7aabae65e','설치일정_동선도_01.pdf','application/pdf',684,13,2),
+  (5,'15b3f47f-fb67-5e75-9414-dae02e54bc12','출장계획_첨부_01.pdf','application/pdf',679,14,1),
+  (6,'abb9d428-d511-5969-9fff-0718db767820','기술교육_운영안_01.pdf','application/pdf',684,15,2),
+  (7,'84a51677-ee1a-5789-b812-a82aea60a69b','고객요구사항_정리_01.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',2756,16,1),
+  (8,'ac5ba8c6-0d5f-5f0f-9308-893210182877','고객요구사항_정리_02.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',2756,17,2),
+  (9,'d8cf4a6f-a4ec-59c3-8d35-a98c0871e523','고객요구사항_정리_03.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',2754,18,1),
+  (10,'9b2aa56a-c3bf-5c62-bfd5-9fff6f94b2a6','고객요구사항_정리_04.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',2754,19,2),
+  (11,'4e039383-8a6f-51c5-b607-0cfa40011b58','장비점검_안내_01.txt','text/plain',196,20,1),
+  (12,'01d4cecf-749a-5ca3-a4fa-94ede29ad42a','장비점검_안내_02.txt','text/plain',196,21,2),
+  (13,'7d8f0c2a-4cd5-59cb-8ff4-33c0a2455596','영업회의_회의록_첨부.pdf','application/pdf',681,22,3),
+  (14,'0d058e78-0ba1-5ed6-94d1-64ed218e1fa6','정기점검_일정표.pdf','application/pdf',686,23,1),
+  (15,'148ce612-011c-502d-9627-54dc7019fddc','현장방문_체크리스트.pdf','application/pdf',681,24,5),
+  (16,'2f08b896-b4f4-5964-9609-1cb38cd9a607','설치동선_검토자료.pdf','application/pdf',684,25,6),
+  (17,'7f9457e5-913e-50d9-845f-e86b1de4b994','미르온정밀_출장계획.pdf','application/pdf',679,26,2),
+  (18,'b7ee596c-ac56-554a-9d55-331767f5a8ea','솔누리금속_출장계획.pdf','application/pdf',684,27,1),
+  (19,'89a22e68-a4a9-5081-89ea-7be56f17b416','출장비_증빙묶음_01.png','image/png',934,28,2),
+  (20,'72ce6714-2829-5875-9aaa-f042b655e650','출장비_증빙묶음_02.png','image/png',935,29,2),
+  (21,'6d108fef-afcd-5c41-b929-e4965b4a461e','출장비_증빙묶음_03.png','image/png',935,30,2),
+  (22,'ad3f576b-e9fd-5582-becd-8839ae917ca4','출장비_증빙묶음_04.png','image/png',934,31,2),
+  (23,'f3212143-4469-54a6-9008-5c2191463e32','출장비_증빙묶음_05.png','image/png',934,32,2),
+  (24,'8e5dbdee-27d9-51a5-a60e-5745c39030f7','출장비_증빙묶음_06.png','image/png',933,33,2),
+  (25,'dc11a793-db9e-5ae8-95da-98d71418c86c','출장비_증빙묶음_07.png','image/png',935,34,10),
+  (26,'cc7daa0a-0b29-58d7-91d7-5f630d75fef2','출장비_증빙묶음_08.png','image/png',934,35,11),
+  (27,'74ef3747-5141-5f83-b6be-13fe10d874a4','출장비_증빙묶음_09.png','image/png',933,36,12),
+  (28,'6a6e1853-0180-5752-9392-0f2ef3426fd9','출장비_증빙묶음_10.png','image/png',933,37,3),
+  (29,'8e0975fe-d76f-512d-b482-521d261e2f22','출장비_증빙묶음_11.png','image/png',934,38,4),
+  (30,'f1d5a40e-e7b2-5102-8ca7-002aeb7f72da','출장비_증빙묶음_12.png','image/png',935,39,5);
+-- END GENERATED FILE EXPECTATIONS
+
+INSERT INTO demo_seed_violations
+SELECT 'file.missing',e.id,e.original_name
+FROM demo_expected_files e LEFT JOIN stored_files a ON a.id=e.id
+WHERE a.id IS NULL;
+INSERT INTO demo_seed_violations
+SELECT 'file.unexpected',a.id,a.original_name
+FROM stored_files a LEFT JOIN demo_expected_files e ON e.id=a.id
+WHERE e.id IS NULL;
+INSERT INTO demo_seed_violations
+SELECT 'file.metadata',a.id,CONCAT_WS('/',a.stored_name,a.original_name,a.content_type,a.size,a.uploader_id)
+FROM stored_files a JOIN demo_expected_files e ON e.id=a.id
+WHERE a.stored_name<>e.stored_name OR a.original_name<>e.original_name
+   OR NOT (a.content_type<=>e.content_type) OR a.size<>e.size OR a.uploader_id<>e.uploader_id
+   OR DATE(a.created_at)<>DATE_SUB(@verify_today,INTERVAL e.created_days_ago DAY)
+   OR a.updated_at<>a.created_at;
+
+SELECT check_name,record_id,detail
+FROM demo_seed_violations
+ORDER BY check_name,record_id;
