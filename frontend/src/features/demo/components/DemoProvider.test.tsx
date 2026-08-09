@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import authReducer, { setToken } from '@/features/auth/store/authSlice';
+import demoRuntimeReducer from '@/shared/demo/demoRuntimeSlice';
 import { snackbarReducer } from '@/shared/ui/feedback/snackbar';
 import { api } from '@/shared/api/baseApi';
 import { useDemo } from '@/shared/demo/DemoContext';
@@ -34,6 +35,7 @@ describe('DemoProvider generation coordinator', () => {
     const testStore = configureStore({
       reducer: {
         auth: authReducer,
+        demoRuntime: demoRuntimeReducer,
         snackbar: snackbarReducer,
         [api.reducerPath]: api.reducer,
       },

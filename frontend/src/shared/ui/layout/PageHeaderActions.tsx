@@ -8,6 +8,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SaveIcon from '@mui/icons-material/Save';
 import PermissionGate from './PermissionGate';
+import { useDemo } from '@/shared/demo/DemoContext';
 
 interface OutletCtx {
   pageHeaderActionsNode: HTMLElement | null;
@@ -20,12 +21,13 @@ interface OutletCtx {
  */
 export default function PageHeaderActions({ actions }: { actions: PageHeaderAction[] }) {
   const ctx = useOutletContext<OutletCtx | null>();
+  const { writeBlocked } = useDemo();
   const node = ctx?.pageHeaderActionsNode;
   if (!node) return null;
   return createPortal(
     <>
       {actions.map((action, i) => (
-        <Fragment key={i}>{renderAction(action)}</Fragment>
+        <Fragment key={i}>{renderAction(action, writeBlocked)}</Fragment>
       ))}
     </>,
     node,
@@ -69,6 +71,8 @@ export type PageHeaderAction =
       icon?: ReactNode;
       onClick: () => void;
       disabled?: boolean;
+      /** 생성/변경을 수행하는 보조 액션이면 데모 쓰기 잠금의 적용을 받는다. */
+      writeAction?: boolean;
       /** 권한 게이트 — 지정 시 해당 메뉴의 read 권한이 있을 때만 노출. */
       menuCode?: string;
     }
@@ -93,7 +97,7 @@ const PRIMARY_ICON = {
   save: <SaveIcon />,
 } as const;
 
-function renderAction(action: PageHeaderAction): ReactNode {
+function renderAction(action: PageHeaderAction, writeBlocked: boolean): ReactNode {
   if (action.design === 'cancel') {
     return (
       <CancelButton
@@ -112,7 +116,7 @@ function renderAction(action: PageHeaderAction): ReactNode {
       <CancelButton
         type="button"
         onClick={action.onClick}
-        disabled={action.disabled}
+        disabled={action.disabled || (action.writeAction && writeBlocked)}
         startIcon={action.icon}
       >
         {action.label}
@@ -136,7 +140,7 @@ function renderAction(action: PageHeaderAction): ReactNode {
       <DangerButton
         type="button"
         onClick={action.onClick}
-        disabled={action.disabled || action.loading}
+        disabled={action.disabled || action.loading || writeBlocked}
         startIcon={startIcon}
       >
         {action.label ?? DEFAULT_LABEL.delete}
@@ -161,7 +165,7 @@ function renderAction(action: PageHeaderAction): ReactNode {
       type={action.formId ? 'submit' : 'button'}
       form={action.formId}
       onClick={action.onClick}
-      disabled={action.disabled || action.loading}
+      disabled={action.disabled || action.loading || writeBlocked}
       startIcon={startIcon}
     >
       {action.label ?? DEFAULT_LABEL[action.design]}

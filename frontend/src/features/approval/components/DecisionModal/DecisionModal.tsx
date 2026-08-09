@@ -2,6 +2,7 @@ import { useState } from 'react';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import { useDemo } from '@/shared/demo/DemoContext';
 import {
   CommentField,
   DecisionDialog,
@@ -24,6 +25,7 @@ interface Props {
  * 의견은 선택 입력 — 빈 값 제출 허용 (BE DecisionRequest.comment 선택).
  */
 export default function DecisionModal({ open, mode, isSaving, onClose, onSubmit }: Props) {
+  const { writeBlocked } = useDemo();
   const [comment, setComment] = useState('');
   const isApprove = mode === 'approve';
 
@@ -40,6 +42,7 @@ export default function DecisionModal({ open, mode, isSaving, onClose, onSubmit 
           minRows={3}
           autoFocus
           value={comment}
+          disabled={writeBlocked}
           onChange={(e) => setComment(e.target.value)}
           placeholder="의견을 입력하세요 (선택)"
         />
@@ -52,7 +55,7 @@ export default function DecisionModal({ open, mode, isSaving, onClose, onSubmit 
           variant="contained"
           color={isApprove ? 'primary' : 'error'}
           onClick={() => onSubmit(comment)}
-          disabled={isSaving}
+          disabled={isSaving || writeBlocked}
         >
           {isSaving ? '처리 중...' : isApprove ? '승인' : '반려'}
         </ModalConfirmButton>

@@ -9,6 +9,7 @@ const authApi = api.injectEndpoints({
         method: 'POST',
         data: credentials,
       }),
+      extraOptions: { demoWrite: false },
     }),
   }),
 });

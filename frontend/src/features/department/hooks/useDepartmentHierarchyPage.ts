@@ -15,6 +15,7 @@ import {
   isDescendant,
 } from '@/features/department/components/HierarchyTree/hierarchyUtils';
 import { getErrorMessage } from '@/shared/api/error';
+import { useDemo } from '@/shared/demo/DemoContext';
 
 const EMPTY_DEPARTMENTS: import('@/features/reference/types').DepartmentInfo[] = [];
 
@@ -25,7 +26,9 @@ const EMPTY_DEPARTMENTS: import('@/features/reference/types').DepartmentInfo[] =
 export function useDepartmentHierarchyPage() {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
-  const { canWrite } = usePermission(MENU_CODE.DEPARTMENTS);
+  const { canWrite: hasWritePermission } = usePermission(MENU_CODE.DEPARTMENTS);
+  const { writeBlocked } = useDemo();
+  const canWrite = hasWritePermission && !writeBlocked;
   const listQuery = useGetDepartmentsQuery();
   const [updateDepartment] = useUpdateDepartmentMutation();
 

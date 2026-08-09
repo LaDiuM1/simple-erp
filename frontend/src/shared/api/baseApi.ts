@@ -1,6 +1,7 @@
 import { createApi, type BaseQueryFn } from '@reduxjs/toolkit/query/react';
 import { isAxiosError, type Method } from 'axios';
 import axiosInstance from './axiosInstance';
+import { DEMO_RESET_IN_PROGRESS_MESSAGE } from './error';
 import { logout } from '@/features/auth/store/authSlice';
 import type { ApiResponse, ApiError } from '@/shared/types/api';
 import type { RootState } from '@/app/store';
@@ -14,11 +15,42 @@ interface QueryArgs {
   paramsSerializer?: { indexes?: null | boolean };
 }
 
-const axiosBaseQuery: BaseQueryFn<QueryArgs, unknown, ApiError> = async (
+interface EndpointRequestSemantics {
+  /** HTTP method 추론과 다를 때만 지정한다. 상태를 바꾸지 않는 POST는 false. */
+  demoWrite?: boolean;
+}
+
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function isDemoWriteRequest(
+  method: Method,
+  semantics?: EndpointRequestSemantics,
+): boolean {
+  return semantics?.demoWrite ?? WRITE_METHODS.has(method.toUpperCase());
+}
+
+const axiosBaseQuery: BaseQueryFn<
+  QueryArgs,
+  unknown,
+  ApiError,
+  EndpointRequestSemantics
+> = async (
   { url, method, data, params, paramsSerializer },
   { dispatch, getState },
+  semantics,
 ) => {
-  const token = (getState() as RootState).auth.accessToken;
+  const state = getState() as RootState;
+  const token = state.auth.accessToken;
+
+  if (state.demoRuntime.writeBlocked && isDemoWriteRequest(method, semantics)) {
+    return {
+      error: {
+        status: 503,
+        message: DEMO_RESET_IN_PROGRESS_MESSAGE,
+        code: 'DEMO_RESET_IN_PROGRESS',
+      },
+    };
+  }
 
   try {
     // FormData 일 때는 Content-Type 을 명시하지 않아 axios 가 boundary 포함 multipart 헤더를 자동 생성하도록 함.
@@ -51,6 +83,7 @@ const axiosBaseQuery: BaseQueryFn<QueryArgs, unknown, ApiError> = async (
         error: {
           status: body?.status ?? error.response.status,
           message: body?.message ?? '요청을 처리할 수 없습니다.',
+          code: body?.code,
         },
       };
     }
@@ -59,6 +92,7 @@ const axiosBaseQuery: BaseQueryFn<QueryArgs, unknown, ApiError> = async (
       error: {
         status: 0,
         message: '서버와 연결할 수 없습니다.',
+        code: null,
       },
     };
   }

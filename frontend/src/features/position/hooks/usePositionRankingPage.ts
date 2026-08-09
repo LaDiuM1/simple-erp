@@ -10,6 +10,7 @@ import {
 } from '@/features/position/api/positionApi';
 import type { PositionSummary } from '@/features/position/types';
 import { getErrorMessage } from '@/shared/api/error';
+import { useDemo } from '@/shared/demo/DemoContext';
 
 const EMPTY_POSITIONS: PositionSummary[] = [];
 
@@ -22,7 +23,9 @@ const EMPTY_POSITIONS: PositionSummary[] = [];
 export function usePositionRankingPage() {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
-  const { canWrite } = usePermission(MENU_CODE.POSITIONS);
+  const { canWrite: hasWritePermission } = usePermission(MENU_CODE.POSITIONS);
+  const { writeBlocked } = useDemo();
+  const canWrite = hasWritePermission && !writeBlocked;
   const listQuery = useGetPositionsRankingQuery();
   const [reorderPositions] = useReorderPositionsMutation();
 

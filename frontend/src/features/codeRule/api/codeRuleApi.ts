@@ -34,6 +34,7 @@ const codeRuleApi = api.injectEndpoints({
       { target: CodeRuleTarget; body: CodeRulePreviewRequest }
     >({
       query: ({ target, body }) => ({ url: `/api/v1/code-rules/${target}/preview`, method: 'POST', data: body }),
+      extraOptions: { demoWrite: false },
     }),
     getCodeRuleAttributes: builder.query<CodeRuleAttributeDescriptor[], CodeRuleTarget>({
       query: (target) => ({ url: `/api/v1/code-rules/${target}/attributes`, method: 'GET' }),

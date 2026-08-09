@@ -8,6 +8,7 @@ import { useGetDemoStatusQuery } from '@/features/demo/api/demoApi';
 import { DISABLED_DEMO_STATUS } from '@/shared/demo/demoContract';
 import { formatCountdown } from '@/features/demo/utils/countdown';
 import { deriveDemoRuntime } from '@/features/demo/utils/deriveDemoRuntime';
+import { setDemoWriteBlocked } from '@/shared/demo/demoRuntimeSlice';
 
 const STATUS_POLLING_INTERVAL = 5_000;
 
@@ -35,6 +36,10 @@ export default function DemoProvider({ children }: { children: ReactNode }) {
     maintenance,
     failed,
   } = deriveDemoRuntime(status, statusResolved, statusUnavailable, nowMs);
+
+  useEffect(() => {
+    dispatch(setDemoWriteBlocked(writeBlocked));
+  }, [dispatch, writeBlocked]);
 
   useEffect(() => {
     if (!status.enabled || !status.nextResetAt) return;

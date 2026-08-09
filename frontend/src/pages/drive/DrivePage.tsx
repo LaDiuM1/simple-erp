@@ -15,6 +15,7 @@ export default function DrivePage() {
   const {
     queries,
     canWrite,
+    uploadEnabled,
     headerActions,
     onNavigateFolder,
     onOpenFolder,
@@ -52,7 +53,13 @@ export default function DrivePage() {
         )}
       </QueryGate>
       <DriveModals modal={modal} />
-      <HiddenUploadInput ref={uploadInputRef} type="file" multiple onChange={onUploadFileSelected} />
+      <HiddenUploadInput
+        ref={uploadInputRef}
+        type="file"
+        multiple
+        disabled={!uploadEnabled}
+        onChange={onUploadFileSelected}
+      />
     </>
   );
 }

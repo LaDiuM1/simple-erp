@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { fireEvent, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Provider } from 'react-redux';
 import { http, HttpResponse } from 'msw';
 import { store } from '@/app/store';
+import { DemoContext } from '@/shared/demo/DemoContext';
+import { setDemoWriteBlocked } from '@/shared/demo/demoRuntimeSlice';
+import { READY_DEMO_CONTEXT } from '@/test/demoContext';
 import { renderWithTheme } from '@/test/renderWithTheme';
 import { apiResponse } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
@@ -18,6 +21,11 @@ describe('FileAttachField upload adapter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     store.dispatch({ type: 'api/resetApiState' });
+    store.dispatch(setDemoWriteBlocked(false));
+  });
+
+  afterEach(() => {
+    store.dispatch(setDemoWriteBlocked(true));
   });
 
   it('선택 파일을 boundary 포함 multipart 요청으로 업로드하고 응답을 반영한다', async () => {
@@ -37,7 +45,9 @@ describe('FileAttachField upload adapter', () => {
     );
     const { container } = renderWithTheme(
       <Provider store={store}>
-        <Harness />
+        <DemoContext.Provider value={READY_DEMO_CONTEXT}>
+          <Harness />
+        </DemoContext.Provider>
       </Provider>,
     );
     const file = new File(['sample'], '합성-견적서.txt', { type: 'text/plain' });

@@ -64,7 +64,12 @@ export default function EmployeeDetailForm({ id, detail }: { id: number; detail:
       />
 
       <CreateRoot>
-        <CreateForm onSubmit={(e) => e.preventDefault()} noValidate sx={readOnlyTextSx}>
+        <CreateForm
+          onSubmit={(e) => e.preventDefault()}
+          data-demo-write-action="false"
+          noValidate
+          sx={readOnlyTextSx}
+        >
           <AccountInfoReadOnly loginId={values.loginId} />
           <BasicInfoSection form={form} readOnly />
           <AffiliationSection form={form} showStatus readOnly />

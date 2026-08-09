@@ -41,7 +41,7 @@ export default function LoginPage() {
           <AppSubtitle>업무 관리 시스템에 로그인하세요</AppSubtitle>
         </LoginHeader>
 
-        <LoginForm onSubmit={handleSubmit}>
+        <LoginForm onSubmit={handleSubmit} data-demo-write-action="false">
           <FormField>
             <FieldLabel htmlFor="loginId">아이디</FieldLabel>
             <StyledInput

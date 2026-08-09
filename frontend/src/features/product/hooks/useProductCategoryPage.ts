@@ -13,6 +13,7 @@ import {
   useUpdateProductCategoryMutation,
 } from '@/features/product/api/productApi';
 import type { ProductCategorySummary } from '@/features/product/types';
+import { useDemo } from '@/shared/demo/DemoContext';
 
 const EMPTY_CATEGORIES: ProductCategorySummary[] = [];
 
@@ -23,7 +24,9 @@ const EMPTY_CATEGORIES: ProductCategorySummary[] = [];
 export function useProductCategoryPage() {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
-  const { canWrite } = usePermission(MENU_CODE.PRODUCTS);
+  const { canWrite: hasWritePermission } = usePermission(MENU_CODE.PRODUCTS);
+  const { writeBlocked } = useDemo();
+  const canWrite = hasWritePermission && !writeBlocked;
   const listQuery = useGetProductCategoriesQuery();
   const [createCategory, { isLoading: isCreating }] = useCreateProductCategoryMutation();
   const [updateCategory] = useUpdateProductCategoryMutation();

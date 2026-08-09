@@ -100,6 +100,7 @@ export function useApprovalDetailPage(approvalId: number) {
             label: '반려',
             icon: <BlockRoundedIcon sx={{ fontSize: 18 }} />,
             onClick: () => setDecision('reject'),
+            writeAction: true,
           },
           {
             design: 'create' as const,
@@ -117,6 +118,7 @@ export function useApprovalDetailPage(approvalId: number) {
             label: '상신 취소',
             icon: <UndoRoundedIcon sx={{ fontSize: 18 }} />,
             onClick: cancelModal.on,
+            writeAction: true,
           },
         ]
       : []),

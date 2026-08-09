@@ -14,6 +14,7 @@ import { CommonManageModal } from '@/shared/ui/CommonSearchModal';
 import { PrimaryPageHeaderButton, CancelPageHeaderButton } from '@/shared/ui/layout/PageHeaderButton';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
 import { useApiSubmit } from '@/shared/hooks/useApiSubmit';
+import { useDemo } from '@/shared/demo/DemoContext';
 import {
   useCreateAcquisitionSourceMutation,
   useDeleteAcquisitionSourceMutation,
@@ -36,6 +37,7 @@ interface Props {
  * 행 우측 삭제 버튼 + 우측 상단 추가 버튼. 수정은 의도적으로 미제공 (텍스트 마스터의 단순성 유지).
  */
 export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
+  const { writeBlocked } = useDemo();
   const submit = useApiSubmit();
   const { data: sources = [], isFetching, isError, error, refetch } = useGetAcquisitionSourcesQuery();
   const [createFn, { isLoading: isCreating }] = useCreateAcquisitionSourceMutation();
@@ -93,6 +95,7 @@ export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
     <PrimaryPageHeaderButton
       startIcon={<AddIcon />}
       onClick={() => setShowAddForm(true)}
+      disabled={writeBlocked}
       sx={{ height: 32, visibility: showAddForm ? 'hidden' : 'visible' }}
     >
       추가
@@ -116,6 +119,7 @@ export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
               size="small"
               aria-label="삭제"
               onClick={() => setPendingDelete(row)}
+              disabled={writeBlocked}
               sx={{ '&:hover': { color: 'error.main' } }}
             >
               <DeleteIcon fontSize="small" />
@@ -127,6 +131,7 @@ export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
       <AddSourceDialog
         open={showAddForm}
         isCreating={isCreating}
+        writeBlocked={writeBlocked}
         onSubmit={handleCreate}
         onCancel={() => setShowAddForm(false)}
       />
@@ -156,11 +161,13 @@ export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
 function AddSourceDialog({
   open,
   isCreating,
+  writeBlocked,
   onSubmit,
   onCancel,
 }: {
   open: boolean;
   isCreating: boolean;
+  writeBlocked: boolean;
   onSubmit: (name: string, type: AcquisitionSourceType, description: string) => Promise<void> | void;
   onCancel: () => void;
 }) {
@@ -233,7 +240,7 @@ function AddSourceDialog({
         </CancelPageHeaderButton>
         <PrimaryPageHeaderButton
           onClick={handleSubmit}
-          disabled={!canSubmit || isCreating}
+          disabled={!canSubmit || isCreating || writeBlocked}
           sx={{ height: 32 }}
         >
           {isCreating ? '등록 중...' : '등록'}

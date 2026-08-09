@@ -75,3 +75,9 @@ export const RemoveButton = styled(IconButton)(({ theme }) => ({
 export const HiddenInput = styled('input')({
   display: 'none',
 });
+
+export const UploadNotice = styled(Typography)(({ theme }) => ({
+  color: theme.palette.text.secondary,
+  fontSize: '0.75rem',
+  lineHeight: 1.45,
+}));

@@ -2,7 +2,9 @@ import type { ChangeEvent, ReactNode } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { DemoContext } from '@/shared/demo/DemoContext';
 import { UPLOAD_FILE_SIZE_GUIDE } from '@/shared/utils/uploadFileSize';
+import { READY_DEMO_CONTEXT } from '@/test/demoContext';
 import { useDrivePage } from './useDrivePage';
 
 const mocks = vi.hoisted(() => ({
@@ -43,7 +45,11 @@ vi.mock('@/shared/ui/feedback/snackbar', () => ({
 }));
 
 function Wrapper({ children }: { children: ReactNode }) {
-  return <MemoryRouter>{children}</MemoryRouter>;
+  return (
+    <MemoryRouter>
+      <DemoContext.Provider value={READY_DEMO_CONTEXT}>{children}</DemoContext.Provider>
+    </MemoryRouter>
+  );
 }
 
 describe('useDrivePage upload adapter', () => {

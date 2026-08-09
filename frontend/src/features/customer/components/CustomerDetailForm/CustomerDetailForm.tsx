@@ -63,7 +63,12 @@ export default function CustomerDetailForm({ id, detail }: { id: number; detail:
       />
 
       <CreateRoot>
-        <CreateForm onSubmit={(e) => e.preventDefault()} noValidate sx={readOnlyTextSx}>
+        <CreateForm
+          onSubmit={(e) => e.preventDefault()}
+          data-demo-write-action="false"
+          noValidate
+          sx={readOnlyTextSx}
+        >
           <IdentitySection form={form} mode="detail" readOnly />
           <ClassificationSection form={form} readOnly />
           <ContactSection form={form} readOnly />

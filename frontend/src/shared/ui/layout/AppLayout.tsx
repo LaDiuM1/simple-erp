@@ -205,6 +205,7 @@ export default function AppLayout({ environmentBanner }: AppLayoutProps) {
         message="정말 로그아웃 하시겠습니까?"
         confirmLabel="로그아웃"
         danger
+        writeAction={false}
         onConfirm={handleLogout}
         onCancel={() => setLogoutModalOpen(false)}
       />

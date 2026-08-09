@@ -5,6 +5,7 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Typography from '@mui/material/Typography';
+import { useDemo } from '@/shared/demo/DemoContext';
 
 interface Props {
   isOpen: boolean;
@@ -15,6 +16,8 @@ interface Props {
   danger?: boolean;
   /** 확인 동작 in-flight 중 재클릭 (중복 요청) 방지용 비활성화. */
   confirmDisabled?: boolean;
+  /** 기본값 true. 로그아웃처럼 서버 상태를 바꾸지 않는 확인만 false로 지정한다. */
+  writeAction?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -27,9 +30,11 @@ export default function ConfirmModal({
   cancelLabel = '취소',
   danger = false,
   confirmDisabled = false,
+  writeAction = true,
   onConfirm,
   onCancel,
 }: Props) {
+  const { writeBlocked } = useDemo();
   useEffect(() => {
     if (!isOpen) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -101,7 +106,7 @@ export default function ConfirmModal({
         <Button
           variant="contained"
           onClick={onConfirm}
-          disabled={confirmDisabled}
+          disabled={confirmDisabled || (writeAction && writeBlocked)}
           color={danger ? 'error' : 'primary'}
           sx={{
             px: '1rem',

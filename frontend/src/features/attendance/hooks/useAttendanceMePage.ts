@@ -103,7 +103,7 @@ export function useAttendanceMePage() {
     today: {
       attendance: todayAttendance,
       // isFetching 포함 — 체크 성공 직후 refetch 완료 전 재클릭 (BE 409) 방지.
-      isLoading: currentMonthQuery.isFetching
+      isLoading: currentMonthQuery.isFetching || demo.writeBlocked
         || (demo.status.enabled && !demo.status.simulatedLocation),
       isCheckingIn: locating === 'in' || isCheckingIn,
       isCheckingOut: locating === 'out' || isCheckingOut,

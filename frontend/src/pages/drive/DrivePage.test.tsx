@@ -33,6 +33,7 @@ function driveState(breadcrumb: Array<{ id: number; name: string }>) {
       },
     },
     canWrite: false,
+    uploadEnabled: false,
     headerActions: [],
     onNavigateFolder: noop,
     onOpenFolder: noop,

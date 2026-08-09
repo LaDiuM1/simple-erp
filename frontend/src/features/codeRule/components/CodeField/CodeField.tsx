@@ -125,6 +125,7 @@ export default function CodeField({
           message={'자동 코드가 설정되어 있습니다.\n수동으로 입력하시겠습니까?\n코드 채번 규칙에서 규칙 설정이 가능합니다.'}
           confirmLabel="직접 입력"
           cancelLabel="취소"
+          writeAction={false}
           onConfirm={() => {
             setManualUnlocked(true);
             setConfirmOpen(false);

@@ -1,12 +1,14 @@
 export interface ApiResponse<T> {
   status: number;
   message: string;
+  code?: string | null;
   data: T;
 }
 
 export interface ApiError {
   status: number;
   message: string;
+  code?: string | null;
 }
 
 export interface PageResponse<T> {

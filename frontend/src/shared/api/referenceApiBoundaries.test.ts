@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import authReducer from '@/features/auth/store/authSlice';
 import { employeeApi } from '@/features/employee/api/employeeApi';
 import { equipmentApi } from '@/features/equipment/api/equipmentApi';
+import demoRuntimeReducer from '@/shared/demo/demoRuntimeSlice';
 import { snackbarReducer } from '@/shared/ui/feedback/snackbar';
 import { server } from '@/test/msw/server';
 import { api } from './baseApi';
@@ -25,6 +26,7 @@ function createTestStore() {
   return configureStore({
     reducer: {
       auth: authReducer,
+      demoRuntime: demoRuntimeReducer,
       snackbar: snackbarReducer,
       [api.reducerPath]: api.reducer,
     },

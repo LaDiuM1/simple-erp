@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import authReducer from '@/features/auth/store/authSlice';
+import demoRuntimeReducer, { setDemoWriteBlocked } from '@/shared/demo/demoRuntimeSlice';
 import { snackbarReducer } from '@/shared/ui/feedback/snackbar';
 import { server } from '@/test/msw/server';
 import { api } from './baseApi';
@@ -82,11 +83,13 @@ function createTestStore() {
   const store = configureStore({
     reducer: {
       auth: authReducer,
+      demoRuntime: demoRuntimeReducer,
       snackbar: snackbarReducer,
       [api.reducerPath]: api.reducer,
     },
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(api.middleware),
   });
+  store.dispatch(setDemoWriteBlocked(false));
   return store;
 }
 

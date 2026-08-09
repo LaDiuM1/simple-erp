@@ -18,6 +18,7 @@ import {
 } from '@/features/drive/api/driveApi';
 import type { DriveFileItem, DriveFolderItem } from '@/features/drive/types';
 import type { DriveModalProps } from '@/features/drive/components/DriveModals/DriveModals';
+import { useDemo } from '@/shared/demo/DemoContext';
 import {
   getUploadFileSizeError,
   UPLOAD_FILE_SIZE_GUIDE,
@@ -36,6 +37,8 @@ export function useDrivePage() {
     Number.isInteger(parsedFolderId) && parsedFolderId > 0 ? parsedFolderId : null;
 
   const { canWrite } = usePermission(MENU_CODE.DRIVE);
+  const demo = useDemo();
+  const canMutate = canWrite && !demo.writeBlocked;
   const snackbar = useSnackbar();
   const submit = useApiSubmit();
   const browseQuery = useBrowseDriveQuery(currentFolderId);
@@ -69,6 +72,11 @@ export function useDrivePage() {
    */
   const onFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
     const input = e.target;
+    if (!canMutate || !demo.uploadEnabled) {
+      snackbar.warning('데모 초기화 준비 중에는 파일을 업로드할 수 없습니다.');
+      input.value = '';
+      return;
+    }
     const files = Array.from(input.files ?? []);
     if (files.length === 0) return;
     const sizeError = getUploadFileSizeError(files);
@@ -124,13 +132,14 @@ export function useDrivePage() {
     });
   };
 
-  const headerActions: PageHeaderAction[] = canWrite
+  const headerActions: PageHeaderAction[] = canMutate
     ? [
         {
           design: 'secondary',
           label: '새 폴더',
           icon: <CreateNewFolderOutlinedIcon />,
           onClick: createFolderModal.on,
+          writeAction: true,
         },
         {
           design: 'create',
@@ -139,6 +148,7 @@ export function useDrivePage() {
             : `파일 업로드 · ${UPLOAD_FILE_SIZE_GUIDE}`,
           icon: <UploadFileOutlinedIcon />,
           loading: uploadProgress !== null,
+          disabled: !demo.uploadEnabled,
           onClick: () => fileInputRef.current?.click(),
         },
       ]
@@ -162,7 +172,8 @@ export function useDrivePage() {
 
   return {
     queries: { browse: browseQuery },
-    canWrite,
+    canWrite: canMutate,
+    uploadEnabled: demo.uploadEnabled,
     headerActions,
     onNavigateFolder,
     onOpenFolder: (folder: DriveFolderItem) => onNavigateFolder(folder.id),

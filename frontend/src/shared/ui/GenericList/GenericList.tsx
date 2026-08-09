@@ -8,6 +8,7 @@ import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { getErrorMessage } from '@/shared/api/error';
 import { ExcelUploadModal, type ExcelUploadResult } from '@/shared/ui/ExcelUpload';
+import { useDemo } from '@/shared/demo/DemoContext';
 import ListSearchFilter from './ListSearchFilter';
 import ListTable from './ListTable';
 import ListPagination from './ListPagination';
@@ -84,6 +85,8 @@ export default function GenericList<TRow, TFilters extends object>({
   const snackbar = useSnackbar();
   const selection = useListSelection();
   const { canWrite } = usePermission(api.menuCode);
+  const demo = useDemo();
+  const canMutate = canWrite && !demo.writeBlocked;
 
   const query = api.useList(state.queryParams);
   const { data, isLoading, isFetching, isError, error, refetch } = query;
@@ -92,7 +95,7 @@ export default function GenericList<TRow, TFilters extends object>({
   const useDeleteHook = api.useDelete ?? noopDeleteHook;
   const [deleteFn] = useDeleteHook();
 
-  const handleDelete = api.useDelete && canWrite
+  const handleDelete = api.useDelete && canMutate
     ? async (row: TRow) => {
         try {
           const id = api.rowKey(row);
@@ -114,7 +117,7 @@ export default function GenericList<TRow, TFilters extends object>({
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
-  const checkboxEnabled = !!api.useBulkDelete && canWrite;
+  const checkboxEnabled = !!api.useBulkDelete && canMutate;
   const visibleIds = (data?.content ?? []).map(api.rowKey);
   const allVisibleSelected =
     checkboxEnabled && visibleIds.length > 0
@@ -134,7 +137,7 @@ export default function GenericList<TRow, TFilters extends object>({
   const selectedCount = selection.selectedIds.length;
 
   const handleBulkDelete = async () => {
-    if (!api.useBulkDelete || selectedCount === 0 || !canWrite) return;
+    if (!api.useBulkDelete || selectedCount === 0 || !canMutate) return;
     setIsBulkDeleting(true);
     try {
       await bulkDeleteFn(selection.selectedIds).unwrap();
@@ -175,7 +178,7 @@ export default function GenericList<TRow, TFilters extends object>({
             onReset={state.resetFilters}
             trailing={
               (checkboxEnabled && selectedCount > 0) || api.useExcel
-                || (canWrite && api.useExcelUpload) ? (
+                || (canMutate && demo.uploadEnabled && api.useExcelUpload) ? (
                 <FilterBarTrailing>
                   {checkboxEnabled && selectedCount > 0 && (
                     <BulkDeleteButton
@@ -195,7 +198,7 @@ export default function GenericList<TRow, TFilters extends object>({
                       sort={state.sort}
                     />
                   )}
-                  {canWrite && api.useExcelUpload && (
+                  {canMutate && demo.uploadEnabled && api.useExcelUpload && (
                     <ExcelUploadTrigger
                       useUpload={api.useExcelUpload}
                       useTemplate={api.useExcelTemplate}
@@ -222,7 +225,7 @@ export default function GenericList<TRow, TFilters extends object>({
           isLoading={isLoading}
           isFetching={isFetching}
           emptyMessage={api.emptyMessage}
-          onEdit={canWrite ? api.onEdit : undefined}
+          onEdit={canMutate ? api.onEdit : undefined}
           onDelete={handleDelete}
           onRowClick={api.onRowClick}
           deleteConfirm={api.deleteConfirm}
