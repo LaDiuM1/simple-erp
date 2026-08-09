@@ -530,8 +530,8 @@ class LeaveServiceTest {
     }
 
     @Test
-    @DisplayName("부여 일수 조정 실패 — 비재직 직원은 대상에서 제외")
-    void change_granted_days_rejects_inactive_employee() {
+    @DisplayName("부여 일수 조정 실패 — 복구 운영 계정과 비재직 직원은 대상에서 제외")
+    void change_granted_days_rejects_unavailable_employee() {
         given(employeeApi.isCurrentlyEmployed(99L)).willReturn(false);
 
         assertThatThrownBy(() -> leaveService.changeGrantedDays(

@@ -50,7 +50,7 @@ public interface EmployeeApi {
 
     /**
      * 신규 업무의 담당자, 결재자, 내부 엔지니어처럼 새 참조를 만들 수 있는 직원인지 일괄 판정한다.
-     * 모든 ID가 존재하고 ACTIVE 상태여야 한다.
+     * 모든 ID가 존재하고 ACTIVE 상태이며 복구 전용 운영 계정이 아니어야 한다.
      */
     boolean allEligibleForNewWorkReference(Collection<Long> employeeIds);
 

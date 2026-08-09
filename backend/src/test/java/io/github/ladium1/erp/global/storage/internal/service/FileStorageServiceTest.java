@@ -1,5 +1,7 @@
 package io.github.ladium1.erp.global.storage.internal.service;
 
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
@@ -37,6 +39,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -46,6 +50,7 @@ class FileStorageServiceTest {
     private FileStorageService fileStorageService;
 
     @Mock private StoredFileRepository storedFileRepository;
+    @Mock private DemoProtectionPolicy demoProtectionPolicy;
 
     @TempDir
     Path tempDir;
@@ -59,17 +64,22 @@ class FileStorageServiceTest {
 
     @BeforeEach
     void setUp() {
-        fileStorageService = new FileStorageService(storedFileRepository, tempDir.toString());
+        fileStorageService = new FileStorageService(
+                storedFileRepository, demoProtectionPolicy, tempDir.toString());
     }
 
     private void stubSaveWithJpaAudit() {
-        given(storedFileRepository.save(any(StoredFile.class))).willAnswer(invocation -> {
+        stubSaveWithJpaAudit(CREATED_AT);
+    }
+
+    private void stubSaveWithJpaAudit(LocalDateTime createdAt) {
+        willAnswer(invocation -> {
             StoredFile file = invocation.getArgument(0);
             ReflectionTestUtils.setField(file, "id", FILE_ID);
-            ReflectionTestUtils.setField(file, "createdAt", CREATED_AT);
+            ReflectionTestUtils.setField(file, "createdAt", createdAt);
             savedFile.set(file);
             return file;
-        });
+        }).given(storedFileRepository).save(any(StoredFile.class));
     }
 
     private void claimSavedFile() {
@@ -267,7 +277,7 @@ class FileStorageServiceTest {
     }
 
     @Test
-    @DisplayName("파일명과 MIME이 비어도 안전한 기본 메타데이터로 정규화")
+    @DisplayName("파일명과 MIME이 비어도 재시작 검증 가능한 안전한 메타데이터로 정규화")
     void store_normalizes_missing_multipart_metadata() {
         stubSaveWithJpaAudit();
 
@@ -281,7 +291,7 @@ class FileStorageServiceTest {
     }
 
     @Test
-    @DisplayName("상위 트랜잭션까지 rollback이면 이미 이동한 파일 본체 제거")
+    @DisplayName("상위 Drive 트랜잭션까지 포함해 rollback이면 이미 이동한 파일 본체 제거")
     void store_removes_materialized_content_on_outer_transaction_rollback() {
         stubSaveWithJpaAudit();
         TransactionSynchronizationManager.initSynchronization();
@@ -324,6 +334,7 @@ class FileStorageServiceTest {
         stubSaveWithJpaAudit();
         fileStorageService = new FileStorageService(
                 storedFileRepository,
+                demoProtectionPolicy,
                 tempDir.toString(),
                 (target, content) -> {
                     Files.createDirectories(target.getParent());
@@ -348,6 +359,21 @@ class FileStorageServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.EMPTY_FILE);
 
         verify(storedFileRepository, never()).save(any(StoredFile.class));
+    }
+
+    @Test
+    @DisplayName("데모 업로드 정책은 파일 IO와 DB 저장 전에 최종 차단")
+    void store_obeys_demo_policy_before_side_effects() {
+        willThrow(new BusinessException(DemoErrorCode.DEMO_UPLOAD_DISABLED))
+                .given(demoProtectionPolicy).assertUploadAllowed();
+
+        assertThatThrownBy(() -> fileStorageService.store(
+                "blocked.txt", "text/plain", "blocked".getBytes(StandardCharsets.UTF_8), UPLOADER_ID))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DemoErrorCode.DEMO_UPLOAD_DISABLED);
+
+        verify(storedFileRepository, never()).save(any(StoredFile.class));
+        assertThat(tempDir).isEmptyDirectory();
     }
 
     private void assertInvalidClaim(List<Long> fileIds) {
@@ -377,6 +403,17 @@ class FileStorageServiceTest {
         StoredFile file = pendingFile();
         file.claim(owner);
         return file;
+    }
+
+    @Test
+    @DisplayName("데모 세대에서는 삭제 예약 파일의 본체를 초기화 전까지 보존")
+    void delete_pending_files_retains_demo_generation() {
+        given(demoProtectionPolicy.shouldRetainStoredFiles()).willReturn(true);
+
+        assertThat(fileStorageService.deletePendingFiles()).isZero();
+
+        verify(storedFileRepository, never()).findByStatusForUpdate(any(), any(Pageable.class));
+        verify(storedFileRepository, never()).deleteAll(any());
     }
 
     private Path contentPathOf(StoredFile file) {

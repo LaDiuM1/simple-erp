@@ -21,6 +21,7 @@ import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.storage.FileOwner;
@@ -53,11 +54,13 @@ public class ApprovalService implements ApprovalApi {
     private final EmployeeApi employeeApi;
     private final FileStorageApi fileStorageApi;
     private final List<ApprovalResultHandler> resultHandlers;
+    private final DemoProtectionPolicy demoProtectionPolicy;
 
     @Override
     @Auditable(menu = Menu.APPROVALS, action = AuditAction.CREATE, targetType = "ApprovalDocument", targetIdFromReturn = true)
     @Transactional
     public Long submit(ApprovalSubmitCommand command) {
+        demoProtectionPolicy.assertNoAttachmentIds(command.attachmentFileIds());
         validateApprovalLine(command.drafterId(), command.approverIds());
 
         ApprovalDocument document = ApprovalDocument.builder()

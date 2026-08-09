@@ -88,6 +88,9 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         if (condition.status() != null) {
             where.and(m.status.eq(condition.status()));
         }
+        if (StringUtils.hasText(condition.excludedLoginId())) {
+            where.and(m.loginId.ne(condition.excludedLoginId()));
+        }
         return where;
     }
 

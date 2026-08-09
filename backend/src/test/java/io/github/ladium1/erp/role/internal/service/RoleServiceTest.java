@@ -1,6 +1,8 @@
 package io.github.ladium1.erp.role.internal.service;
 
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.DataScope;
 import io.github.ladium1.erp.role.api.RoleDeletingEvent;
@@ -34,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -47,6 +50,7 @@ class RoleServiceTest {
     @Mock private RoleMenuRepository roleMenuRepository;
     @Mock private RoleMapper roleMapper;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private DemoProtectionPolicy demoProtectionPolicy;
 
     @Test
     @DisplayName("getById 성공")
@@ -359,6 +363,22 @@ class RoleServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", RoleErrorCode.SYSTEM_ROLE_PROTECTED);
         verify(eventPublisher, never()).publishEvent(any());
         verify(roleRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("데모 보호 역할은 system 플래그와 무관하게 변경 차단")
+    void update_demo_protected_role_is_blocked() {
+        Role role = mockRole("DEMO_MANAGER", "데모 관리자", false);
+        given(roleRepository.findById(8L)).willReturn(Optional.of(role));
+        doThrow(new BusinessException(DemoErrorCode.DEMO_PROTECTED_RESOURCE))
+                .when(demoProtectionPolicy).assertRoleMutationAllowed("DEMO_MANAGER");
+        RoleUpdateRequest request = new RoleUpdateRequest("변조", null, List.of());
+
+        assertThatThrownBy(() -> roleService.update(8L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DemoErrorCode.DEMO_PROTECTED_RESOURCE);
+        assertThat(role.getName()).isEqualTo("데모 관리자");
+        verify(roleMenuRepository, never()).deleteAllByRole(any());
     }
 
     @Test

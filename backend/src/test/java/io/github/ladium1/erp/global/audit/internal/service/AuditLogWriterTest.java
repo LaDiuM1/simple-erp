@@ -3,6 +3,7 @@ package io.github.ladium1.erp.global.audit.internal.service;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.internal.entity.AuditLog;
 import io.github.ladium1.erp.global.audit.internal.repository.AuditLogRepository;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.menu.Menu;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,7 @@ class AuditLogWriterTest {
         proxyFactory.setProxyTargetClass(true);
         proxyFactory.addAdvice(interceptor);
         AuditLogWriter transactionalWriter = (AuditLogWriter) proxyFactory.getProxy();
-        AuditService auditService = new AuditService(transactionalWriter);
+        AuditService auditService = new AuditService(transactionalWriter, mock(DemoProtectionPolicy.class));
 
         assertThatCode(() -> auditService.record(
                 Menu.EMPLOYEES, AuditAction.CREATE,

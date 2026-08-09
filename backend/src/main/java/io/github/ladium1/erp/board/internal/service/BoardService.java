@@ -21,6 +21,7 @@ import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
@@ -57,6 +58,7 @@ public class BoardService {
     private final EmployeeApi employeeApi;
     private final FileStorageApi fileStorageApi;
     private final MenuPermissionEvaluator menuPermissionEvaluator;
+    private final DemoProtectionPolicy demoProtectionPolicy;
 
     public PageResponse<PostSummaryResponse> search(PostSearchCondition condition, Pageable pageable) {
         Page<Post> page = postRepository.search(condition, pageable);
@@ -112,6 +114,7 @@ public class BoardService {
     @Auditable(menu = Menu.BOARDS, action = AuditAction.CREATE, targetType = "Post", targetIdFromReturn = true)
     @Transactional
     public Long create(PostCreateRequest request) {
+        demoProtectionPolicy.assertNoAttachmentIds(request.attachmentFileIds());
         requireWritePermissionForNotice(request.category());
 
         Long authorId = currentEmployeeId();
@@ -135,8 +138,12 @@ public class BoardService {
         requireAuthor(post.isAuthor(authorId));
         requireWritePermissionForNotice(request.category());
 
-        // 수정으로 제외된 첨부는 storage 에서도 제거 — 고아 파일 잔존 차단 (drive 의 파일 삭제 관습과 대칭)
         List<Long> requestedFileIds = request.attachmentFileIds() == null ? List.of() : request.attachmentFileIds();
+        List<Long> addedFileIds = requestedFileIds.stream()
+                .filter(fileId -> !post.getAttachmentFileIds().contains(fileId))
+                .toList();
+        demoProtectionPolicy.assertNoAttachmentIds(addedFileIds);
+
         List<Long> removedFileIds = post.getAttachmentFileIds().stream()
                 .filter(fileId -> !requestedFileIds.contains(fileId))
                 .toList();

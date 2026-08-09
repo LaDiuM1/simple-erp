@@ -55,7 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(EmployeeController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import(EmployeeControllerTest.TestWebMvcConfig.class)
-@WithMockUser
+@WithMockUser(username = "viewer")
 class EmployeeControllerTest {
 
     /**
@@ -139,7 +139,7 @@ class EmployeeControllerTest {
         PageResponse<EmployeeSummaryResponse> page = new PageResponse<>(
                 List.of(summary), 0, 20, 1, 1, false
         );
-        given(employeeService.search(any(), any())).willReturn(page);
+        given(employeeService.search(eq("viewer"), any(), any())).willReturn(page);
 
         // when & then
         mockMvc.perform(get("/api/v1/employees"))
@@ -225,7 +225,7 @@ class EmployeeControllerTest {
                 .roleId(1L)
                 .roleName("일반")
                 .build();
-        given(employeeService.getDetail(7L)).willReturn(detail);
+        given(employeeService.getDetail("viewer", 7L)).willReturn(detail);
 
         // when & then
         mockMvc.perform(get("/api/v1/employees/{id}", 7L))
@@ -238,7 +238,7 @@ class EmployeeControllerTest {
     @DisplayName("존재하지 않는 직원 조회 시 404")
     void get_detail_fail_not_found() throws Exception {
         // given
-        given(employeeService.getDetail(99L))
+        given(employeeService.getDetail("viewer", 99L))
                 .willThrow(new BusinessException(EmployeeErrorCode.EMPLOYEE_NOT_FOUND));
 
         // when & then

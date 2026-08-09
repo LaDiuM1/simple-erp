@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.global.security.internal;
 
 import io.github.ladium1.erp.employee.api.LoginAccountApi;
+import io.github.ladium1.erp.global.demo.DemoRequestGuardFilter;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
@@ -35,6 +36,11 @@ class PasswordEncodingConfigurationTest {
         @Bean
         JwtTokenProvider jwtTokenProvider() {
             return mock(JwtTokenProvider.class);
+        }
+
+        @Bean
+        DemoRequestGuardFilter demoRequestGuardFilter() {
+            return mock(DemoRequestGuardFilter.class);
         }
 
         @Bean

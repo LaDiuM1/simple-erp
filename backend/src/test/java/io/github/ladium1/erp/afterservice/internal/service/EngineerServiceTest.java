@@ -126,8 +126,8 @@ class EngineerServiceTest {
     }
 
     @Test
-    @DisplayName("create 실패 — 비재직 직원은 내부 엔지니어로 연결 불가")
-    void create_rejects_inactive_or_private_employee_link() {
+    @DisplayName("create 실패 — 퇴사자와 복구 운영 계정은 내부 엔지니어로 연결 불가")
+    void create_rejects_inactive_or_recovery_operator_link() {
         EngineerRequest request = new EngineerRequest(
                 "복구 운영자", EngineerType.INTERNAL, "기술부", null, 3L, true);
         given(employeeApi.isEligibleForNewWorkReference(3L)).willReturn(false);

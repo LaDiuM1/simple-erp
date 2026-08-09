@@ -73,6 +73,7 @@ public class EmployeeController {
     @GetMapping
     @PreAuthorize(CAN_READ)
     public PageResponse<EmployeeSummaryResponse> search(
+            @AuthenticationPrincipal User user,
             @RequestParam(required = false) String loginIdKeyword,
             @RequestParam(required = false) String nameKeyword,
             @RequestParam(required = false) Long departmentId,
@@ -81,7 +82,8 @@ public class EmployeeController {
             @RequestParam(required = false) EmployeeStatus status,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return employeeService.search(toCondition(loginIdKeyword, nameKeyword, departmentId, positionId, roleId, status), pageable);
+        return employeeService.search(user.getUsername(),
+                toCondition(loginIdKeyword, nameKeyword, departmentId, positionId, roleId, status), pageable);
     }
 
     @GetMapping("/reference")
@@ -114,13 +116,14 @@ public class EmployeeController {
 
     @GetMapping("/{id}")
     @PreAuthorize(CAN_READ)
-    public EmployeeDetailResponse getDetail(@PathVariable Long id) {
-        return employeeService.getDetail(id);
+    public EmployeeDetailResponse getDetail(@AuthenticationPrincipal User user, @PathVariable Long id) {
+        return employeeService.getDetail(user.getUsername(), id);
     }
 
     @GetMapping("/excel")
     @PreAuthorize(CAN_READ)
     public ResponseEntity<ByteArrayResource> downloadExcel(
+            @AuthenticationPrincipal User user,
             @RequestParam(required = false) String loginIdKeyword,
             @RequestParam(required = false) String nameKeyword,
             @RequestParam(required = false) Long departmentId,
@@ -129,7 +132,7 @@ public class EmployeeController {
             @RequestParam(required = false) EmployeeStatus status,
             @SortDefault(sort = "id", direction = Sort.Direction.DESC) Sort sort
     ) {
-        byte[] bytes = employeeService.exportExcel(
+        byte[] bytes = employeeService.exportExcel(user.getUsername(),
                 toCondition(loginIdKeyword, nameKeyword, departmentId, positionId, roleId, status),
                 sort
         );

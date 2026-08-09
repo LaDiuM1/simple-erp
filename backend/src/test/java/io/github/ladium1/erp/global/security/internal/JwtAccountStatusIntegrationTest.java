@@ -4,6 +4,9 @@ import io.github.ladium1.erp.employee.internal.dto.EmployeeProfileResponse;
 import io.github.ladium1.erp.employee.internal.service.EmployeeService;
 import io.github.ladium1.erp.employee.internal.web.EmployeeController;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
+import io.github.ladium1.erp.global.demo.DemoRequestGuardFilter;
+import jakarta.servlet.FilterChain;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +20,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -46,6 +51,18 @@ class JwtAccountStatusIntegrationTest {
 
     @MockitoBean
     private MenuPermissionEvaluator menuPermissionEvaluator;
+
+    @MockitoBean
+    private DemoRequestGuardFilter demoRequestGuardFilter;
+
+    @BeforeEach
+    void continueAfterDemoGuard() throws Exception {
+        doAnswer(invocation -> {
+            FilterChain chain = invocation.getArgument(2);
+            chain.doFilter(invocation.getArgument(0), invocation.getArgument(1));
+            return null;
+        }).when(demoRequestGuardFilter).doFilter(any(), any(), any());
+    }
 
     @Test
     @DisplayName("토큰 발급 뒤 퇴사 처리되면 같은 토큰을 401로 거부")

@@ -2,6 +2,7 @@ package io.github.ladium1.erp.global.exception.internal;
 
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.exception.ErrorCode;
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -54,6 +55,15 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.message").value("비즈니스 실패 메시지"));
+    }
+
+    @Test
+    @DisplayName("안정 오류 코드는 기존 envelope의 nullable code에 노출")
+    void handle_stable_business_error_code() throws Exception {
+        mockMvc.perform(get("/test/demo-exception"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.code").value("DEMO_RESET_IN_PROGRESS"));
     }
 
     @Test
@@ -200,6 +210,11 @@ class GlobalExceptionHandlerTest {
     static class TestController {
         @GetMapping("/test/business-exception")
         public void throwBusiness() { throw new TestBusinessException(); }
+
+        @GetMapping("/test/demo-exception")
+        public void throwDemoBusiness() {
+            throw new BusinessException(DemoErrorCode.DEMO_RESET_IN_PROGRESS);
+        }
 
         @PostMapping("/test/valid-body")
         public void validBody(@Valid @RequestBody TestPayload payload) { /* no-op */ }

@@ -4,7 +4,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,6 +15,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.Duration;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -31,9 +36,15 @@ public class DemoProperties {
     @Valid
     private Reset reset = new Reset();
     @Valid
+    private Audit audit = new Audit();
+    @Valid
     private Geolocation geolocation = new Geolocation();
     @Valid
     private Upload upload = new Upload();
+    @Valid
+    private Protection protection = new Protection();
+    @Valid
+    private RateLimit rateLimit = new RateLimit();
 
     @Getter
     @Setter
@@ -60,6 +71,12 @@ public class DemoProperties {
 
     @Getter
     @Setter
+    public static class Audit {
+        private boolean storeClientIp = true;
+    }
+
+    @Getter
+    @Setter
     public static class Geolocation {
         private boolean useSimulatedPosition;
         @DecimalMin("-90.0")
@@ -74,6 +91,36 @@ public class DemoProperties {
     @Setter
     public static class Upload {
         private boolean enabled = true;
+    }
+
+    @Getter
+    @Setter
+    public static class Protection {
+        @NotEmpty
+        private Set<String> protectedLoginIds = new LinkedHashSet<>(List.of("demo.manager", "demo.staff"));
+        @NotEmpty
+        private Set<String> protectedRoleCodes = new LinkedHashSet<>(List.of(
+                "MASTER", "DEMO_MANAGER", "DEMO_STAFF"
+        ));
+        private String operationsAdminLoginId;
+    }
+
+    @Getter
+    @Setter
+    public static class RateLimit {
+        @NotNull
+        private Duration window = Duration.ofMinutes(1);
+        @Min(1)
+        private int loginLimit = 10;
+        @Min(1)
+        private int writeLimit = 60;
+        @Min(1)
+        private int maxTrackedKeys = 10_000;
+
+        @AssertTrue(message = "rate-limit window는 양수여야 합니다.")
+        public boolean isValidWindow() {
+            return window != null && window.toSeconds() >= 1;
+        }
     }
 
 }

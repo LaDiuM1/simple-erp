@@ -10,9 +10,13 @@ import io.github.ladium1.erp.attendance.internal.repository.AttendanceRepository
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
+import io.github.ladium1.erp.global.demo.DemoSimulatedLocation;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AttendanceServiceTest {
@@ -37,6 +42,7 @@ class AttendanceServiceTest {
     @Mock private AttendanceRepository attendanceRepository;
     @Mock private EmployeeApi employeeApi;
     @Mock private GeoDistanceCalculator geoDistanceCalculator;
+    @Mock private DemoProtectionPolicy demoProtectionPolicy;
 
     private static final String LOGIN_ID = "testUser";
     private static final Long EMPLOYEE_ID = 1L;
@@ -48,6 +54,16 @@ class AttendanceServiceTest {
             .loginId(LOGIN_ID)
             .name("테스트직원")
             .build();
+
+    @BeforeEach
+    void preserveSubmittedLocationByDefault() {
+        org.mockito.Mockito.lenient()
+                .when(demoProtectionPolicy.effectiveLocation(
+                        org.mockito.ArgumentMatchers.anyDouble(),
+                        org.mockito.ArgumentMatchers.anyDouble()))
+                .thenAnswer(invocation -> new DemoSimulatedLocation(
+                        invocation.getArgument(0), invocation.getArgument(1)));
+    }
 
     private Attendance checkedInAttendance() {
         return checkedInAttendance(LocalDate.now());
@@ -81,6 +97,28 @@ class AttendanceServiceTest {
         assertThat(response.checkInAt()).isNotNull();
         assertThat(response.checkInWithinRange()).isTrue();
         assertThat(response.employeeName()).isEqualTo("테스트직원");
+    }
+
+    @Test
+    @DisplayName("demo check-in은 클라이언트 좌표 대신 서버 모의 좌표를 계산·저장")
+    void check_in_uses_server_simulated_location() {
+        double simulatedLatitude = 37.5;
+        double simulatedLongitude = 127.0;
+        given(demoProtectionPolicy.effectiveLocation(1.0, 2.0))
+                .willReturn(new DemoSimulatedLocation(simulatedLatitude, simulatedLongitude));
+        given(employeeApi.findByLoginId(LOGIN_ID)).willReturn(Optional.of(employee));
+        given(attendanceRepository.findByEmployeeIdAndWorkDate(eq(EMPLOYEE_ID), any(LocalDate.class)))
+                .willReturn(Optional.empty());
+        given(geoDistanceCalculator.isWithinOfficeRange(simulatedLatitude, simulatedLongitude)).willReturn(true);
+        given(attendanceRepository.saveAndFlush(any(Attendance.class))).willAnswer(inv -> inv.getArgument(0));
+
+        attendanceService.checkIn(LOGIN_ID, new CheckInRequest(1.0, 2.0));
+
+        ArgumentCaptor<Attendance> captor = ArgumentCaptor.forClass(Attendance.class);
+        verify(attendanceRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getCheckInLatitude()).isEqualTo(simulatedLatitude);
+        assertThat(captor.getValue().getCheckInLongitude()).isEqualTo(simulatedLongitude);
+        verify(geoDistanceCalculator).isWithinOfficeRange(simulatedLatitude, simulatedLongitude);
     }
 
     @Test

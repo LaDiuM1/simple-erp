@@ -519,6 +519,19 @@ class SalesCustomerServiceTest {
     }
 
     @Test
+    @DisplayName("createAssignment 실패 — 복구 운영 계정은 고객사 업무 담당자로 배정할 수 없음")
+    void create_assignment_rejects_recovery_operator() {
+        given(employeeApi.isEligibleForNewWorkReference(10L)).willReturn(false);
+        SalesAssignmentCreateRequest request = new SalesAssignmentCreateRequest(
+                1L, 10L, LocalDate.of(2026, 4, 1), false, "보조 담당");
+
+        assertThatThrownBy(() -> salesCustomerService.createAssignment(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", SalesCustomerErrorCode.INACTIVE_EMPLOYEE);
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("updateAssignment 실패 — 이미 종료된 배정")
     void update_assignment_fail_already_terminated() {
         // given

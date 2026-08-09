@@ -3,6 +3,8 @@ package io.github.ladium1.erp.employee.internal.service;
 import io.github.ladium1.erp.department.api.DepartmentApi;
 import io.github.ladium1.erp.department.api.dto.DepartmentInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.DataScope;
 import io.github.ladium1.erp.global.security.DataScopeContext;
@@ -10,6 +12,7 @@ import io.github.ladium1.erp.global.security.DataScopeContextProvider;
 import io.github.ladium1.erp.global.security.DataScopeResolver;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeProfileResponse;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeReferenceResponse;
+import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.employee.internal.dto.EmployeeSearchCondition;
 import io.github.ladium1.erp.employee.internal.entity.Employee;
 import io.github.ladium1.erp.employee.internal.entity.EmployeeStatus;
@@ -24,12 +27,14 @@ import io.github.ladium1.erp.role.api.dto.RoleInfo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -56,6 +62,7 @@ class EmployeeServiceTest {
     @Mock private PositionApi positionApi;
     @Mock private DataScopeResolver dataScopeResolver;
     @Mock private DataScopeContextProvider dataScopeContextProvider;
+    @Mock private DemoProtectionPolicy demoProtectionPolicy;
 
     private final String TEST_ID = "testUser";
 
@@ -259,5 +266,104 @@ class EmployeeServiceTest {
                 .willReturn(false);
 
         assertThat(employeeService.isLoginAllowed(TEST_ID)).isFalse();
+    }
+
+    @Test
+    @DisplayName("보호 직원 삭제는 repository 변경 전에 중앙 정책에서 차단")
+    void delete_protected_employee_is_blocked() {
+        Employee employee = Employee.builder().loginId("demo.manager").name("데모 관리자").build();
+        given(employeeRepository.findById(1L)).willReturn(Optional.of(employee));
+        doThrow(new BusinessException(DemoErrorCode.DEMO_PROTECTED_RESOURCE))
+                .when(demoProtectionPolicy).assertEmployeeDeletionAllowed("demo.manager");
+
+        assertThatThrownBy(() -> employeeService.delete(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DemoErrorCode.DEMO_PROTECTED_RESOURCE);
+        verify(employeeRepository, never()).delete(employee);
+    }
+
+    @Test
+    @DisplayName("직원 검색은 복구 전용 운영자 계정을 저장소 단계에서 제외")
+    void search_hides_operations_employee_from_demo_viewer() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        given(demoProtectionPolicy.hiddenOperationsEmployeeLoginId("demo.manager"))
+                .willReturn("private.ops");
+        given(employeeRepository.search(any(), eq(pageable))).willReturn(Page.empty(pageable));
+
+        employeeService.search("demo.manager",
+                new EmployeeSearchCondition(null, null, null, null, null, null),
+                pageable);
+
+        ArgumentCaptor<EmployeeSearchCondition> captor = ArgumentCaptor.forClass(EmployeeSearchCondition.class);
+        verify(employeeRepository).search(captor.capture(), eq(pageable));
+        assertThat(captor.getValue().excludedLoginId()).isEqualTo("private.ops");
+    }
+
+    @Test
+    @DisplayName("복구 운영자 직원 상세 직접 조회도 존재를 숨김")
+    void detail_hides_operations_employee_from_demo_viewer() {
+        Employee operator = Employee.builder().loginId("private.ops").name("복구 운영자").build();
+        given(employeeRepository.findById(99L)).willReturn(Optional.of(operator));
+        given(demoProtectionPolicy.isEmployeeHiddenFrom("demo.manager", "private.ops"))
+                .willReturn(true);
+
+        assertThatThrownBy(() -> employeeService.getDetail("demo.manager", 99L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", EmployeeErrorCode.EMPLOYEE_NOT_FOUND);
+        verify(roleApi, never()).getById(any());
+    }
+
+    @Test
+    @DisplayName("현재 재직 집계와 목록은 휴직자를 포함하고 복구 운영자를 제외")
+    void currently_employed_excludes_recovery_operator() {
+        Employee active = Employee.builder()
+                .loginId("active").name("재직자").status(EmployeeStatus.ACTIVE).build();
+        Employee leave = Employee.builder()
+                .loginId("leave").name("휴직자").status(EmployeeStatus.LEAVE).build();
+        given(demoProtectionPolicy.recoveryOperationsEmployeeLoginId()).willReturn("private.ops");
+        given(employeeRepository.countByStatusNotAndLoginIdNot(
+                EmployeeStatus.RESIGNED, "private.ops")).willReturn(2L);
+        given(employeeRepository.findByStatusNotAndLoginIdNot(
+                EmployeeStatus.RESIGNED, "private.ops")).willReturn(List.of(active, leave));
+
+        assertThat(employeeService.countCurrentlyEmployed()).isEqualTo(2L);
+        assertThat(employeeService.findAllCurrentlyEmployed())
+                .extracting(EmployeeInfo::loginId)
+                .containsExactly("active", "leave");
+    }
+
+    @Test
+    @DisplayName("신규 업무 참조 가능 여부는 직원 배치를 한 번 조회해 ACTIVE와 일반 계정만 허용")
+    void new_work_reference_eligibility_is_centralized_and_batched() {
+        Employee eligible = Employee.builder()
+                .loginId("employee").status(EmployeeStatus.ACTIVE).build();
+        given(employeeRepository.findAllById(any())).willReturn(List.of(eligible));
+
+        assertThat(employeeService.allEligibleForNewWorkReference(Set.of(1L))).isTrue();
+        verify(employeeRepository).findAllById(any());
+
+        Employee privateOperator = Employee.builder()
+                .loginId("private.ops").status(EmployeeStatus.ACTIVE).build();
+        given(employeeRepository.findAllById(any())).willReturn(List.of(privateOperator));
+        given(demoProtectionPolicy.isOperationsEmployee("private.ops")).willReturn(true);
+
+        assertThat(employeeService.allEligibleForNewWorkReference(Set.of(2L))).isFalse();
+
+        given(employeeRepository.findAllById(any())).willReturn(List.of());
+
+        assertThat(employeeService.isEligibleForNewWorkReference(3L)).isFalse();
+    }
+
+    @Test
+    @DisplayName("복구 운영 계정은 재직 상태여도 현재 업무 대상에서 제외")
+    void currently_employed_excludes_operations_employee() {
+        Employee operator = Employee.builder()
+                .loginId("private.ops")
+                .status(EmployeeStatus.ACTIVE)
+                .build();
+        given(employeeRepository.findById(9L)).willReturn(Optional.of(operator));
+        given(demoProtectionPolicy.isOperationsEmployee("private.ops")).willReturn(true);
+
+        assertThat(employeeService.isCurrentlyEmployed(9L)).isFalse();
     }
 }

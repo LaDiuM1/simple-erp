@@ -408,6 +408,20 @@ class ContractServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.INACTIVE_PRODUCT);
         verify(contractRepository, never()).save(any());
+
+    }
+
+    @Test
+    @DisplayName("create 실패 — 복구 운영 계정은 계약 담당자로 지정할 수 없음")
+    void create_rejects_hidden_operator_employee() {
+        ContractCreateRequest request = baseCreateRequest(null);
+        given(customerApi.getById(1L)).willReturn(customerInfo());
+        given(employeeApi.isEligibleForNewWorkReference(2L)).willReturn(false);
+
+        assertThatThrownBy(() -> contractService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ContractErrorCode.INVALID_EMPLOYEE);
+        verify(productApi, never()).getById(any());
     }
 
     @Test

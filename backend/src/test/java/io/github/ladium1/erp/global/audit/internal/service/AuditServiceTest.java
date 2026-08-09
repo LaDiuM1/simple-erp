@@ -2,6 +2,7 @@ package io.github.ladium1.erp.global.audit.internal.service;
 
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.internal.entity.AuditLog;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.menu.Menu;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 
@@ -23,10 +25,13 @@ class AuditServiceTest {
     private AuditService auditService;
 
     @Mock private AuditLogWriter auditLogWriter;
+    @Mock private DemoProtectionPolicy demoProtectionPolicy;
 
     @Test
     @DisplayName("record 성공 — 모든 컬럼이 채워진 AuditLog 가 저장된다")
     void record_success() {
+        given(demoProtectionPolicy.auditIp("10.0.1.5")).willReturn("10.0.1.5");
+
         // when
         auditService.record(
                 Menu.EMPLOYEES, AuditAction.CREATE,
@@ -65,6 +70,21 @@ class AuditServiceTest {
         ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
         verify(auditLogWriter).write(captor.capture());
         assertThat(captor.getValue().getTargetType()).isNull();
+    }
+
+    @Test
+    @DisplayName("데모 개인정보 보호 정책은 최종 영속 경계에서 IP를 null로 저장")
+    void record_applies_final_ip_privacy_boundary() {
+        given(demoProtectionPolicy.auditIp("203.0.113.7")).willReturn(null);
+
+        auditService.record(
+                Menu.EMPLOYEES, AuditAction.UPDATE,
+                "demo.staff", 2L, "Employee", 2L,
+                "trace", "203.0.113.7");
+
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogWriter).write(captor.capture());
+        assertThat(captor.getValue().getIpAddress()).isNull();
     }
 
     @Test

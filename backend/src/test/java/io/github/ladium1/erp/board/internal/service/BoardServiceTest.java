@@ -13,6 +13,8 @@ import io.github.ladium1.erp.board.internal.repository.PostCommentRepository;
 import io.github.ladium1.erp.board.internal.repository.PostRepository;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
 import io.github.ladium1.erp.global.storage.FileOwner;
@@ -42,6 +44,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -57,6 +60,7 @@ class BoardServiceTest {
     @Mock private EmployeeApi employeeApi;
     @Mock private FileStorageApi fileStorageApi;
     @Mock private MenuPermissionEvaluator menuPermissionEvaluator;
+    @Mock private DemoProtectionPolicy demoProtectionPolicy;
 
     private static final String TEST_LOGIN_ID = "testUser";
     private static final Long MY_EMPLOYEE_ID = 1L;
@@ -77,6 +81,20 @@ class BoardServiceTest {
         given(employeeApi.findByLoginId(TEST_LOGIN_ID)).willReturn(Optional.of(
                 EmployeeInfo.builder().id(MY_EMPLOYEE_ID).name("테스트직원").build()
         ));
+    }
+
+    @Test
+    @DisplayName("업로드 비활성 시 기존 파일 ID를 게시글에 graft하기 전에 차단")
+    void create_with_attachment_id_is_blocked() {
+        PostCreateRequest request = new PostCreateRequest(
+                BoardCategory.FREE, "제목", "본문", List.of(10L));
+        doThrow(new BusinessException(DemoErrorCode.DEMO_UPLOAD_DISABLED))
+                .when(demoProtectionPolicy).assertNoAttachmentIds(List.of(10L));
+
+        assertThatThrownBy(() -> boardService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DemoErrorCode.DEMO_UPLOAD_DISABLED);
+        verify(postRepository, never()).save(any());
     }
 
     private Post post(BoardCategory category, Long authorId) {
@@ -204,6 +222,25 @@ class BoardServiceTest {
 
         assertThat(post.getTitle()).isEqualTo("제목");
         assertThat(post.getAttachmentFileIds()).containsExactly(10L);
+        verify(fileStorageApi, never()).requestDeletion(any(), any());
+    }
+
+    @Test
+    @DisplayName("업로드가 비활성화되면 게시글에 새 첨부 연결을 추가할 수 없음")
+    void update_in_demo_blocks_new_attachment_id() {
+        stubCurrentEmployee();
+        Post post = post(BoardCategory.FREE, MY_EMPLOYEE_ID, List.of(10L));
+        given(postRepository.findById(5L)).willReturn(Optional.of(post));
+        doThrow(new BusinessException(DemoErrorCode.DEMO_UPLOAD_DISABLED))
+                .when(demoProtectionPolicy).assertNoAttachmentIds(List.of(12L));
+        PostUpdateRequest request = new PostUpdateRequest(
+                BoardCategory.FREE, "수정 제목", "수정 본문", List.of(10L, 12L));
+
+        assertThatThrownBy(() -> boardService.update(5L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DemoErrorCode.DEMO_UPLOAD_DISABLED);
+        assertThat(post.getAttachmentFileIds()).containsExactly(10L);
+        verify(fileStorageApi, never()).claim(any(), any(), any());
         verify(fileStorageApi, never()).requestDeletion(any(), any());
     }
 

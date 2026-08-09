@@ -12,6 +12,8 @@ import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
+import io.github.ladium1.erp.global.demo.DemoSimulatedLocation;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.web.PageResponse;
@@ -37,6 +39,7 @@ public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final EmployeeApi employeeApi;
     private final GeoDistanceCalculator geoDistanceCalculator;
+    private final DemoProtectionPolicy demoProtectionPolicy;
 
     @Auditable(menu = Menu.ATTENDANCE, action = AuditAction.CREATE, targetType = "Attendance")
     @Transactional
@@ -48,14 +51,17 @@ public class AttendanceService {
         if (attendanceRepository.findByEmployeeIdAndWorkDate(employee.id(), today).isPresent()) {
             throw new BusinessException(AttendanceErrorCode.ALREADY_CHECKED_IN);
         }
+        DemoSimulatedLocation location = demoProtectionPolicy.effectiveLocation(
+                request.latitude(), request.longitude());
 
         Attendance attendance = Attendance.builder()
                 .employeeId(employee.id())
                 .workDate(today)
                 .checkInAt(LocalDateTime.now())
-                .checkInLatitude(request.latitude())
-                .checkInLongitude(request.longitude())
-                .checkInWithinRange(geoDistanceCalculator.isWithinOfficeRange(request.latitude(), request.longitude()))
+                .checkInLatitude(location.latitude())
+                .checkInLongitude(location.longitude())
+                .checkInWithinRange(geoDistanceCalculator.isWithinOfficeRange(
+                        location.latitude(), location.longitude()))
                 .build();
 
         try {
@@ -80,12 +86,14 @@ public class AttendanceService {
         if (attendance.getCheckOutAt() != null) {
             throw new BusinessException(AttendanceErrorCode.ALREADY_CHECKED_OUT);
         }
+        DemoSimulatedLocation location = demoProtectionPolicy.effectiveLocation(
+                request.latitude(), request.longitude());
 
         attendance.checkOut(
                 LocalDateTime.now(),
-                request.latitude(),
-                request.longitude(),
-                geoDistanceCalculator.isWithinOfficeRange(request.latitude(), request.longitude())
+                location.latitude(),
+                location.longitude(),
+                geoDistanceCalculator.isWithinOfficeRange(location.latitude(), location.longitude())
         );
 
         return AttendanceResponse.from(attendance, employee.name());

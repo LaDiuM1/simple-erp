@@ -15,6 +15,8 @@ import io.github.ladium1.erp.approval.internal.mapper.ApprovalMapper;
 import io.github.ladium1.erp.approval.internal.repository.ApprovalDocumentRepository;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
@@ -40,6 +42,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,6 +55,7 @@ class ApprovalServiceTest {
     @Mock private EmployeeApi employeeApi;
     @Mock private FileStorageApi fileStorageApi;
     @Mock private ApprovalResultHandler expenseResultHandler;
+    @Mock private DemoProtectionPolicy demoProtectionPolicy;
 
     private static final String LOGIN_ID = "testUser";
     private static final Long DRAFTER_ID = 1L;
@@ -63,7 +67,7 @@ class ApprovalServiceTest {
         // List<ApprovalResultHandler> 주입은 @InjectMocks 가 못 다뤄 직접 생성
         approvalService = new ApprovalService(
                 approvalDocumentRepository, approvalMapper, employeeApi, fileStorageApi,
-                List.of(expenseResultHandler));
+                List.of(expenseResultHandler), demoProtectionPolicy);
     }
 
     private ApprovalSubmitCommand command(List<Long> approverIds) {
@@ -74,6 +78,25 @@ class ApprovalServiceTest {
                 .drafterId(DRAFTER_ID)
                 .approverIds(approverIds)
                 .build();
+    }
+
+    @Test
+    @DisplayName("업로드 비활성 시 기존 파일 ID를 결재 문서에 graft하기 전에 차단")
+    void submit_with_attachment_id_is_blocked() {
+        ApprovalSubmitCommand command = ApprovalSubmitCommand.builder()
+                .docType(ApprovalDocType.GENERAL)
+                .title("첨부 변조")
+                .drafterId(DRAFTER_ID)
+                .approverIds(List.of(2L))
+                .attachmentFileIds(List.of(101L))
+                .build();
+        doThrow(new BusinessException(DemoErrorCode.DEMO_UPLOAD_DISABLED))
+                .when(demoProtectionPolicy).assertNoAttachmentIds(List.of(101L));
+
+        assertThatThrownBy(() -> approvalService.submit(command))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DemoErrorCode.DEMO_UPLOAD_DISABLED);
+        verify(approvalDocumentRepository, never()).save(any());
     }
 
     private ApprovalDocument expenseDocument(List<Long> approverIds) {

@@ -33,7 +33,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, Emplo
 
     long countByStatusNot(EmployeeStatus status);
 
+    long countByStatusNotAndLoginIdNot(EmployeeStatus status, String loginId);
+
     List<Employee> findByStatusNot(EmployeeStatus status);
+
+    List<Employee> findByStatusNotAndLoginIdNot(EmployeeStatus status, String loginId);
 
     @Query("select m.id from Employee m where m.departmentId in :departmentIds")
     List<Long> findIdsByDepartmentIdIn(Collection<Long> departmentIds);

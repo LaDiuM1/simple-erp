@@ -2,6 +2,7 @@ package io.github.ladium1.erp.role.internal.service;
 
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
@@ -51,6 +52,7 @@ public class RoleService implements RoleApi {
     private final RoleMenuRepository roleMenuRepository;
     private final RoleMapper roleMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final DemoProtectionPolicy demoProtectionPolicy;
 
     @Override
     public RoleInfo getById(Long id) {
@@ -176,6 +178,7 @@ public class RoleService implements RoleApi {
     public void update(Long id, RoleUpdateRequest request) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_NOT_FOUND));
+        demoProtectionPolicy.assertRoleMutationAllowed(role.getCode());
         role.update(request.name().trim(), trimToNull(request.description()));
         // 시스템 권한은 매트릭스 변경 차단 (FE 가 readonly 로 막지만 이중 방어)
         if (!role.isSystem()) {
@@ -188,6 +191,7 @@ public class RoleService implements RoleApi {
     public void delete(Long id) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_NOT_FOUND));
+        demoProtectionPolicy.assertRoleMutationAllowed(role.getCode());
         if (role.isSystem()) {
             throw new BusinessException(RoleErrorCode.SYSTEM_ROLE_PROTECTED);
         }

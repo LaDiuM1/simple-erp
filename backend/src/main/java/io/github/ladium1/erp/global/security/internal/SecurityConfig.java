@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.global.security.internal;
 
 import io.github.ladium1.erp.employee.api.LoginAccountApi;
+import io.github.ladium1.erp.global.demo.DemoRequestGuardFilter;
 import io.github.ladium1.erp.global.logging.LoggingMdcFilter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,7 +43,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) {
+    public SecurityFilterChain filterChain(HttpSecurity http, DemoRequestGuardFilter demoRequestGuardFilter) {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -70,8 +71,11 @@ public class SecurityConfig {
                         new JwtAuthenticationFilter(jwtTokenProvider, loginAccountApi),
                         UsernamePasswordAuthenticationFilter.class)
 
-                // 인증 직후에 MDC 부착 -> 컨트롤러 / 서비스 로그 라인에 traceId / userId 가 따라가도록
-                .addFilterAfter(new LoggingMdcFilter(), JwtAuthenticationFilter.class);
+                // 인증 직후 MDC를 먼저 부착해 demo guard의 조기 거부 응답도 같은 trace 계약을 유지
+                .addFilterAfter(new LoggingMdcFilter(), JwtAuthenticationFilter.class)
+
+                // JWT/MDC 해석 뒤 계정 단위 write limit 적용, servlet 자동 등록은 별도로 비활성화
+                .addFilterAfter(demoRequestGuardFilter, LoggingMdcFilter.class);
 
         return http.build();
     }
@@ -80,9 +84,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of(LoggingMdcFilter.TRACE_ID_HEADER));
+        configuration.setExposedHeaders(List.of(LoggingMdcFilter.TRACE_ID_HEADER, "Retry-After"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

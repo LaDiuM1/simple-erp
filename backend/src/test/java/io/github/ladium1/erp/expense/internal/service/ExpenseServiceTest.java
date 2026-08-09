@@ -16,7 +16,9 @@ import io.github.ladium1.erp.expense.internal.entity.ExpenseClaim;
 import io.github.ladium1.erp.expense.internal.entity.ExpenseStatus;
 import io.github.ladium1.erp.expense.internal.exception.ExpenseErrorCode;
 import io.github.ladium1.erp.expense.internal.repository.ExpenseClaimRepository;
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
 import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
@@ -49,6 +51,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -66,6 +69,7 @@ class ExpenseServiceTest {
     @Mock private EmployeeApi employeeApi;
     @Mock private FileStorageApi fileStorageApi;
     @Mock private MenuPermissionEvaluator menuPermissionEvaluator;
+    @Mock private DemoProtectionPolicy demoProtectionPolicy;
 
     private final String TEST_LOGIN_ID = "testUser";
     private final Long TEST_EMPLOYEE_ID = 1L;
@@ -84,6 +88,26 @@ class ExpenseServiceTest {
                 .title("6월 출장 경비")
                 .totalAmount(new BigDecimal("100000"))
                 .build();
+    }
+
+    @Test
+    @DisplayName("업로드 비활성 시 기존 영수증 ID를 경비·결재에 graft하기 전에 차단")
+    void create_with_receipt_id_is_blocked() {
+        ExpenseCreateRequest request = new ExpenseCreateRequest(
+                "영수증 변조",
+                List.of(new ExpenseCreateRequest.ItemRequest(
+                        LocalDate.of(2026, 8, 2), ExpenseCategory.TRANSPORT,
+                        new BigDecimal("1000"), "교통", 101L)),
+                List.of(2L));
+        given(employeeApi.findByLoginId(TEST_LOGIN_ID)).willReturn(Optional.of(employeeInfo()));
+        doThrow(new BusinessException(DemoErrorCode.DEMO_UPLOAD_DISABLED))
+                .when(demoProtectionPolicy).assertNoAttachmentIds(List.of(101L));
+
+        assertThatThrownBy(() -> expenseService.create(TEST_LOGIN_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DemoErrorCode.DEMO_UPLOAD_DISABLED);
+        verify(expenseClaimRepository, never()).save(any());
+        verify(approvalApi, never()).submit(any());
     }
 
     @Test

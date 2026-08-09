@@ -1,5 +1,6 @@
 package io.github.ladium1.erp.global.storage.internal.service;
 
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
@@ -45,23 +46,27 @@ public class FileStorageService implements FileStorageApi {
     private static final int CLEANUP_BATCH_SIZE = 100;
 
     private final StoredFileRepository storedFileRepository;
+    private final DemoProtectionPolicy demoProtectionPolicy;
     private final Path basePath;
     private final ContentWriter contentWriter;
 
     @Autowired
     public FileStorageService(
             StoredFileRepository storedFileRepository,
+            DemoProtectionPolicy demoProtectionPolicy,
             @Value("${erp.storage.local.base-path}") String basePath
     ) {
-        this(storedFileRepository, basePath, FileStorageService::writeAtomically);
+        this(storedFileRepository, demoProtectionPolicy, basePath, FileStorageService::writeAtomically);
     }
 
     FileStorageService(
             StoredFileRepository storedFileRepository,
+            DemoProtectionPolicy demoProtectionPolicy,
             String basePath,
             ContentWriter contentWriter
     ) {
         this.storedFileRepository = storedFileRepository;
+        this.demoProtectionPolicy = demoProtectionPolicy;
         this.basePath = Path.of(basePath);
         this.contentWriter = contentWriter;
     }
@@ -69,6 +74,7 @@ public class FileStorageService implements FileStorageApi {
     @Override
     @Transactional
     public StoredFileInfo store(String originalName, String contentType, byte[] content, Long uploaderId) {
+        demoProtectionPolicy.assertUploadAllowed();
         if (content == null || content.length == 0) {
             throw new BusinessException(StorageErrorCode.EMPTY_FILE);
         }
@@ -194,6 +200,9 @@ public class FileStorageService implements FileStorageApi {
 
     @Transactional
     public int deletePendingFiles() {
+        if (demoProtectionPolicy.shouldRetainStoredFiles()) {
+            return 0;
+        }
         List<StoredFile> files = storedFileRepository.findByStatusForUpdate(
                 StoredFileStatus.DELETE_PENDING,
                 PageRequest.of(0, CLEANUP_BATCH_SIZE)

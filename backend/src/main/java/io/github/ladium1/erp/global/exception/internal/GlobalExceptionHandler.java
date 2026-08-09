@@ -34,7 +34,11 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(errorCode.getStatus())
-                .body(ApiResponse.error(errorCode.getStatus().value(), errorCode.getMessage()));
+                .body(ApiResponse.error(
+                        errorCode.getStatus().value(),
+                        errorCode.getMessage(),
+                        errorCode.getCode()
+                ));
     }
 
     // 요청 본문 검증 실패 (@Valid @RequestBody) — 첫 필드 메시지 노출

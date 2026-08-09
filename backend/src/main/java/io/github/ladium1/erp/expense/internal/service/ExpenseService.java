@@ -17,6 +17,7 @@ import io.github.ladium1.erp.expense.internal.exception.ExpenseErrorCode;
 import io.github.ladium1.erp.expense.internal.repository.ExpenseClaimRepository;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
@@ -54,6 +55,7 @@ public class ExpenseService {
     private final EmployeeApi employeeApi;
     private final FileStorageApi fileStorageApi;
     private final MenuPermissionEvaluator menuPermissionEvaluator;
+    private final DemoProtectionPolicy demoProtectionPolicy;
 
     /**
      * 경비 청구 생성 — 총액을 서버에서 합산하고, 저장 즉시 전자결재에 상신해 문서 ID 를 연결한다.
@@ -67,6 +69,7 @@ public class ExpenseService {
         if (items == null || items.isEmpty()) {
             throw new BusinessException(ExpenseErrorCode.EMPTY_ITEMS);
         }
+        demoProtectionPolicy.assertNoAttachmentIds(collectReceiptFileIds(items));
 
         BigDecimal totalAmount = items.stream()
                 .map(ExpenseCreateRequest.ItemRequest::amount)

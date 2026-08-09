@@ -4,6 +4,7 @@ import io.github.ladium1.erp.department.api.DepartmentApi;
 import io.github.ladium1.erp.department.api.dto.DepartmentInfo;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
+import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.DataScope;
@@ -68,6 +69,7 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
     private final EmployeeExcelExporter employeeExcelExporter;
     private final DataScopeResolver dataScopeResolver;
     private final DataScopeContextProvider dataScopeContextProvider;
+    private final DemoProtectionPolicy demoProtectionPolicy;
 
     @Override
     public Long getRoleIdByLoginId(String loginId) {
@@ -108,12 +110,20 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
 
     @Override
     public long countCurrentlyEmployed() {
-        return employeeRepository.countByStatusNot(EmployeeStatus.RESIGNED);
+        String excludedLoginId = demoProtectionPolicy.recoveryOperationsEmployeeLoginId();
+        return excludedLoginId == null
+                ? employeeRepository.countByStatusNot(EmployeeStatus.RESIGNED)
+                : employeeRepository.countByStatusNotAndLoginIdNot(
+                        EmployeeStatus.RESIGNED, excludedLoginId);
     }
 
     @Override
     public List<EmployeeInfo> findAllCurrentlyEmployed() {
-        List<Employee> employees = employeeRepository.findByStatusNot(EmployeeStatus.RESIGNED);
+        String excludedLoginId = demoProtectionPolicy.recoveryOperationsEmployeeLoginId();
+        List<Employee> employees = excludedLoginId == null
+                ? employeeRepository.findByStatusNot(EmployeeStatus.RESIGNED)
+                : employeeRepository.findByStatusNotAndLoginIdNot(
+                        EmployeeStatus.RESIGNED, excludedLoginId);
         ReferenceCache refs = loadReferences(employees);
         return employees.stream().map(e -> toInfo(e, refs)).toList();
     }
@@ -122,7 +132,8 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
     public boolean isCurrentlyEmployed(Long employeeId) {
         return employeeId != null
                 && employeeRepository.findById(employeeId)
-                        .filter(employee -> employee.getStatus() != EmployeeStatus.RESIGNED)
+                        .filter(employee -> employee.getStatus() != EmployeeStatus.RESIGNED
+                                && !demoProtectionPolicy.isOperationsEmployee(employee.getLoginId()))
                         .isPresent();
     }
 
@@ -139,7 +150,9 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
         LinkedHashSet<Long> distinctIds = new LinkedHashSet<>(employeeIds);
         List<Employee> employees = employeeRepository.findAllById(distinctIds);
         return employees.size() == distinctIds.size()
-                && employees.stream().allMatch(employee -> employee.getStatus() == EmployeeStatus.ACTIVE);
+                && employees.stream().allMatch(employee ->
+                        employee.getStatus() == EmployeeStatus.ACTIVE
+                                && !demoProtectionPolicy.isOperationsEmployee(employee.getLoginId()));
     }
 
     @Override
@@ -184,8 +197,10 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
         return employeeMapper.toProfileResponse(employee, departmentInfo, positionInfo, roleInfo, menuPermissions);
     }
 
-    public PageResponse<EmployeeSummaryResponse> search(EmployeeSearchCondition condition, Pageable pageable) {
-        Page<Employee> page = employeeRepository.search(condition, pageable);
+    public PageResponse<EmployeeSummaryResponse> search(String viewerLoginId, EmployeeSearchCondition condition, Pageable pageable) {
+        EmployeeSearchCondition visibleCondition = condition.withExcludedLoginId(
+                demoProtectionPolicy.hiddenOperationsEmployeeLoginId(viewerLoginId));
+        Page<Employee> page = employeeRepository.search(visibleCondition, pageable);
         ReferenceCache refs = loadReferences(page.getContent());
         return PageResponse.of(page.map(employee -> toSummary(employee, refs)));
     }
@@ -194,7 +209,10 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
             EmployeeSearchCondition condition,
             Pageable pageable
     ) {
-        Page<Employee> page = employeeRepository.search(condition, pageable);
+        Page<Employee> page = employeeRepository.search(
+                condition.withExcludedLoginId(demoProtectionPolicy.recoveryOperationsEmployeeLoginId()),
+                pageable
+        );
         return toReferencePage(page);
     }
 
@@ -203,7 +221,7 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
             Pageable pageable
     ) {
         Page<Employee> page = employeeRepository.searchVisible(
-                condition,
+                condition.withExcludedLoginId(demoProtectionPolicy.recoveryOperationsEmployeeLoginId()),
                 resolveContractVisibleEmployeeIds().orElse(null),
                 pageable
         );
@@ -245,8 +263,10 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
         });
     }
 
-    public byte[] exportExcel(EmployeeSearchCondition condition, Sort sort) {
-        List<Employee> employees = employeeRepository.searchAll(condition, sort);
+    public byte[] exportExcel(String viewerLoginId, EmployeeSearchCondition condition, Sort sort) {
+        EmployeeSearchCondition visibleCondition = condition.withExcludedLoginId(
+                demoProtectionPolicy.hiddenOperationsEmployeeLoginId(viewerLoginId));
+        List<Employee> employees = employeeRepository.searchAll(visibleCondition, sort);
         ReferenceCache refs = loadReferences(employees);
         List<EmployeeSummaryResponse> rows = employees.stream()
                 .map(employee -> toSummary(employee, refs))
@@ -263,9 +283,12 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
         );
     }
 
-    public EmployeeDetailResponse getDetail(Long id) {
+    public EmployeeDetailResponse getDetail(String viewerLoginId, Long id) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(EmployeeErrorCode.EMPLOYEE_NOT_FOUND));
+        if (demoProtectionPolicy.isEmployeeHiddenFrom(viewerLoginId, employee.getLoginId())) {
+            throw new BusinessException(EmployeeErrorCode.EMPLOYEE_NOT_FOUND);
+        }
 
         DepartmentInfo departmentInfo = Optional.ofNullable(employee.getDepartmentId())
                 .map(departmentApi::getById)
@@ -309,6 +332,13 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
     public void update(Long id, EmployeeUpdateRequest request) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(EmployeeErrorCode.EMPLOYEE_NOT_FOUND));
+        boolean passwordChanged = request.newPassword() != null && !request.newPassword().isEmpty();
+        demoProtectionPolicy.assertProtectedEmployeeUpdateAllowed(
+                employee.getLoginId(),
+                !Objects.equals(employee.getStatus(), request.status()),
+                !Objects.equals(employee.getRoleId(), request.roleId()),
+                passwordChanged
+        );
         validateReferences(request.roleId(), request.departmentId(), request.positionId());
 
         employee.update(
@@ -325,7 +355,7 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
         );
 
         // newPassword 가 채워진 경우에만 비밀번호 변경 (null/빈 값이면 기존 유지)
-        if (request.newPassword() != null && !request.newPassword().isEmpty()) {
+        if (passwordChanged) {
             employee.changePassword(passwordEncoder.encode(request.newPassword()));
         }
     }
@@ -333,10 +363,10 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
     @Auditable(menu = Menu.EMPLOYEES, action = AuditAction.DELETE, targetType = "Employee", targetIdParam = "id")
     @Transactional
     public void delete(Long id) {
-        if (!employeeRepository.existsById(id)) {
-            throw new BusinessException(EmployeeErrorCode.EMPLOYEE_NOT_FOUND);
-        }
-        employeeRepository.deleteById(id);
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(EmployeeErrorCode.EMPLOYEE_NOT_FOUND));
+        demoProtectionPolicy.assertEmployeeDeletionAllowed(employee.getLoginId());
+        employeeRepository.delete(employee);
     }
 
     /**
