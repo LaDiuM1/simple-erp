@@ -10,19 +10,25 @@ import type {
   SalesCustomerAggregate,
   SalesCustomerDetail,
 } from '../types';
+import { resolveSalesCustomerAggregateResponse } from '../utils/salesCustomerAggregateContract';
 
-const salesCustomerApi = api.injectEndpoints({
+export const salesCustomerApi = api.injectEndpoints({
   endpoints: (builder) => ({
     /**
      * 고객사 ID 배열에 대한 영업 집계 (활성 담당자 / 활동 카운트 / 마지막 활동일).
      * 목록 페이지가 customer 마스터 페이지와 합성하기 위한 보강 데이터.
      */
     getSalesCustomerAggregates: builder.query<SalesCustomerAggregate[], number[]>({
-      query: (customerIds) => ({
-        url: '/api/v1/sales-customers/aggregates',
-        method: 'GET',
-        params: { customerIds: customerIds.join(',') },
-      }),
+      queryFn: async (customerIds, _api, _extraOptions, baseQuery) => {
+        const response = await baseQuery({
+          url: '/api/v1/sales-customers/aggregates',
+          method: 'GET',
+          params: { customerIds: customerIds.join(',') },
+        });
+        if (response.error) return { error: response.error };
+
+        return resolveSalesCustomerAggregateResponse(response.data, customerIds);
+      },
       providesTags: (_result, _error, customerIds) =>
         customerIds.flatMap((id) => [
           { type: 'SalesAggregate' as const, id },

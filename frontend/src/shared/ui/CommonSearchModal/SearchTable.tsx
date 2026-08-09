@@ -7,6 +7,7 @@ import {
 } from 'react';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
+import LinearProgress from '@mui/material/LinearProgress';
 import Radio from '@mui/material/Radio';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -33,7 +34,7 @@ import {
   type ColumnConfig,
   useElementWidth,
 } from '@/shared/ui/GenericList';
-import { SearchTableArea } from './CommonSearchModal.styles';
+import { SearchTableArea, SearchTableContent } from './CommonSearchModal.styles';
 
 interface Props<TRow> {
   rows: TRow[];
@@ -42,6 +43,7 @@ interface Props<TRow> {
   /** 선택 컨트롤의 접근 가능한 후보명. 미지정 시 row id를 사용한다. */
   rowLabel?: (row: TRow) => string;
   isLoading: boolean;
+  isRefreshing?: boolean;
   emptyMessage: string;
   page: number;
   pageSize: number;
@@ -132,6 +134,7 @@ export default function SearchTable<TRow>({
   rowKey,
   rowLabel,
   isLoading,
+  isRefreshing = false,
   emptyMessage,
   page,
   pageSize,
@@ -162,49 +165,57 @@ export default function SearchTable<TRow>({
     : { minHeight: ROW_HEIGHT * pageSize + HEADER_HEIGHT };
 
   return (
-    <SearchTableArea ref={tableAreaRef} style={areaStyle}>
-      {isMobile ? (
-        <MobileList
-          columns={visibleColumns}
-          rows={rows}
-          rowKey={rowKey}
-          rowLabel={rowLabel}
-          selectionGroupName={selectionGroupName}
-          mode={mode}
-          selectionStyle={selectionStyle}
-          isSelected={isSelected}
-          onToggleSelect={onToggleSelect}
-          multiple={multiple}
-          rowActions={rowActions}
-          emptyMessage={emptyMessage}
-          isLoading={isLoading}
-        />
-      ) : (
-        <DesktopTable
-          columns={visibleColumns}
-          rows={rows}
-          rowKey={rowKey}
-          rowLabel={rowLabel}
-          selectionGroupName={selectionGroupName}
-          page={page}
-          pageSize={pageSize}
-          mode={mode}
-          selectionStyle={selectionStyle}
-          isSelected={isSelected}
-          onToggleSelect={onToggleSelect}
-          multiple={multiple}
-          rowActions={rowActions}
-          emptyMessage={emptyMessage}
-          isLoading={isLoading}
-          viewportWidth={tableViewportWidth}
-        />
-      )}
+    <SearchTableArea
+      ref={tableAreaRef}
+      style={areaStyle}
+      mobilePending={isMobile && isLoading}
+      aria-busy={(isLoading || isRefreshing) || undefined}
+    >
+      <SearchTableContent inert={isLoading ? true : undefined}>
+        {isMobile ? (
+          <MobileList
+            columns={visibleColumns}
+            rows={rows}
+            rowKey={rowKey}
+            rowLabel={rowLabel}
+            selectionGroupName={selectionGroupName}
+            mode={mode}
+            selectionStyle={selectionStyle}
+            isSelected={isSelected}
+            onToggleSelect={onToggleSelect}
+            multiple={multiple}
+            rowActions={rowActions}
+            emptyMessage={emptyMessage}
+            isLoading={isLoading}
+          />
+        ) : (
+          <DesktopTable
+            columns={visibleColumns}
+            rows={rows}
+            rowKey={rowKey}
+            rowLabel={rowLabel}
+            selectionGroupName={selectionGroupName}
+            page={page}
+            pageSize={pageSize}
+            mode={mode}
+            selectionStyle={selectionStyle}
+            isSelected={isSelected}
+            onToggleSelect={onToggleSelect}
+            multiple={multiple}
+            rowActions={rowActions}
+            emptyMessage={emptyMessage}
+            isLoading={isLoading}
+            viewportWidth={tableViewportWidth}
+          />
+        )}
+      </SearchTableContent>
 
       {isLoading && (
-        <LoadingOverlayBox>
+        <LoadingOverlayBox role="status" aria-label="검색 결과 불러오는 중">
           <CircularProgress size={32} thickness={4} />
         </LoadingOverlayBox>
       )}
+      {isRefreshing && <LinearProgress aria-label="검색 결과 갱신 중" sx={{ height: 2 }} />}
     </SearchTableArea>
   );
 }

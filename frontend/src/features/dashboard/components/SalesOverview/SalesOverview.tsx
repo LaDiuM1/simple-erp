@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { formatKrw } from '@/shared/utils/formatKrw';
 import {
@@ -47,7 +46,6 @@ function monthLabel(month: string): string {
 
 /** 권한 범위 안의 월별 계약 추이와 수금 상태를 한 흐름으로 보여준다. */
 export default function SalesOverview({ data }: Props) {
-  const navigate = useNavigate();
   const totalCount = data.monthlyStats.reduce((sum, stat) => sum + stat.count, 0);
   const sixMonthAmount = data.monthlyStats.reduce((sum, stat) => sum + stat.totalAmount, 0);
   const maxMonthlyAmount = Math.max(...data.monthlyStats.map((stat) => stat.totalAmount), 0);
@@ -63,7 +61,7 @@ export default function SalesOverview({ data }: Props) {
           <SectionTitle>계약과 수금</SectionTitle>
           <SectionDescription>최근 6개월 계약 추이와 현재 수금 상태예요.</SectionDescription>
         </SectionHeading>
-        <SectionMore type="button" onClick={() => navigate('/contracts')}>
+        <SectionMore to="/contracts">
           계약 보기
           <ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />
         </SectionMore>

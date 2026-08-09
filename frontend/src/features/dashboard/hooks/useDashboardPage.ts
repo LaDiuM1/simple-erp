@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { MENU_CODE } from '@/shared/config/menuConfig';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { useToday } from '@/shared/hooks/useToday';
@@ -16,7 +15,6 @@ import {
  * 데이터가 도착한 섹션만 노출 (권한 없는 사용자의 화면을 막지 않는다).
  */
 export function useDashboardPage() {
-  const navigate = useNavigate();
   const today = useToday();
   const profileQuery = useGetMyProfileQuery();
   const summaryQuery = useGetDashboardSummaryQuery();
@@ -49,17 +47,15 @@ export function useDashboardPage() {
       warranty: canReadEquipments ? warrantyQuery.data : undefined,
     },
     monthLabel,
-    onNavigateCustomers: canReadCustomers ? () => navigate('/customers') : undefined,
-    onNavigateCustomer: canReadCustomers
-      ? (customerId: number) => navigate(`/customers/${customerId}`)
+    customerListPath: canReadCustomers ? '/customers' : undefined,
+    customerDetailPath: canReadCustomers
+      ? (customerId: number) => `/customers/${customerId}`
       : undefined,
-    onNavigateSalesContacts: canReadSalesContacts ? () => navigate('/sales-contacts') : undefined,
-    onNavigateEmployees: canReadEmployees ? () => navigate('/employees') : undefined,
-    onNavigateSalesCustomers: canReadSalesCustomers
-      ? () => navigate('/sales-customers')
-      : undefined,
-    onNavigateSalesCustomer: canReadSalesCustomers
-      ? (customerId: number) => navigate(`/sales-customers/${customerId}`)
+    salesContactListPath: canReadSalesContacts ? '/sales-contacts' : undefined,
+    employeeListPath: canReadEmployees ? '/employees' : undefined,
+    salesCustomerListPath: canReadSalesCustomers ? '/sales-customers' : undefined,
+    salesCustomerDetailPath: canReadSalesCustomers
+      ? (customerId: number) => `/sales-customers/${customerId}`
       : undefined,
   };
 }

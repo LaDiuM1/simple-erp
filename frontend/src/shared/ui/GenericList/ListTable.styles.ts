@@ -16,11 +16,13 @@ export const TableWrapper = styled(Box)({
 });
 
 /** 내부 스크롤 영역. sticky 헤더와 함께 동작. */
-export const TableScrollArea = styled(Box)({
+export const TableScrollArea = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'mobilePending',
+})<{ mobilePending?: boolean }>(({ mobilePending }) => ({
   flex: 1,
   overflow: 'auto',
-  minHeight: 0,
-});
+  minHeight: mobilePending ? 240 : 0,
+}));
 
 export const StyledTableContainer = styled(TableContainer)({
   backgroundColor: 'transparent',
@@ -108,15 +110,15 @@ export const EmptyStateText = styled(Typography)({
 });
 
 /** 로딩 오버레이 — TableWrapper position:relative 기준 absolute. */
-export const LoadingOverlayBox = styled(Box)({
+export const LoadingOverlayBox = styled(Box)(({ theme }) => ({
   position: 'absolute',
   inset: 0,
-  backgroundColor: 'rgba(255, 255, 255, 0.65)',
+  backgroundColor: theme.palette.background.paper,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   zIndex: 3,
-});
+}));
 
 /**
  * 모바일 카드 아이템. 카드 사이에 top border 로 구분.

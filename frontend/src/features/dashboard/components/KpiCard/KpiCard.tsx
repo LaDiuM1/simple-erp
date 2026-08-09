@@ -19,10 +19,10 @@ interface Props {
   unit?: string;
   suffix?: string;
   icon: ReactNode;
-  onClick?: () => void;
+  to?: string;
 }
 
-export default function KpiCard({ label, value, unit = '건', suffix, icon, onClick }: Props) {
+export default function KpiCard({ label, value, unit = '건', suffix, icon, to }: Props) {
   const content = (
     <>
       <KpiIcon>{icon}</KpiIcon>
@@ -34,7 +34,7 @@ export default function KpiCard({ label, value, unit = '건', suffix, icon, onCl
         </KpiValueRow>
         {suffix && <KpiSuffix>{suffix}</KpiSuffix>}
       </KpiBody>
-      {onClick && (
+      {to && (
         <KpiArrow aria-hidden="true">
           <ArrowForwardRoundedIcon />
         </KpiArrow>
@@ -42,12 +42,11 @@ export default function KpiCard({ label, value, unit = '건', suffix, icon, onCl
     </>
   );
 
-  if (!onClick) return <KpiRoot>{content}</KpiRoot>;
+  if (!to) return <KpiRoot>{content}</KpiRoot>;
 
   return (
     <KpiButton
-      type="button"
-      onClick={onClick}
+      to={to}
       aria-label={`${label} ${value.toLocaleString('ko-KR')}${unit} 보기`}
     >
       {content}

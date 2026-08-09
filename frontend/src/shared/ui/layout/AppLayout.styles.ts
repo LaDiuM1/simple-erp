@@ -176,8 +176,17 @@ export const ContentColumn = styled(Box)({
   overflow: 'hidden',
 });
 
-export const MainContent = styled('main')(({ theme }) => ({
+/** 스크롤 본문과 전환 면이 같은 viewport 를 공유하되 서로의 스크롤 좌표에는 종속되지 않게 한다. */
+export const MainContentFrame = styled(Box)({
   flex: 1,
+  minWidth: 0,
+  minHeight: 0,
+  position: 'relative',
+  overflow: 'hidden',
+});
+
+export const MainContent = styled('main')(({ theme }) => ({
+  height: '100%',
   overflowY: 'auto',
   padding: '2rem',
   minWidth: 0,
@@ -185,4 +194,13 @@ export const MainContent = styled('main')(({ theme }) => ({
   [theme.breakpoints.down('sm')]: {
     padding: '1rem',
   },
+}));
+
+/** 라우트가 교체될 때 직전 화면을 즉시 가리는 불투명 전환 면. */
+export const RouteTransitionOverlay = styled(Box)(({ theme }) => ({
+  position: 'absolute',
+  inset: 0,
+  zIndex: 10,
+  display: 'flex',
+  backgroundColor: theme.palette.background.paper,
 }));

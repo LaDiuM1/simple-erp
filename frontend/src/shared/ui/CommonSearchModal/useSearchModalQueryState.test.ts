@@ -25,6 +25,7 @@ describe('useSearchModalQueryState', () => {
 
     const useList = vi.fn(() => ({
       data: undefined,
+      currentData: undefined,
       isFetching: false,
       isError: false,
       refetch: vi.fn(),

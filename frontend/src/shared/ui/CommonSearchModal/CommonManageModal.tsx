@@ -1,5 +1,6 @@
 import Button from '@mui/material/Button';
 import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
+import RefreshErrorNotice from '@/shared/ui/feedback/RefreshErrorNotice';
 import { ListPagination, ListSearchFilter } from '@/shared/ui/GenericList';
 import { getErrorMessage } from '@/shared/api/error';
 import ModalShell from './ModalShell';
@@ -28,10 +29,14 @@ export default function CommonManageModal<TRow, TFilters extends object>({
   headerActions,
   rowActions,
 }: CommonManageModalProps<TRow, TFilters>) {
-  const { state, query, visibleRows } = useSearchModalQueryState({
+  const { state, query, presentation, visibleRows } = useSearchModalQueryState({
     api, searchFilter, column, fixedQueryParams, scopeKey,
   });
-  const { data, isFetching, isError, error, refetch } = query;
+  const pageData = presentation.data;
+  const hasNoCurrentPage = pageData === undefined;
+  const interactionBlocked = presentation.isPending
+    || presentation.isBlockingError
+    || hasNoCurrentPage;
 
   const hasFilter = !!searchFilter && searchFilter.length > 0;
 
@@ -56,29 +61,41 @@ export default function CommonManageModal<TRow, TFilters extends object>({
         </ModalFilterArea>
       )}
 
-      {isError ? (
-        <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} />
-      ) : (
-        <SearchTable
-          rows={visibleRows}
-          columns={column}
-          rowKey={api.rowKey}
-          mode="manage"
-          rowActions={rowActions}
-          isLoading={isFetching}
-          emptyMessage={emptyMessage ?? '결과가 없습니다.'}
-          page={state.page}
-          pageSize={state.pageSize}
+      {presentation.isBlockingError ? (
+        <ErrorScreen
+          message={getErrorMessage(presentation.error)}
+          onRetry={query.refetch}
+          fullScreen={false}
         />
+      ) : (
+        <>
+          {presentation.isRefreshError && (
+            <RefreshErrorNotice error={presentation.error} onRetry={query.refetch} />
+          )}
+          <SearchTable
+            rows={visibleRows}
+            columns={column}
+            rowKey={api.rowKey}
+            mode="manage"
+            rowActions={rowActions}
+            isLoading={presentation.isPending}
+            isRefreshing={presentation.phase === 'refreshing'}
+            emptyMessage={emptyMessage ?? '결과가 없습니다.'}
+            page={state.page}
+            pageSize={state.pageSize}
+          />
+        </>
       )}
 
       {!hidePagination && (
         <ModalFixedRow>
           <ListPagination
             page={state.page}
-            totalPages={data?.totalPages ?? 0}
-            totalElements={data?.totalElements}
+            totalPages={pageData?.totalPages ?? 0}
+            totalElements={pageData?.totalElements}
             onPageChange={state.setPage}
+            disabled={interactionBlocked}
+            pending={hasNoCurrentPage}
           />
         </ModalFixedRow>
       )}

@@ -13,6 +13,9 @@ interface Props {
   totalPages: number;
   totalElements?: number;
   onPageChange: (page: number) => void;
+  disabled?: boolean;
+  /** 현재 페이지 결과가 준비되기 전에도 요청한 페이지 번호를 안정적으로 유지한다. */
+  pending?: boolean;
 }
 
 /**
@@ -24,9 +27,14 @@ export default function ListPagination({
   totalPages,
   totalElements,
   onPageChange,
+  disabled = false,
+  pending = false,
 }: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const pageCount = pending
+    ? Math.max(totalPages, page + 1, 1)
+    : Math.max(totalPages, 1);
 
   return (
     <PaginationBar>
@@ -34,13 +42,13 @@ export default function ListPagination({
         {totalElements != null ? `총 ${totalElements.toLocaleString()}건` : ''}
       </TotalCountText>
       <StyledPagination
-        count={Math.max(totalPages, 1)}
+        count={pageCount}
         page={page + 1}
         onChange={(_, next) => onPageChange(next - 1)}
         shape="rounded"
         size="small"
         siblingCount={isMobile ? 0 : 1}
-        disabled={totalPages <= 1}
+        disabled={disabled || totalPages <= 1}
       />
       <PaginationSpacer />
     </PaginationBar>

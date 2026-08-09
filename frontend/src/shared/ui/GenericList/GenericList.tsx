@@ -3,12 +3,13 @@ import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import DownloadIcon from '@mui/icons-material/FileDownloadOutlined';
 import UploadIcon from '@mui/icons-material/FileUploadOutlined';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
-import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { getErrorMessage } from '@/shared/api/error';
 import { ExcelUploadModal, type ExcelUploadResult } from '@/shared/ui/ExcelUpload';
 import { useDemo } from '@/shared/demo/DemoContext';
+import { resolveQueryPresentation } from '@/shared/api/queryPresentation';
+import RefreshErrorNotice from '@/shared/ui/feedback/RefreshErrorNotice';
 import ListSearchFilter from './ListSearchFilter';
 import ListTable from './ListTable';
 import ListPagination from './ListPagination';
@@ -37,6 +38,7 @@ import type {
 
 const DEFAULT_DELETE_SUCCESS = '삭제되었습니다.';
 const DEFAULT_DELETE_ERROR = '삭제 중 오류가 발생했습니다.';
+const DEFAULT_LIST_ERROR = '목록을 불러오지 못했습니다.';
 const DEFAULT_BULK_DELETE_CONFIRM: DeleteConfirmMessages = {
   title: '선택 항목 삭제',
   message: '선택한 {count}건을 삭제하시겠습니까?',
@@ -89,7 +91,8 @@ export default function GenericList<TRow, TFilters extends object>({
   const canMutate = canWrite && !demo.writeBlocked;
 
   const query = api.useList(state.queryParams);
-  const { data, isLoading, isFetching, isError, error, refetch } = query;
+  const presentation = resolveQueryPresentation({ ...query, currentData: query.currentData });
+  const pageData = presentation.data;
 
   // useDelete (모바일 단건) 가 없는 페이지는 noopDeleteHook 으로 hooks 순서 유지 + onDelete 미전달.
   const useDeleteHook = api.useDelete ?? noopDeleteHook;
@@ -118,7 +121,7 @@ export default function GenericList<TRow, TFilters extends object>({
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const checkboxEnabled = !!api.useBulkDelete && canMutate;
-  const visibleIds = (data?.content ?? []).map(api.rowKey);
+  const visibleIds = (pageData?.content ?? []).map(api.rowKey);
   const allVisibleSelected =
     checkboxEnabled && visibleIds.length > 0
       && visibleIds.every((id) => selection.isSelected(id));
@@ -126,6 +129,7 @@ export default function GenericList<TRow, TFilters extends object>({
     checkboxEnabled && visibleIds.some((id) => selection.isSelected(id));
 
   const handleToggleAll = () => {
+    if (listInteractionBlocked) return;
     if (allVisibleSelected) {
       selection.setIds(selection.selectedIds.filter((id) => !visibleIds.includes(id)));
     } else {
@@ -136,8 +140,12 @@ export default function GenericList<TRow, TFilters extends object>({
 
   const selectedCount = selection.selectedIds.length;
 
+  const listInteractionBlocked = presentation.isPending || presentation.isBlockingError;
+  const hasNoCurrentPage = pageData === undefined;
+  const paginationBlocked = listInteractionBlocked || hasNoCurrentPage;
+
   const handleBulkDelete = async () => {
-    if (!api.useBulkDelete || selectedCount === 0 || !canMutate) return;
+    if (!api.useBulkDelete || selectedCount === 0 || !canMutate || listInteractionBlocked) return;
     setIsBulkDeleting(true);
     try {
       await bulkDeleteFn(selection.selectedIds).unwrap();
@@ -151,16 +159,6 @@ export default function GenericList<TRow, TFilters extends object>({
       setIsBulkDeleting(false);
     }
   };
-
-  if (isError) {
-    return (
-      <ListRoot>
-        <ListSurface>
-          <ErrorScreen message={getErrorMessage(error)} onRetry={refetch} fullScreen={false} />
-        </ListSurface>
-      </ListRoot>
-    );
-  }
 
   const bulkConfirm = { ...DEFAULT_BULK_DELETE_CONFIRM, ...api.bulkDeleteConfirm };
   const bulkConfirmMessage = bulkConfirm.message.replace('{count}', String(selectedCount));
@@ -186,7 +184,7 @@ export default function GenericList<TRow, TFilters extends object>({
                       onClick={() => setBulkConfirmOpen(true)}
                       variant="outlined"
                       size="small"
-                      disabled={isBulkDeleting}
+                      disabled={isBulkDeleting || listInteractionBlocked}
                     >
                       선택 {selectedCount}건 삭제
                     </BulkDeleteButton>
@@ -212,18 +210,22 @@ export default function GenericList<TRow, TFilters extends object>({
           />
         </ListSurfaceToolbar>
 
+        {presentation.isRefreshError && (
+          <RefreshErrorNotice error={presentation.error} onRetry={query.refetch} />
+        )}
+
         <ListTable<TRow>
           menuCode={api.menuCode}
           columns={column}
-          rows={data?.content ?? []}
+          rows={pageData?.content ?? []}
           rowKey={api.rowKey}
           page={state.page}
           pageSize={state.pageSize}
           sort={state.sort}
           onSortChange={state.setSort}
           filters={state.filters as Record<string, unknown>}
-          isLoading={isLoading}
-          isFetching={isFetching}
+          isLoading={presentation.isPending}
+          isFetching={presentation.phase === 'refreshing'}
           emptyMessage={api.emptyMessage}
           onEdit={canMutate ? api.onEdit : undefined}
           onDelete={handleDelete}
@@ -234,13 +236,22 @@ export default function GenericList<TRow, TFilters extends object>({
           allVisibleSelected={allVisibleSelected}
           someVisibleSelected={someVisibleSelected}
           onToggleAll={handleToggleAll}
+          interactionBlocked={listInteractionBlocked}
+          errorMessage={
+            presentation.isBlockingError
+              ? getErrorMessage(presentation.error, DEFAULT_LIST_ERROR)
+              : undefined
+          }
+          onRetry={query.refetch}
         />
 
         <ListPagination
           page={state.page}
-          totalPages={data?.totalPages ?? 0}
-          totalElements={data?.totalElements}
+          totalPages={pageData?.totalPages ?? 0}
+          totalElements={pageData?.totalElements}
           onPageChange={state.setPage}
+          disabled={paginationBlocked}
+          pending={hasNoCurrentPage}
         />
       </ListSurface>
 
@@ -251,6 +262,7 @@ export default function GenericList<TRow, TFilters extends object>({
           message={bulkConfirmMessage}
           confirmLabel={isBulkDeleting ? '삭제 중...' : '삭제'}
           danger
+          confirmDisabled={isBulkDeleting || listInteractionBlocked}
           onConfirm={handleBulkDelete}
           onCancel={() => setBulkConfirmOpen(false)}
         />

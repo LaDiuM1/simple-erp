@@ -28,6 +28,7 @@ function driveState(breadcrumb: Array<{ id: number; name: string }>) {
     queries: {
       browse: {
         data: { breadcrumb, folders: [], files: [] },
+        currentData: { breadcrumb, folders: [], files: [] },
         isLoading: false,
         isError: false,
       },

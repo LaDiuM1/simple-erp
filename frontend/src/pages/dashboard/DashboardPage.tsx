@@ -28,12 +28,12 @@ export default function DashboardPage() {
     queries,
     widgets,
     monthLabel,
-    onNavigateCustomers,
-    onNavigateCustomer,
-    onNavigateSalesContacts,
-    onNavigateEmployees,
-    onNavigateSalesCustomers,
-    onNavigateSalesCustomer,
+    customerListPath,
+    customerDetailPath,
+    salesContactListPath,
+    employeeListPath,
+    salesCustomerListPath,
+    salesCustomerDetailPath,
   } = useDashboardPage();
 
   return (
@@ -44,12 +44,12 @@ export default function DashboardPage() {
           summary={summary}
           widgets={widgets}
           monthLabel={monthLabel}
-          onNavigateCustomers={onNavigateCustomers}
-          onNavigateCustomer={onNavigateCustomer}
-          onNavigateSalesContacts={onNavigateSalesContacts}
-          onNavigateEmployees={onNavigateEmployees}
-          onNavigateSalesCustomers={onNavigateSalesCustomers}
-          onNavigateSalesCustomer={onNavigateSalesCustomer}
+          customerListPath={customerListPath}
+          customerDetailPath={customerDetailPath}
+          salesContactListPath={salesContactListPath}
+          employeeListPath={employeeListPath}
+          salesCustomerListPath={salesCustomerListPath}
+          salesCustomerDetailPath={salesCustomerDetailPath}
         />
       )}
     </QueryGate>
@@ -66,12 +66,12 @@ function DashboardContent({
   summary,
   widgets,
   monthLabel,
-  onNavigateCustomers,
-  onNavigateCustomer,
-  onNavigateSalesContacts,
-  onNavigateEmployees,
-  onNavigateSalesCustomers,
-  onNavigateSalesCustomer,
+  customerListPath,
+  customerDetailPath,
+  salesContactListPath,
+  employeeListPath,
+  salesCustomerListPath,
+  salesCustomerDetailPath,
 }: DashboardContentProps) {
   const hasOverview = Object.values(summary.kpi).some((value) => value !== undefined);
   const hasRecent = summary.recentCustomers !== undefined || summary.recentActivities !== undefined;
@@ -94,21 +94,21 @@ function DashboardContent({
                 value={summary.kpi.totalCustomers}
                 unit="개사"
                 icon={<BusinessRoundedIcon />}
-                onClick={onNavigateCustomers}
+                to={customerListPath}
               />}
               {summary.kpi.totalSalesContacts !== undefined && <KpiCard
                 label="고객 담당자"
                 value={summary.kpi.totalSalesContacts}
                 unit="명"
                 icon={<ContactsRoundedIcon />}
-                onClick={onNavigateSalesContacts}
+                to={salesContactListPath}
               />}
               {summary.kpi.activeEmployees !== undefined && <KpiCard
                 label="재직 인원"
                 value={summary.kpi.activeEmployees}
                 unit="명"
                 icon={<GroupsRoundedIcon />}
-                onClick={onNavigateEmployees}
+                to={employeeListPath}
               />}
               {summary.kpi.monthlySalesActivities !== undefined && <KpiCard
                 label={`${monthLabel} 영업 활동`}
@@ -116,7 +116,7 @@ function DashboardContent({
                 unit="건"
                 suffix="이번 달 누적"
                 icon={<TrendingUpRoundedIcon />}
-                onClick={onNavigateSalesCustomers}
+                to={salesCustomerListPath}
               />}
             </KpiGrid>
           </DashboardGroup>}
@@ -149,13 +149,13 @@ function DashboardContent({
             <RecentGrid>
               {summary.recentCustomers !== undefined && <RecentCustomers
                 items={summary.recentCustomers}
-                onNavigateList={onNavigateCustomers}
-                onNavigateCustomer={onNavigateCustomer}
+                listPath={customerListPath}
+                detailPath={customerDetailPath}
               />}
               {summary.recentActivities !== undefined && <RecentActivities
                 items={summary.recentActivities}
-                onNavigateList={onNavigateSalesCustomers}
-                onNavigateCustomer={onNavigateSalesCustomer}
+                listPath={salesCustomerListPath}
+                detailPath={salesCustomerDetailPath}
               />}
             </RecentGrid>
           </DashboardGroup>}

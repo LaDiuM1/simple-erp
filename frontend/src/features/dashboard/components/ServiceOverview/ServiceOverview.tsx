@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { formatKrw } from '@/shared/utils/formatKrw';
 import {
@@ -37,7 +36,6 @@ interface Props {
 
 /** 최근 6개월 AS 규모, 유형 분포, 비용 상위 담당자를 한 운영 문맥으로 묶는다. */
 export default function ServiceOverview({ data }: Props) {
-  const navigate = useNavigate();
   const activeTypes = data.typeStats.filter((stat) => stat.count > 0);
   const totalCount = activeTypes.reduce((sum, stat) => sum + stat.count, 0);
   const totalExpense = activeTypes.reduce((sum, stat) => sum + stat.expenseTotal, 0);
@@ -51,7 +49,7 @@ export default function ServiceOverview({ data }: Props) {
           <SectionTitle>AS 운영</SectionTitle>
           <SectionDescription>최근 6개월 접수 유형과 처리 비용이에요.</SectionDescription>
         </SectionHeading>
-        <SectionMore type="button" onClick={() => navigate('/after-services')}>
+        <SectionMore to="/after-services">
           AS 보기
           <ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />
         </SectionMore>

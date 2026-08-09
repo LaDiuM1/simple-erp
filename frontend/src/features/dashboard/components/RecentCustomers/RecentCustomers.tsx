@@ -25,11 +25,11 @@ import { formatRelativeTime } from '../../utils/formatters';
 
 interface Props {
   items: RecentCustomer[];
-  onNavigateList?: () => void;
-  onNavigateCustomer?: (customerId: number) => void;
+  listPath?: string;
+  detailPath?: (customerId: number) => string;
 }
 
-export default function RecentCustomers({ items, onNavigateList, onNavigateCustomer }: Props) {
+export default function RecentCustomers({ items, listPath, detailPath }: Props) {
   return (
     <SectionRoot>
       <SectionHeader>
@@ -40,8 +40,8 @@ export default function RecentCustomers({ items, onNavigateList, onNavigateCusto
           </SectionTitle>
           <SectionDescription>새로 추가된 고객 관계를 빠르게 확인해요.</SectionDescription>
         </SectionHeading>
-        {onNavigateList && (
-          <SectionMore type="button" onClick={onNavigateList}>
+        {listPath && (
+          <SectionMore to={listPath}>
             전체 보기
             <ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />
           </SectionMore>
@@ -72,8 +72,8 @@ export default function RecentCustomers({ items, onNavigateList, onNavigateCusto
 
             return (
               <ItemRow key={c.id}>
-                {onNavigateCustomer ? (
-                  <ItemAction type="button" onClick={() => onNavigateCustomer(c.id)}>
+                {detailPath ? (
+                  <ItemAction to={detailPath(c.id)}>
                     {content}
                   </ItemAction>
                 ) : (

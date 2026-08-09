@@ -1,5 +1,6 @@
 import { styled, alpha } from '@mui/material/styles';
 import type { CSSObject, Theme } from '@mui/material/styles';
+import { Link } from 'react-router-dom';
 
 const kpiLayout = (theme: Theme): CSSObject => ({
   appearance: 'none',
@@ -18,9 +19,11 @@ const kpiLayout = (theme: Theme): CSSObject => ({
 
 export const KpiRoot = styled('div')(({ theme }) => kpiLayout(theme));
 
-export const KpiButton = styled('button')(({ theme }) => ({
+export const KpiButton = styled(Link)(({ theme }) => ({
   ...kpiLayout(theme),
   cursor: 'pointer',
+  color: 'inherit',
+  textDecoration: 'none',
   '&:hover': {
     borderColor: theme.palette.primaryLight,
     boxShadow: `0 4px 14px -6px ${alpha(theme.palette.primary.main, 0.18)}`,

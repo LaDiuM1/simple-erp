@@ -2,6 +2,7 @@ import { styled } from '@mui/material/styles';
 import type { CSSObject, Theme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import { Link } from 'react-router-dom';
 
 export const SectionRoot = styled(Box)(({ theme }) => ({
   backgroundColor: theme.palette.background.paper,
@@ -59,7 +60,7 @@ export const SectionCount = styled('span')(({ theme }) => ({
   verticalAlign: 'middle',
 }));
 
-export const SectionMore = styled('button')(({ theme }) => ({
+export const SectionMore = styled(Link)(({ theme }) => ({
   appearance: 'none',
   background: 'none',
   border: 'none',
@@ -70,6 +71,7 @@ export const SectionMore = styled('button')(({ theme }) => ({
   fontSize: '0.8125rem',
   fontWeight: 500,
   color: theme.palette.text.secondary,
+  textDecoration: 'none',
   display: 'inline-flex',
   alignItems: 'center',
   gap: '0.25rem',
@@ -120,9 +122,10 @@ const itemLayout = (theme: Theme): CSSObject => ({
 
 export const ItemContent = styled('div')(({ theme }) => itemLayout(theme));
 
-export const ItemAction = styled('button')(({ theme }) => ({
+export const ItemAction = styled(Link)(({ theme }) => ({
   ...itemLayout(theme),
   cursor: 'pointer',
+  textDecoration: 'none',
   '&:hover': { backgroundColor: theme.palette.headerBg },
   '&:focus-visible': {
     outline: `2px solid ${theme.palette.primary.main}`,

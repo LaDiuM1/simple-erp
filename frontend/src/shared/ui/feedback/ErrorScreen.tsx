@@ -12,6 +12,8 @@ interface Props {
 export default function ErrorScreen({ message = '오류가 발생했습니다.', onRetry, fullScreen = true }: Props) {
   return (
     <ScreenContainer
+      role="alert"
+      aria-live="assertive"
       sx={
         !fullScreen
           ? {

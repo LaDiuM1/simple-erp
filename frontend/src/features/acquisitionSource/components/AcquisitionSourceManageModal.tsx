@@ -39,7 +39,16 @@ interface Props {
 export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
   const { writeBlocked } = useDemo();
   const submit = useApiSubmit();
-  const { data: sources = [], isFetching, isError, error, refetch } = useGetAcquisitionSourcesQuery();
+  const sourcesQuery = useGetAcquisitionSourcesQuery();
+  const {
+    data: sourceData,
+    currentData: currentSourceData,
+    isLoading: isSourcesLoading,
+    isFetching: isSourcesFetching,
+    isError: isSourcesError,
+    error: sourcesError,
+    refetch: refetchSources,
+  } = sourcesQuery;
   const [createFn, { isLoading: isCreating }] = useCreateAcquisitionSourceMutation();
   const [deleteFn, { isLoading: isDeleting }] = useDeleteAcquisitionSourceMutation();
 
@@ -49,22 +58,25 @@ export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
   const adapterApi = useMemo(
     () => ({
       useList: () => ({
-        data: {
-          content: sources,
-          page: 0,
-          size: sources.length,
-          totalElements: sources.length,
-          totalPages: 1,
-          hasNext: false,
-        },
-        isFetching,
-        isError,
-        error,
-        refetch,
+        data: sourceData === undefined ? undefined : toPage(sourceData),
+        currentData: currentSourceData === undefined ? undefined : toPage(currentSourceData),
+        isLoading: isSourcesLoading,
+        isFetching: isSourcesFetching,
+        isError: isSourcesError,
+        error: sourcesError,
+        refetch: refetchSources,
       }),
       rowKey: (row: AcquisitionSourceInfo) => row.id,
     }),
-    [sources, isFetching, isError, error, refetch],
+    [
+      currentSourceData,
+      isSourcesError,
+      isSourcesFetching,
+      isSourcesLoading,
+      refetchSources,
+      sourceData,
+      sourcesError,
+    ],
   );
 
   const handleCreate = async (name: string, type: AcquisitionSourceType, description: string) => {
@@ -151,6 +163,17 @@ export default function AcquisitionSourceManageModal({ open, onClose }: Props) {
       />
     </>
   );
+}
+
+function toPage(sources: AcquisitionSourceInfo[]) {
+  return {
+    content: sources,
+    page: 0,
+    size: sources.length,
+    totalElements: sources.length,
+    totalPages: 1,
+    hasNext: false,
+  };
 }
 
 /**

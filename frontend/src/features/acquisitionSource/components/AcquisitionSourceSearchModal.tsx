@@ -49,45 +49,61 @@ export default function AcquisitionSourceSearchModal({
   initialIds,
   onConfirm,
 }: Props) {
-  const { data: allSources = [], isFetching, isError, error, refetch } = useGetAcquisitionSourcesQuery();
-
+  const sourcesQuery = useGetAcquisitionSourcesQuery();
+  const {
+    data: sourceData,
+    currentData: currentSourceData,
+    isLoading: isSourcesLoading,
+    isFetching: isSourcesFetching,
+    isError: isSourcesError,
+    error: sourcesError,
+    refetch: refetchSources,
+  } = sourcesQuery;
   const initialSelected = useMemo<CommonSearchSelectedItem[]>(
-    () =>
+    () => {
+      const allSources = currentSourceData ?? [];
+      return (
       initialIds
         .map((id) => allSources.find((s) => s.id === id))
         .filter((s): s is AcquisitionSourceInfo => !!s)
-        .map((s) => ({ id: s.id, label: s.name })),
-    [initialIds, allSources],
+        .map((s) => ({ id: s.id, label: s.name }))
+      );
+    },
+    [currentSourceData, initialIds],
   );
 
   /** flat 배열 → CommonSearchModal 이 기대하는 페이징 응답 어댑터 (클라이언트 측 필터 + 페이징). */
   const adapterApi: CommonSearchModalApi<AcquisitionSourceInfo, FilterParams> = useMemo(
     () => ({
       useList: (params) => {
-        const filtered = filterAndSort(allSources, params);
-        const totalElements = filtered.length;
-        const totalPages = Math.max(1, Math.ceil(totalElements / params.size));
-        const start = params.page * params.size;
-        const content = filtered.slice(start, start + params.size);
+        const data = sourceData === undefined
+          ? undefined
+          : toPage(sourceData, params);
+        const currentData = currentSourceData === undefined
+          ? undefined
+          : toPage(currentSourceData, params);
         return {
-          data: {
-            content,
-            page: params.page,
-            size: params.size,
-            totalElements,
-            totalPages,
-            hasNext: start + params.size < totalElements,
-          },
-          isFetching,
-          isError,
-          error,
-          refetch,
+          data,
+          currentData,
+          isLoading: isSourcesLoading,
+          isFetching: isSourcesFetching,
+          isError: isSourcesError,
+          error: sourcesError,
+          refetch: refetchSources,
         };
       },
       rowKey: (row) => row.id,
       rowLabel: (row) => row.name,
     }),
-    [allSources, isFetching, isError, error, refetch],
+    [
+      currentSourceData,
+      isSourcesError,
+      isSourcesFetching,
+      isSourcesLoading,
+      refetchSources,
+      sourceData,
+      sourcesError,
+    ],
   );
 
   const handleSelect = (selected: CommonSearchSelectedItem[]) => {
@@ -105,11 +121,30 @@ export default function AcquisitionSourceSearchModal({
       searchFilter={SEARCH_FILTER}
       column={acquisitionSourceModalColumns}
       initialSelected={initialSelected}
+      scopeKey={`${context}:${initialIds.join(',')}:${currentSourceData === undefined ? 'loading' : 'ready'}`}
       onSelect={handleSelect}
       confirmLabel={context === 'filter' ? '검색' : '확인'}
       emptyMessage="검색 결과가 없습니다."
     />
   );
+}
+
+function toPage(
+  sources: AcquisitionSourceInfo[],
+  params: FilterParams & { page: number; size: number; sort: string },
+) {
+  const filtered = filterAndSort(sources, params);
+  const totalElements = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalElements / params.size));
+  const start = params.page * params.size;
+  return {
+    content: filtered.slice(start, start + params.size),
+    page: params.page,
+    size: params.size,
+    totalElements,
+    totalPages,
+    hasNext: start + params.size < totalElements,
+  };
 }
 
 function filterAndSort(

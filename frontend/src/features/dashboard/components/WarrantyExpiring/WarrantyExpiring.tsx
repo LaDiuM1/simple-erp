@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import WarrantyDateText from '@/features/equipment/components/WarrantyDateText';
 import {
@@ -55,8 +54,6 @@ function imminentWarranty(item: ExpiringWarrantyItem): ImminentWarranty | null {
  * 만료 전 선제 대응 (보증 연장 영업 / 사전 점검) 용도.
  */
 export default function WarrantyExpiring({ items }: Props) {
-  const navigate = useNavigate();
-
   return (
     <SectionRoot>
       <SectionHeader>
@@ -67,7 +64,7 @@ export default function WarrantyExpiring({ items }: Props) {
           </SectionTitle>
           <SectionDescription>90일 안에 보증이 만료되는 설비예요.</SectionDescription>
         </SectionHeading>
-        <SectionMore type="button" onClick={() => navigate('/equipments')}>
+        <SectionMore to="/equipments">
           전체 보기
           <ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />
         </SectionMore>
@@ -80,7 +77,7 @@ export default function WarrantyExpiring({ items }: Props) {
             const warranty = imminentWarranty(item);
             return (
               <ItemRow key={item.equipmentId}>
-                <ItemAction onClick={() => navigate(`/equipments/${item.equipmentId}`)}>
+                <ItemAction to={`/equipments/${item.equipmentId}`}>
                   <ItemMain>
                     <ItemTopLine>
                       <ItemTitle>{item.customerName ?? '고객사 미상'}</ItemTitle>

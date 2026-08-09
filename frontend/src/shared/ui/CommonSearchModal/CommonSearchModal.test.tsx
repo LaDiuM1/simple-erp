@@ -36,6 +36,7 @@ const page = {
 const api = {
   useList: () => ({
     data: page,
+    currentData: page,
     isFetching: false,
     isError: false,
     refetch: vi.fn(),
@@ -170,5 +171,85 @@ describe('CommonSearchModal scope', () => {
     await user.keyboard('{Enter}');
     expect(first).not.toBeChecked();
     expect(container.querySelector('[role="checkbox"]')).toBeNull();
+  });
+
+  it('페이지 전환 중에는 이전 후보·건수·빈 상태를 숨기고 요청 페이지를 잠근다', async () => {
+    const user = userEvent.setup();
+    const pagedApi = {
+      ...api,
+      useList: (params: { page: number }) => params.page === 0
+        ? {
+            data: { ...page, totalPages: 3 },
+            currentData: { ...page, totalPages: 3 },
+            isFetching: false,
+            isError: false,
+            refetch: vi.fn(),
+          }
+        : {
+            data: { ...page, totalPages: 3 },
+            currentData: undefined,
+            isFetching: true,
+            isError: false,
+            refetch: vi.fn(),
+          },
+    };
+
+    render(
+      <CommonSearchModal<Row, Filters>
+        open
+        onClose={vi.fn()}
+        title="검색"
+        api={pagedApi}
+        column={[{ key: 'name', label: '이름' }]}
+        onSelect={vi.fn()}
+        emptyMessage="후보가 없습니다."
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Go to page 3' }));
+
+    expect(screen.queryByText('선택 후보')).not.toBeInTheDocument();
+    expect(screen.queryByText('총 2건')).not.toBeInTheDocument();
+    expect(screen.queryByText('후보가 없습니다.')).not.toBeInTheDocument();
+    expect(screen.getByRole('status', { name: '검색 결과 불러오는 중' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'page 3' })).toBeDisabled();
+  });
+
+  it('페이지 전환 오류에서도 요청 페이지를 유지하고 선택을 차단한다', async () => {
+    const user = userEvent.setup();
+    const pagedApi = {
+      ...api,
+      useList: (params: { page: number }) => params.page === 0
+        ? {
+            data: { ...page, totalPages: 3 },
+            currentData: { ...page, totalPages: 3 },
+            isFetching: false,
+            isError: false,
+            refetch: vi.fn(),
+          }
+        : {
+            data: { ...page, totalPages: 3 },
+            currentData: undefined,
+            isFetching: false,
+            isError: true,
+            error: { status: 500, message: '후보 조회 실패' },
+            refetch: vi.fn(),
+          },
+    };
+
+    render(
+      <CommonSearchModal<Row, Filters>
+        open
+        onClose={vi.fn()}
+        title="검색"
+        api={pagedApi}
+        column={[{ key: 'name', label: '이름' }]}
+        onSelect={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Go to page 3' }));
+
+    expect(screen.getByText('후보 조회 실패')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'page 3' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
   });
 });

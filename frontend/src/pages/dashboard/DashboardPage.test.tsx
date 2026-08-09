@@ -14,7 +14,6 @@ import DashboardPage from './DashboardPage';
 
 const mocks = vi.hoisted(() => ({
   useDashboardPage: vi.fn(),
-  navigateCustomers: vi.fn(),
 }));
 
 vi.mock('@/features/dashboard/hooks/useDashboardPage', () => ({
@@ -110,17 +109,17 @@ interface DashboardWidgets {
 function dashboardState(widgets: DashboardWidgets = { sales, service, warranty }) {
   return {
     queries: {
-      profile: { data: profile, isLoading: false },
-      summary: { data: summary, isLoading: false },
+      profile: { data: profile, currentData: profile, isLoading: false },
+      summary: { data: summary, currentData: summary, isLoading: false },
     },
     widgets,
     monthLabel: '8월',
-    onNavigateCustomers: mocks.navigateCustomers,
-    onNavigateCustomer: vi.fn(),
-    onNavigateSalesContacts: vi.fn(),
-    onNavigateEmployees: vi.fn(),
-    onNavigateSalesCustomers: vi.fn(),
-    onNavigateSalesCustomer: vi.fn(),
+    customerListPath: '/customers',
+    customerDetailPath: (customerId: number) => `/customers/${customerId}`,
+    salesContactListPath: '/sales-contacts',
+    employeeListPath: '/employees',
+    salesCustomerListPath: '/sales-customers',
+    salesCustomerDetailPath: (customerId: number) => `/sales-customers/${customerId}`,
   };
 }
 
@@ -154,16 +153,33 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('heading', { name: /최근 등록 고객사/, level: 3 })).toBeInTheDocument();
   });
 
-  it('KPI 전체가 이동 가능한 명시적 버튼으로 동작한다', async () => {
-    const user = userEvent.setup();
+  it('KPI와 운영·최근 업무 이동을 내부 링크로 렌더링한다', () => {
     renderWithTheme(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: '관리 고객사 12개사 보기' }));
-    expect(mocks.navigateCustomers).toHaveBeenCalledOnce();
+    expect(screen.getByRole('link', { name: '관리 고객사 12개사 보기' })).toHaveAttribute(
+      'href',
+      '/customers',
+    );
+
+    const destinations = new Set(
+      screen.getAllByRole('link').map((link) => link.getAttribute('href')),
+    );
+    expect(destinations).toEqual(new Set([
+      '/customers',
+      '/customers/10',
+      '/sales-contacts',
+      '/employees',
+      '/sales-customers',
+      '/sales-customers/10',
+      '/contracts',
+      '/after-services',
+      '/equipments',
+      '/equipments/30',
+    ]));
   });
 
   it('권한별 데이터가 없으면 운영 섹션만 생략하고 공통 요약은 유지한다', () => {
@@ -186,15 +202,15 @@ describe('DashboardPage', () => {
     mocks.useDashboardPage.mockReturnValue({
       ...dashboardState(),
       queries: {
-        profile: { data: profile, isLoading: false },
-        summary: { data: { kpi: {} }, isLoading: false },
+        profile: { data: profile, currentData: profile, isLoading: false },
+        summary: { data: { kpi: {} }, currentData: { kpi: {} }, isLoading: false },
       },
-      onNavigateCustomers: undefined,
-      onNavigateCustomer: undefined,
-      onNavigateSalesContacts: undefined,
-      onNavigateEmployees: undefined,
-      onNavigateSalesCustomers: undefined,
-      onNavigateSalesCustomer: undefined,
+      customerListPath: undefined,
+      customerDetailPath: undefined,
+      salesContactListPath: undefined,
+      employeeListPath: undefined,
+      salesCustomerListPath: undefined,
+      salesCustomerDetailPath: undefined,
     });
 
     renderWithTheme(
@@ -217,8 +233,8 @@ describe('DashboardPage', () => {
     mocks.useDashboardPage.mockReturnValue({
       ...dashboardState({ sales: undefined, service: undefined, warranty: undefined }),
       queries: {
-        profile: { data: profile, isLoading: false },
-        summary: { data: summary, isLoading: false },
+        profile: { data: profile, currentData: profile, isLoading: false },
+        summary: { data: summary, currentData: summary, isLoading: false },
         sales: {
           data: undefined,
           isLoading: false,

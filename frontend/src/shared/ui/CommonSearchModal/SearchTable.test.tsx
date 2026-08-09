@@ -1,11 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { customerSelectColumns } from '@/features/customer/config/customerListConfig';
 import type { CustomerReference } from '@/features/customer/types';
 import type { ColumnConfig } from '@/shared/ui/GenericList';
 import SearchTable from './SearchTable';
 
-vi.mock('@mui/material/useMediaQuery', () => ({ default: () => false }));
+let isMobile = false;
+vi.mock('@mui/material/useMediaQuery', () => ({ default: () => isMobile }));
 
 vi.stubGlobal('ResizeObserver', class {
   observe() {}
@@ -25,6 +26,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   viewportWidth = 1_264;
+  isMobile = false;
 });
 
 afterAll(() => {
@@ -111,5 +113,26 @@ describe('SearchTable desktop column layout', () => {
     expect(tableColumns[0]).toHaveStyle({ width: '56px' });
     expect(tableColumns[2]).toHaveStyle({ width: '120px' });
     expect(tableColumns.at(-1)).toHaveStyle({ width: '96px' });
+  });
+
+  it('모바일 최초 조회도 로딩 본문 높이와 상태를 유지한다', () => {
+    isMobile = true;
+    render(
+      <SearchTable<CustomerReference>
+        rows={[]}
+        columns={customerSelectColumns}
+        rowKey={(row) => row.id}
+        rowLabel={(row) => row.name}
+        isLoading
+        emptyMessage="검색 결과가 없습니다."
+        page={0}
+        pageSize={10}
+        onToggleSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status', { name: '검색 결과 불러오는 중' }).parentElement)
+      .toHaveStyle({ minHeight: '240px' });
+    expect(screen.queryByText('검색 결과가 없습니다.')).not.toBeInTheDocument();
   });
 });

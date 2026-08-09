@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react';
+import { useLayoutEffect, useState, type RefObject } from 'react';
 
 export interface FillRowHeightOptions {
   /** 한 행의 최소 높이 (px). 이 미만으로는 줄지 않으며, 부족 시 컨테이너가 자연 스크롤. */
@@ -35,7 +35,7 @@ export function useFillRowHeight(
   const safetyPx = options.safetyPx ?? DEFAULT_SAFETY_PX;
   const [height, setHeight] = useState(minHeight);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = scrollAreaRef.current;
     if (!el || rowCount <= 0) return;
 
@@ -47,13 +47,13 @@ export function useFillRowHeight(
       setHeight(Math.min(maxHeight, Math.max(minHeight, ideal)));
     };
 
-    const frameId = window.requestAnimationFrame(measure);
+    // 첫 화면이 그려지기 전에 실제 높이를 확정해 최소 높이에서 다시 커지는 점프를 막는다.
+    measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     const head = el.querySelector<HTMLElement>('thead');
     if (head) observer.observe(head);
     return () => {
-      window.cancelAnimationFrame(frameId);
       observer.disconnect();
     };
   }, [scrollAreaRef, rowCount, minHeight, maxHeight, safetyPx]);

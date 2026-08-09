@@ -1,27 +1,22 @@
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import LoadingSpinner from './LoadingSpinner';
+import { useEffect, useState } from 'react';
+import {
+  PageLoadingBoundary,
+  PageLoadingProgress,
+} from './PageLoadingFallback.styles';
+
+const INDICATOR_DELAY_MS = 200;
 
 export default function PageLoadingFallback() {
+  const [showIndicator, setShowIndicator] = useState(false);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setShowIndicator(true), INDICATOR_DELAY_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
   return (
-    <Box
-      role="status"
-      aria-label="페이지를 불러오는 중"
-      aria-live="polite"
-      sx={{
-        display: 'flex',
-        minHeight: { xs: '16rem', sm: '20rem' },
-        width: '100%',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 2,
-      }}
-    >
-      <LoadingSpinner />
-      <Typography variant="body2" color="text.secondary">
-        페이지를 불러오는 중입니다.
-      </Typography>
-    </Box>
+    <PageLoadingBoundary aria-busy="true">
+      {showIndicator && <PageLoadingProgress aria-label="페이지 불러오는 중" />}
+    </PageLoadingBoundary>
   );
 }

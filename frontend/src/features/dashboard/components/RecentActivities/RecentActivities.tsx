@@ -38,8 +38,8 @@ import { formatRelativeTime } from '../../utils/formatters';
 
 interface Props {
   items: RecentSalesActivity[];
-  onNavigateList?: () => void;
-  onNavigateCustomer?: (customerId: number) => void;
+  listPath?: string;
+  detailPath?: (customerId: number) => string;
 }
 
 const TYPE_ICON: Record<SalesActivityType, ReactNode> = {
@@ -50,7 +50,7 @@ const TYPE_ICON: Record<SalesActivityType, ReactNode> = {
   OTHER: <MoreHorizRoundedIcon sx={{ fontSize: 18 }} />,
 };
 
-export default function RecentActivities({ items, onNavigateList, onNavigateCustomer }: Props) {
+export default function RecentActivities({ items, listPath, detailPath }: Props) {
   return (
     <SectionRoot>
       <SectionHeader>
@@ -61,8 +61,8 @@ export default function RecentActivities({ items, onNavigateList, onNavigateCust
           </SectionTitle>
           <SectionDescription>최근 고객 접점과 담당자를 이어서 확인해요.</SectionDescription>
         </SectionHeading>
-        {onNavigateList && (
-          <SectionMore type="button" onClick={onNavigateList}>
+        {listPath && (
+          <SectionMore to={listPath}>
             전체 보기
             <ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />
           </SectionMore>
@@ -102,8 +102,8 @@ export default function RecentActivities({ items, onNavigateList, onNavigateCust
 
             return (
               <ItemRow key={a.id}>
-                {onNavigateCustomer ? (
-                  <ItemAction type="button" onClick={() => onNavigateCustomer(a.customerId)}>
+                {detailPath ? (
+                  <ItemAction to={detailPath(a.customerId)}>
                     {content}
                   </ItemAction>
                 ) : (

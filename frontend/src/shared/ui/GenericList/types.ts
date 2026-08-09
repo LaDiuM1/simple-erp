@@ -60,6 +60,8 @@ export type ColumnConfig<TRow> = BaseColumn<TRow> &
 
 export interface QueryState<T> {
   data?: PageResponse<T>;
+  /** 현재 query 인자에 대응하는 결과. 인자 전환 중 직전 data 노출을 막는 표시 경계. */
+  currentData?: PageResponse<T>;
   /** 캐시 없는 최초 로딩. 빈 화면 깜빡임 제거용 — true 면 EmptyState 를 숨긴다. */
   isLoading?: boolean;
   /** 모든 fetch 중 상태 (재조회 포함). 로딩 오버레이 트리거. */

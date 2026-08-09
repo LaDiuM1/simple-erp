@@ -53,8 +53,16 @@ export const ModalFixedRow = styled(Box)(({ theme }) => ({
  * 고정 폭 열을 축소해야 하는 중간 폭에서는 가로 스크롤만 이 영역이 담당한다. 세로 스크롤은
  * ModalContent 가 단독으로 흡수해 filter / pagination 의 sticky 동작을 유지한다.
  */
-export const SearchTableArea = styled(Box)({
+export const SearchTableArea = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'mobilePending',
+})<{ mobilePending?: boolean }>(({ mobilePending }) => ({
   position: 'relative',
   overflowX: 'auto',
   overflowY: 'hidden',
+  minHeight: mobilePending ? 240 : undefined,
+}));
+
+/** 로딩 중 표의 키보드·포인터 상호작용까지 함께 차단하는 본문 경계. */
+export const SearchTableContent = styled(Box)({
+  minHeight: 'inherit',
 });

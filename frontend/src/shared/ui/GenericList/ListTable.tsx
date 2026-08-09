@@ -8,6 +8,7 @@ import {
 } from 'react';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
+import LinearProgress from '@mui/material/LinearProgress';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -20,6 +21,7 @@ import EditIcon from '@mui/icons-material/EditOutlined';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import ConfirmModal from '@/shared/ui/feedback/ConfirmModal';
+import ErrorScreen from '@/shared/ui/feedback/ErrorScreen';
 import { usePermission } from '@/shared/hooks/usePermission';
 import {
   BodyCell,
@@ -79,6 +81,9 @@ interface Props<TRow> {
   allVisibleSelected?: boolean;
   someVisibleSelected?: boolean;
   onToggleAll?: () => void;
+  interactionBlocked?: boolean;
+  errorMessage?: string;
+  onRetry?: () => void;
 }
 
 /** 데이터 전체 순번 = 현재 페이지 인덱스 × size + 행 인덱스 + 1. */
@@ -123,6 +128,9 @@ export default function ListTable<TRow>({
   allVisibleSelected,
   someVisibleSelected,
   onToggleAll,
+  interactionBlocked = false,
+  errorMessage,
+  onRetry,
 }: Props<TRow>) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -163,7 +171,7 @@ export default function ListTable<TRow>({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSortClick = (col: ColumnConfig<TRow>) => {
-    if (!col.sortable) return;
+    if (interactionBlocked || !col.sortable) return;
     // 같은 컬럼 재클릭: 방향 토글. 다른 컬럼 첫 클릭: 해당 컬럼의 기본 방향 사용.
     const nextDirection =
       sort.key === col.key
@@ -175,11 +183,13 @@ export default function ListTable<TRow>({
   };
 
   const requestDelete = onDelete
-    ? (row: TRow, no: number) => setDeletingTarget({ row, no })
+    ? (row: TRow, no: number) => {
+        if (!interactionBlocked) setDeletingTarget({ row, no });
+      }
     : undefined;
 
   const handleConfirmDelete = async () => {
-    if (!deletingTarget || !onDelete) return;
+    if (!deletingTarget || !onDelete || interactionBlocked) return;
     setIsDeleting(true);
     try {
       await onDelete(deletingTarget.row);
@@ -202,32 +212,38 @@ export default function ListTable<TRow>({
           <Stack direction="row" spacing={0.25} sx={{ justifyContent: 'flex-end' }}>
             {onEdit && (
               <Tooltip title="수정" arrow>
-                <IconButton
-                  size="small"
-                  aria-label="수정"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(row);
-                  }}
-                  sx={{ '&:hover': { color: 'primary.main' } }}
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label="수정"
+                    disabled={interactionBlocked}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(row);
+                    }}
+                    sx={{ '&:hover': { color: 'primary.main' } }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </span>
               </Tooltip>
             )}
             {requestDelete && (
               <Tooltip title="삭제" arrow>
-                <IconButton
-                  size="small"
-                  aria-label="삭제"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    requestDelete(row, no);
-                  }}
-                  sx={{ '&:hover': { color: 'error.main' } }}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label="삭제"
+                    disabled={interactionBlocked}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      requestDelete(row, no);
+                    }}
+                    sx={{ '&:hover': { color: 'error.main' } }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </span>
               </Tooltip>
             )}
           </Stack>
@@ -241,19 +257,27 @@ export default function ListTable<TRow>({
     : confirm.message;
 
   return (
-    <TableWrapper>
-      <TableScrollArea ref={scrollAreaRef}>
+    <TableWrapper aria-busy={(isLoading || isFetching) || undefined}>
+      <TableScrollArea
+        ref={scrollAreaRef}
+        inert={isLoading ? true : undefined}
+        mobilePending={isMobile && isLoading}
+      >
         {isMobile ? (
-          <MobileCards
-            columns={columns}
-            rows={rows}
-            rowKey={rowKey}
-            rowActions={mobileRowActions}
-            emptyMessage={emptyMessage}
-            isLoading={isLoading}
-            onRowClick={onRowClick}
-            cellCtx={cellCtx}
-          />
+          errorMessage !== undefined ? (
+            <ErrorScreen message={errorMessage} onRetry={onRetry} fullScreen={false} />
+          ) : (
+            <MobileCards
+              columns={columns}
+              rows={rows}
+              rowKey={rowKey}
+              rowActions={mobileRowActions}
+              emptyMessage={emptyMessage}
+              isLoading={isLoading}
+              onRowClick={interactionBlocked ? undefined : onRowClick}
+              cellCtx={cellCtx}
+            />
+          )
         ) : (
           <DesktopTable
             columns={columns}
@@ -272,18 +296,27 @@ export default function ListTable<TRow>({
             allVisibleSelected={allVisibleSelected}
             someVisibleSelected={someVisibleSelected}
             onToggleAll={onToggleAll}
-            onRowClick={onRowClick}
+            onRowClick={interactionBlocked ? undefined : onRowClick}
             cellCtx={cellCtx}
             viewportWidth={tableViewportWidth}
+            interactionBlocked={interactionBlocked}
+            errorMessage={errorMessage}
+            onRetry={onRetry}
           />
         )}
       </TableScrollArea>
 
-      {isFetching && (
-        <LoadingOverlayBox style={{ top: headerOffset }}>
+      {isLoading && (
+        <LoadingOverlayBox
+          style={{ top: headerOffset }}
+          role="status"
+          aria-label="목록 불러오는 중"
+        >
           <CircularProgress size={36} thickness={4} />
         </LoadingOverlayBox>
       )}
+
+      {isFetching && <LinearProgress aria-label="목록 갱신 중" sx={{ height: 2 }} />}
 
       {onDelete && (
         <ConfirmModal
@@ -292,6 +325,7 @@ export default function ListTable<TRow>({
           message={confirmMessage}
           confirmLabel={isDeleting ? '삭제 중...' : '삭제'}
           danger
+          confirmDisabled={isDeleting || interactionBlocked}
           onConfirm={handleConfirmDelete}
           onCancel={() => setDeletingTarget(null)}
         />
@@ -322,6 +356,9 @@ interface DesktopProps<TRow> {
   onRowClick?: (row: TRow) => void;
   cellCtx: CellContext;
   viewportWidth: number;
+  interactionBlocked: boolean;
+  errorMessage?: string;
+  onRetry?: () => void;
 }
 
 function DesktopTable<TRow>({
@@ -344,6 +381,9 @@ function DesktopTable<TRow>({
   onRowClick,
   cellCtx,
   viewportWidth,
+  interactionBlocked,
+  errorMessage,
+  onRetry,
 }: DesktopProps<TRow>) {
   const extraColCount = (showCheckboxCol ? 1 : 0) + 1; // checkbox + No
   const primary = columns.find((column) => column.mobilePrimary) ?? columns[0];
@@ -369,6 +409,7 @@ function DesktopTable<TRow>({
               <HeaderCell align="center" padding="checkbox">
                 <Checkbox
                   size="small"
+                  disabled={interactionBlocked}
                   checked={!!allVisibleSelected}
                   indeterminate={!allVisibleSelected && !!someVisibleSelected}
                   onChange={onToggleAll}
@@ -387,6 +428,7 @@ function DesktopTable<TRow>({
                   <StyledSortLabel
                     active={sort.key === col.key}
                     direction={sort.key === col.key ? sort.direction : col.sortDirection}
+                    disabled={interactionBlocked}
                     onClick={() => onSortClick(col)}
                   >
                     {col.label}
@@ -397,7 +439,13 @@ function DesktopTable<TRow>({
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.length === 0 ? (
+          {errorMessage !== undefined ? (
+            <TableRow>
+              <BodyCell colSpan={columns.length + extraColCount} sx={{ p: 0 }}>
+                <ErrorScreen message={errorMessage} onRetry={onRetry} fullScreen={false} />
+              </BodyCell>
+            </TableRow>
+          ) : rows.length === 0 ? (
             <TableRow>
               <BodyCell
                 colSpan={columns.length + extraColCount}
@@ -426,7 +474,10 @@ function DesktopTable<TRow>({
                       <Checkbox
                         size="small"
                         checked={checked}
-                        onChange={() => selection?.toggle(id)}
+                        disabled={interactionBlocked}
+                        onChange={() => {
+                          if (!interactionBlocked) selection?.toggle(id);
+                        }}
                         inputProps={{ 'aria-label': `${id} 행 선택` }}
                       />
                     </BodyCell>

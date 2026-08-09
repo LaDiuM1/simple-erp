@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { StateResetKey } from '@/shared/hooks/useResettableState';
+import { resolveQueryPresentation } from '@/shared/api/queryPresentation';
 import { useListState, type ColumnConfig, type FilterConfig } from '@/shared/ui/GenericList';
 import type { CommonSearchModalApi } from './types';
 
@@ -40,13 +41,14 @@ export function useSearchModalQueryState<TRow, TFilters extends object>({
     resetKey: scopeKey,
   });
   const query = api.useList(mergeFixedQueryParams(state.queryParams, fixedQueryParams));
+  const presentation = resolveQueryPresentation({ ...query, currentData: query.currentData });
 
   const visibleRows = useMemo(() => {
-    const rows = query.data?.content ?? [];
+    const rows = presentation.data?.content ?? [];
     if (!excludeIds || excludeIds.length === 0) return rows;
     const set = new Set(excludeIds);
     return rows.filter((row) => !set.has(api.rowKey(row)));
-  }, [query.data, api, excludeIds]);
+  }, [presentation.data, api, excludeIds]);
 
-  return { state, query, visibleRows };
+  return { state, query, presentation, visibleRows };
 }
