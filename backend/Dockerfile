@@ -21,13 +21,15 @@ FROM eclipse-temurin:25-jre AS runtime
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tzdata curl \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --system --home /app --shell /usr/sbin/nologin app \
-    && mkdir -p /app/data/files \
-    && chown -R app:app /app/data
+    && groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --home /app --shell /usr/sbin/nologin app
 
 ENV TZ=Asia/Seoul
 WORKDIR /app
 COPY --from=build /workspace/build/libs/*.jar app.jar
+RUN mkdir -p /app/data/files \
+    && chown -R app:app /app/data \
+    && chmod 0444 /app/app.jar
 
 USER app
 EXPOSE 8080

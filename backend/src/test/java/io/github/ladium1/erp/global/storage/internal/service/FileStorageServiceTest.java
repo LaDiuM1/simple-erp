@@ -11,6 +11,7 @@ import io.github.ladium1.erp.global.storage.internal.exception.StorageErrorCode;
 import io.github.ladium1.erp.global.storage.internal.repository.StoredFileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -291,6 +292,117 @@ class FileStorageServiceTest {
     }
 
     @Test
+    @DisplayName("공유 storage root 아래 새 연·월 디렉터리는 reset 가능한 2775와 group을 상속")
+    void store_inherits_shared_directory_contract_for_new_year_and_month() throws IOException {
+        Assumptions.assumeTrue(supportsUnixMode(tempDir));
+        Files.setAttribute(tempDir, "unix:mode", 02775);
+        long sharedGroup = ((Number) Files.getAttribute(tempDir, "unix:gid")).longValue();
+        stubSaveWithJpaAudit();
+
+        fileStorageService.store(
+                "new-month.txt", "text/plain", "payload".getBytes(StandardCharsets.UTF_8), UPLOADER_ID);
+
+        for (Path directory : List.of(tempDir.resolve("2026"), tempDir.resolve("2026/07"))) {
+            assertThat(((Number) Files.getAttribute(directory, "unix:mode")).intValue() & 07777)
+                    .isEqualTo(02775);
+            assertThat(((Number) Files.getAttribute(directory, "unix:gid")).longValue())
+                    .isEqualTo(sharedGroup);
+        }
+        Path content = contentPathOf(savedFile.get());
+        assertThat(unixMode(content)).isEqualTo(0660);
+        assertThat(((Number) Files.getAttribute(content, "unix:gid")).longValue())
+                .isEqualTo(sharedGroup);
+    }
+
+    @Test
+    @DisplayName("공유 계약이 없는 저장소는 업로드 파일의 기본 전용 권한을 유지")
+    void store_keeps_private_file_mode_without_shared_root_contract() throws IOException {
+        Assumptions.assumeTrue(supportsUnixMode(tempDir));
+        Files.setAttribute(tempDir, "unix:mode", 0755);
+        stubSaveWithJpaAudit();
+
+        fileStorageService.store(
+                "private.txt", "text/plain", "payload".getBytes(StandardCharsets.UTF_8), UPLOADER_ID);
+
+        assertThat(unixMode(contentPathOf(savedFile.get()))).isEqualTo(0600);
+    }
+
+    @Test
+    @DisplayName("공유 root의 기존 2775 연·월 디렉터리는 권한 변경 없이 업로드에 사용")
+    void store_uses_existing_shared_directories_that_already_match_contract() throws IOException {
+        Assumptions.assumeTrue(supportsUnixMode(tempDir));
+        Files.setAttribute(tempDir, "unix:mode", 02775);
+        Path year = Files.createDirectory(tempDir.resolve("2026"));
+        Path month = Files.createDirectory(year.resolve("07"));
+        Files.setAttribute(year, "unix:mode", 02775);
+        Files.setAttribute(month, "unix:mode", 02775);
+        stubSaveWithJpaAudit();
+
+        fileStorageService.store(
+                "canonical-month.txt", "text/plain", "payload".getBytes(StandardCharsets.UTF_8), UPLOADER_ID);
+
+        assertThat(((Number) Files.getAttribute(year, "unix:mode")).intValue() & 07777)
+                .isEqualTo(02775);
+        assertThat(((Number) Files.getAttribute(month, "unix:mode")).intValue() & 07777)
+                .isEqualTo(02775);
+    }
+
+    @Test
+    @DisplayName("create와 chmod 사이 중단으로 남은 backend-owned 디렉터리는 다음 업로드가 복구")
+    void store_repairs_backend_owned_directory_left_before_permission_fixup() throws IOException {
+        Assumptions.assumeTrue(supportsUnixMode(tempDir));
+        Files.setAttribute(tempDir, "unix:mode", 02775);
+        Path year = Files.createDirectory(tempDir.resolve("2026"));
+        Files.setAttribute(year, "unix:mode", 0755);
+        stubSaveWithJpaAudit();
+
+        fileStorageService.store(
+                "recovered-month.txt", "text/plain", "payload".getBytes(StandardCharsets.UTF_8), UPLOADER_ID);
+
+        assertThat(((Number) Files.getAttribute(year, "unix:mode")).intValue() & 07777)
+                .isEqualTo(02775);
+        assertThat(((Number) Files.getAttribute(year.resolve("07"), "unix:mode")).intValue() & 07777)
+                .isEqualTo(02775);
+    }
+
+    @Test
+    @DisplayName("Linux 공유 fixture에서 root-owned canonical 월과 신규 월 업로드 계약 유지")
+    void store_uses_root_owned_canonical_month_and_creates_resettable_new_month() throws IOException {
+        String fixture = System.getenv("ERP_STORAGE_PERMISSION_FIXTURE");
+        Assumptions.assumeTrue(fixture != null && !fixture.isBlank());
+        Path current = Path.of(fixture);
+        Assumptions.assumeTrue(Files.isSymbolicLink(current) && supportsUnixMode(current));
+        fileStorageService = new FileStorageService(
+                storedFileRepository, demoProtectionPolicy, current.toString());
+
+        stubSaveWithJpaAudit(LocalDateTime.of(2026, 7, 7, 10, 0));
+        fileStorageService.store(
+                "canonical.txt", "text/plain", "canonical".getBytes(StandardCharsets.UTF_8), UPLOADER_ID);
+        Path canonicalContent = current.resolve("2026/07").resolve(savedFile.get().getStoredName());
+
+        Path canonicalYear = current.resolve("2026");
+        Path canonicalMonth = canonicalYear.resolve("07");
+        assertThat(unixMode(canonicalYear)).isEqualTo(02775);
+        assertThat(unixMode(canonicalMonth)).isEqualTo(02775);
+        assertThat(unixMode(canonicalContent)).isEqualTo(0660);
+        assertThat(((Number) Files.getAttribute(canonicalContent, "unix:gid")).longValue())
+                .isEqualTo(((Number) Files.getAttribute(current, "unix:gid")).longValue());
+
+        stubSaveWithJpaAudit(LocalDateTime.of(2026, 8, 7, 10, 0));
+        fileStorageService.store(
+                "new-month.txt", "text/plain", "new-month".getBytes(StandardCharsets.UTF_8), UPLOADER_ID);
+        Path newMonthContent = current.resolve("2026/08").resolve(savedFile.get().getStoredName());
+
+        Path newMonth = canonicalYear.resolve("08");
+        assertThat(unixMode(newMonth)).isEqualTo(02775);
+        assertThat(((Number) Files.getAttribute(newMonth, "unix:gid")).longValue())
+                .isEqualTo(((Number) Files.getAttribute(current, "unix:gid")).longValue());
+        assertThat(unixMode(newMonthContent)).isEqualTo(0660);
+        assertThat(((Number) Files.getAttribute(newMonthContent, "unix:gid")).longValue())
+                .isEqualTo(((Number) Files.getAttribute(current, "unix:gid")).longValue());
+    }
+
+    @Test
     @DisplayName("상위 Drive 트랜잭션까지 포함해 rollback이면 이미 이동한 파일 본체 제거")
     void store_removes_materialized_content_on_outer_transaction_rollback() {
         stubSaveWithJpaAudit();
@@ -336,7 +448,7 @@ class FileStorageServiceTest {
                 storedFileRepository,
                 demoProtectionPolicy,
                 tempDir.toString(),
-                (target, content) -> {
+                (target, content, sharedStorage) -> {
                     Files.createDirectories(target.getParent());
                     Files.write(target, Arrays.copyOf(content, 2));
                     throw new IOException("simulated partial write");
@@ -424,6 +536,19 @@ class FileStorageServiceTest {
         try (Stream<Path> paths = Files.walk(tempDir)) {
             return paths.filter(Files::isRegularFile).toList();
         }
+    }
+
+    private static boolean supportsUnixMode(Path path) {
+        try {
+            return Files.getAttribute(path, "unix:mode") instanceof Number
+                    && Files.getAttribute(path, "unix:gid") instanceof Number;
+        } catch (IOException | UnsupportedOperationException | IllegalArgumentException unsupported) {
+            return false;
+        }
+    }
+
+    private static int unixMode(Path path) throws IOException {
+        return ((Number) Files.getAttribute(path, "unix:mode")).intValue() & 07777;
     }
 
     private static void completeSynchronization(int status) {

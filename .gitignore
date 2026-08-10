@@ -6,6 +6,10 @@ backend/.gradle/
 backend/build/
 backend/out/
 
+# Python demo tooling
+__pycache__/
+*.py[cod]
+
 # 프론트엔드
 frontend/node_modules/
 frontend/dist/
@@ -17,6 +21,10 @@ project.md
 .env
 .env.local
 *.env.local
+/.env.demo
+# .env.demo.example은 배포 형식 문서라 추적한다.
+/runtime/
+# 데모 reset의 상태·작업·로그는 실행 시 생성하며 추적하지 않는다.
 !frontend/.env
 !frontend/.env.production
 /simple-erp.pem

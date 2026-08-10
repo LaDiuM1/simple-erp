@@ -1,0 +1,24 @@
+[Unit]
+Description=Reset and verify the Simple ERP demo generation
+Documentation=file:///opt/simple-erp-demo/demo/README.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/simple-erp-demo
+Environment=DEMO_RESET_ENV_FILE=/etc/simple-erp-demo/reset.env
+EnvironmentFile=/etc/simple-erp-demo/reset.env
+ExecStartPre=/usr/bin/test -d /opt/simple-erp-demo
+ExecStartPre=/usr/bin/test -f /opt/simple-erp-demo/.env.demo
+ExecStartPre=/usr/bin/test -f /etc/simple-erp-demo/reset.env
+ExecStart=/usr/bin/bash /opt/simple-erp-demo/scripts/demo/reset-demo.sh
+TimeoutStartSec=20min
+SuccessExitStatus=75
+UMask=0077
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6

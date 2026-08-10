@@ -23,6 +23,7 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -44,11 +45,15 @@ public class FileStorageService implements FileStorageApi {
 
     private static final String FALLBACK_ORIGINAL_NAME = "upload.bin";
     private static final int CLEANUP_BATCH_SIZE = 100;
+    private static final int SHARED_DIRECTORY_MODE = 02775;
+    private static final int SHARED_DIRECTORY_MARKERS = 02030;
+    private static final int SHARED_FILE_MODE = 0660;
 
     private final StoredFileRepository storedFileRepository;
     private final DemoProtectionPolicy demoProtectionPolicy;
     private final Path basePath;
     private final ContentWriter contentWriter;
+    private final Object sharedDirectoryCreationMonitor = new Object();
 
     @Autowired
     public FileStorageService(
@@ -247,8 +252,9 @@ public class FileStorageService implements FileStorageApi {
     private void writeContent(StoredFile file, byte[] content) {
         Path path = resolveContentPath(file);
         try {
-            Files.createDirectories(path.getParent());
-            contentWriter.write(path, content);
+            boolean sharedStorage = hasSharedDirectoryContract(basePath);
+            prepareParentDirectories(path.getParent(), sharedStorage);
+            contentWriter.write(path, content, sharedStorage);
             registerRollbackCleanup(path);
         } catch (IOException e) {
             deleteAfterFailedWrite(path, e);
@@ -256,6 +262,67 @@ public class FileStorageService implements FileStorageApi {
         } catch (RuntimeException e) {
             deleteAfterFailedWrite(path, e);
             throw e;
+        }
+    }
+
+    /**
+     * setgid + group-write인 storage root는 reset 도구와 공유하는 디렉터리 계약이다.
+     * 그 계약이 있는 POSIX/Unix 파일시스템에서만 새 연·월 디렉터리에 2775를 상속한다.
+     */
+    private void prepareParentDirectories(Path parent, boolean sharedStorage) throws IOException {
+        if (!sharedStorage) {
+            Files.createDirectories(parent);
+            return;
+        }
+
+        synchronized (sharedDirectoryCreationMonitor) {
+            Path current = basePath;
+            for (Path segment : basePath.relativize(parent)) {
+                current = current.resolve(segment);
+                prepareSharedChildDirectory(current);
+            }
+        }
+    }
+
+    private static void prepareSharedChildDirectory(Path directory) throws IOException {
+        try {
+            Files.createDirectory(directory);
+        } catch (FileAlreadyExistsException existing) {
+            // reset 도구 또는 동시 요청이 먼저 만든 경로는 아래에서 타입·mode를 판정한다.
+        }
+
+        if (Files.isSymbolicLink(directory)
+                || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("공유 저장소 디렉터리 경로가 올바르지 않습니다: " + directory);
+        }
+        int mode = ((Number) Files.getAttribute(
+                directory,
+                "unix:mode",
+                LinkOption.NOFOLLOW_LINKS
+        )).intValue() & 07777;
+        if (mode == SHARED_DIRECTORY_MODE) {
+            return;
+        }
+        // 신규 디렉터리뿐 아니라 create→chmod 사이 crash로 남은 backend-owned 경로도 복구한다.
+        // reset 도구 소유 경로가 계약과 다르면 이 chmod가 실패해 오설정을 조용히 통과시키지 않는다.
+        Files.setAttribute(
+                directory,
+                "unix:mode",
+                SHARED_DIRECTORY_MODE,
+                LinkOption.NOFOLLOW_LINKS
+        );
+    }
+
+    private static boolean hasSharedDirectoryContract(Path directory) throws IOException {
+        if (!Files.isDirectory(directory)) {
+            return false;
+        }
+        try {
+            Object attribute = Files.getAttribute(directory, "unix:mode");
+            return attribute instanceof Number mode
+                    && (mode.intValue() & SHARED_DIRECTORY_MARKERS) == SHARED_DIRECTORY_MARKERS;
+        } catch (UnsupportedOperationException | IllegalArgumentException unsupported) {
+            return false;
         }
     }
 
@@ -286,7 +353,7 @@ public class FileStorageService implements FileStorageApi {
         }
     }
 
-    private static void writeAtomically(Path target, byte[] content) throws IOException {
+    private static void writeAtomically(Path target, byte[] content, boolean sharedStorage) throws IOException {
         Path parent = target.getParent();
         if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
             throw new IOException("저장 대상 파일이 이미 존재합니다: " + target.getFileName());
@@ -296,10 +363,17 @@ public class FileStorageService implements FileStorageApi {
         boolean moved = false;
         try {
             Files.write(temporary, content, StandardOpenOption.TRUNCATE_EXISTING);
+            if (sharedStorage) {
+                enforceSharedFileMode(temporary);
+            }
             try {
                 Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException unsupported) {
+                // 같은 디렉터리의 신규 UUID 경로만 사용하므로 replace 없이 이동해 기존 파일을 보존한다.
                 Files.move(temporary, target);
+            }
+            if (sharedStorage) {
+                enforceSharedFileMode(target);
             }
             moved = true;
         } finally {
@@ -307,6 +381,31 @@ public class FileStorageService implements FileStorageApi {
                 Files.deleteIfExists(temporary);
                 Files.deleteIfExists(target);
             }
+        }
+    }
+
+    private static void enforceSharedFileMode(Path file) throws IOException {
+        int mode = ((Number) Files.getAttribute(
+                file,
+                "unix:mode",
+                LinkOption.NOFOLLOW_LINKS
+        )).intValue() & 07777;
+        if (mode == SHARED_FILE_MODE) {
+            return;
+        }
+        Files.setAttribute(
+                file,
+                "unix:mode",
+                SHARED_FILE_MODE,
+                LinkOption.NOFOLLOW_LINKS
+        );
+        int appliedMode = ((Number) Files.getAttribute(
+                file,
+                "unix:mode",
+                LinkOption.NOFOLLOW_LINKS
+        )).intValue() & 07777;
+        if (appliedMode != SHARED_FILE_MODE) {
+            throw new IOException("공유 저장소 파일 권한을 적용하지 못했습니다: " + file);
         }
     }
 
@@ -345,6 +444,6 @@ public class FileStorageService implements FileStorageApi {
 
     @FunctionalInterface
     interface ContentWriter {
-        void write(Path target, byte[] content) throws IOException;
+        void write(Path target, byte[] content, boolean sharedStorage) throws IOException;
     }
 }
