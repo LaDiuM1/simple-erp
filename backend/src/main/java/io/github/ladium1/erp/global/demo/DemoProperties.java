@@ -45,6 +45,13 @@ public class DemoProperties {
     private Protection protection = new Protection();
     @Valid
     private RateLimit rateLimit = new RateLimit();
+    @Valid
+    private Seed seed = new Seed();
+
+    @AssertTrue(message = "demo 모드에는 seed expected-version이 필요합니다.")
+    public boolean isSeedVersionConfigured() {
+        return !enabled || (seed.getExpectedVersion() != null && !seed.getExpectedVersion().isBlank());
+    }
 
     @Getter
     @Setter
@@ -123,4 +130,21 @@ public class DemoProperties {
         }
     }
 
+    @Getter
+    @Setter
+    public static class Seed {
+        private boolean validationEnabled = true;
+        private String expectedVersion;
+        @Min(1)
+        private int requiredFileCount = 30;
+        @NotEmpty
+        private List<String> requiredAccounts = List.of(
+                "demo.manager:DEMO_MANAGER",
+                "demo.staff:DEMO_STAFF"
+        );
+        @NotEmpty
+        private Set<String> requiredRoleCodes = new LinkedHashSet<>(List.of(
+                "MASTER", "DEMO_MANAGER", "DEMO_STAFF"
+        ));
+    }
 }

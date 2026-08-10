@@ -53,6 +53,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @TestPropertySource(properties = {
         "demo.enabled=true",
+        "demo.seed.expected-version=test-seed",
         "demo.upload.enabled=true",
         "demo.rate-limit.login-limit=10",
         "demo.rate-limit.write-limit=60",
@@ -69,6 +70,7 @@ class DemoSecurityFilterChainTest {
 
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private LoginAccountApi loginAccountApi;
+    @MockitoBean private DemoStartupVerificationGate startupVerificationGate;
     @MockitoBean private DemoProtectionPolicy protectionPolicy;
     @MockitoBean private DemoStateStore stateStore;
     @MockitoBean private AuthService authService;
@@ -208,6 +210,24 @@ class DemoSecurityFilterChainTest {
                         .content("{\"loginId\":\"demo.staff\",\"password\":\"public\"}"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("DEMO_RATE_LIMIT_EXCEEDED"));
+    }
+
+    @Test
+    @DisplayName("startup 검증 전에는 조회를 보존하고 쓰기만 503으로 차단")
+    void startup_verification_gate_blocks_only_writes() throws Exception {
+        authenticatedLoginId.set("startup-account");
+        doThrow(new BusinessException(DemoErrorCode.DEMO_RESET_IN_PROGRESS))
+                .when(startupVerificationGate).assertWriteReady();
+
+        mockMvc.perform(get("/api/v1/probe")
+                        .header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/probe")
+                        .header("Authorization", AUTHORIZATION))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("DEMO_RESET_IN_PROGRESS"));
+
+        verify(protectionPolicy, never()).assertWriteAvailable();
     }
 
     @Test

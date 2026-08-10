@@ -2,6 +2,7 @@ package io.github.ladium1.erp.global.storage.internal.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,7 @@ import java.util.Objects;
 /** 미연결 업로드와 삭제 예약 파일을 작은 묶음으로 정리한다. */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "erp.storage.cleanup.enabled", havingValue = "true", matchIfMissing = true)
 public class FileStorageCleanupJob {
 
     private final FileStorageService fileStorageService;

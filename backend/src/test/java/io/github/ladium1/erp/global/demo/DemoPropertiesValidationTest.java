@@ -13,6 +13,16 @@ class DemoPropertiesValidationTest {
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
     @Test
+    void enabled_demo_requires_seed_version() {
+        DemoProperties properties = validEnabledProperties();
+        properties.getSeed().setExpectedVersion(" ");
+
+        assertThat(validator.validate(properties))
+                .anyMatch(violation -> violation.getPropertyPath().toString()
+                        .equals("seedVersionConfigured"));
+    }
+
+    @Test
     void rate_limit_cannot_fail_open_with_zero_values() {
         DemoProperties properties = validEnabledProperties();
         properties.getRateLimit().setWindow(Duration.ZERO);
@@ -52,9 +62,20 @@ class DemoPropertiesValidationTest {
                 .contains("rateLimit.validWindow", "reset.valid");
     }
 
+    @Test
+    void canonical_file_count_must_be_positive() {
+        DemoProperties properties = validEnabledProperties();
+        properties.getSeed().setRequiredFileCount(0);
+
+        assertThat(validator.validate(properties))
+                .anyMatch(violation -> violation.getPropertyPath().toString()
+                        .equals("seed.requiredFileCount"));
+    }
+
     private static DemoProperties validEnabledProperties() {
         DemoProperties properties = new DemoProperties();
         properties.setEnabled(true);
+        properties.getSeed().setExpectedVersion("test-seed");
         return properties;
     }
 }

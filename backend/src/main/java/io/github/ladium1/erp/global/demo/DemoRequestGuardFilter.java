@@ -20,7 +20,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-/** reset/write, upload, login/write rate 경계를 요청 본문 파싱 전에 적용한다. */
+/** startup 검증, reset/write, upload, login/write rate 경계를 요청 본문 파싱 전에 적용한다. */
 public class DemoRequestGuardFilter extends OncePerRequestFilter {
 
     private static final String STATUS_PATH = "/api/v1/demo/status";
@@ -37,17 +37,20 @@ public class DemoRequestGuardFilter extends OncePerRequestFilter {
     );
 
     private final DemoProperties properties;
+    private final DemoStartupVerificationGate startupVerificationGate;
     private final DemoProtectionPolicy protectionPolicy;
     private final DemoRateLimiter rateLimiter;
     private final ObjectProvider<HandlerExceptionResolver> exceptionResolver;
 
     public DemoRequestGuardFilter(
             DemoProperties properties,
+            DemoStartupVerificationGate startupVerificationGate,
             DemoProtectionPolicy protectionPolicy,
             DemoRateLimiter rateLimiter,
             ObjectProvider<HandlerExceptionResolver> exceptionResolver
     ) {
         this.properties = properties;
+        this.startupVerificationGate = startupVerificationGate;
         this.protectionPolicy = protectionPolicy;
         this.rateLimiter = rateLimiter;
         this.exceptionResolver = exceptionResolver;
@@ -85,6 +88,7 @@ public class DemoRequestGuardFilter extends OncePerRequestFilter {
                 return;
             }
 
+            startupVerificationGate.assertWriteReady();
             protectionPolicy.assertWriteAvailable();
             if (isUploadRequest(request, path)) {
                 protectionPolicy.assertUploadAllowed();

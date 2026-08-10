@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ import java.util.Set;
 @Slf4j
 @Component
 @Order(0)
+@ConditionalOnProperty(name = "app.schema-maintenance.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class EnumColumnVarcharMigrator implements ApplicationRunner {
 

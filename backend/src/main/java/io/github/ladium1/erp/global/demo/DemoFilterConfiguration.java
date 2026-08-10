@@ -26,12 +26,14 @@ public class DemoFilterConfiguration {
     @Bean
     public DemoRequestGuardFilter demoRequestGuardFilter(
             DemoProperties properties,
+            DemoStartupVerificationGate startupVerificationGate,
             DemoProtectionPolicy protectionPolicy,
             DemoRateLimiter rateLimiter,
             @Qualifier("handlerExceptionResolver") ObjectProvider<HandlerExceptionResolver> exceptionResolver
     ) {
         return new DemoRequestGuardFilter(
                 properties,
+                startupVerificationGate,
                 protectionPolicy,
                 rateLimiter,
                 exceptionResolver
