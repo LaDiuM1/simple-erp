@@ -1,0 +1,950 @@
+#!/usr/bin/env python3
+"""Validate the static deployment contract shared by local demo runs and CI."""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import json
+from pathlib import Path
+import re
+import sys
+from typing import NoReturn
+
+
+CONTROL_IMAGE = (
+    "python:3.13-alpine@sha256:"
+    "399babc8b49529dabfd9c922f2b5eea81d611e4512e3ed250d75bd2e7683f4b0"
+)
+DEMO_SERVICE_NAMES = {"db", "backend", "web", "demo-tool", "demo-tool-smoke"}
+EXPECTED_LOGGING = {
+    "driver": "local",
+    "options": {"max-file": "3", "max-size": "10m"},
+}
+IMMUTABLE_IMAGE_PATTERN = re.compile(
+    r"(?:sha256:[0-9a-f]{64}|[^@\s]+@sha256:[0-9a-f]{64})"
+)
+STORED_FILE_MAPPING_COLUMNS = (
+    "id, stored_name, original_name, content_type, size, "
+    "DATE_FORMAT(created_at, '%Y-%m-%d'), "
+    "DATE_FORMAT((SELECT reset_at FROM demo_seed_manifest WHERE id=1), '%Y-%m-%d'), "
+    "status, owner_type, owner_id, uploader_id"
+)
+
+
+class ContractViolation(RuntimeError):
+    """Raised when a resolved demo configuration weakens a required invariant."""
+
+
+def fail(message: str) -> NoReturn:
+    raise ContractViolation(message)
+
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        fail(message)
+
+
+def require_mapping(value: object, label: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        fail(f"{label} must be an object")
+    return value
+
+
+def require_list(value: object, label: str) -> list[object]:
+    if not isinstance(value, list):
+        fail(f"{label} must be a list")
+    return value
+
+
+def normalize_sql(value: str) -> str:
+    return " ".join(value.split())
+
+
+def validate_stored_file_mapping_queries(reset_script: str, seed_workflow: str) -> None:
+    expected = normalize_sql("SELECT " + STORED_FILE_MAPPING_COLUMNS + " FROM stored_files ORDER BY id")
+    for label, source in (("reset", reset_script), ("seed workflow", seed_workflow)):
+        normalized = normalize_sql(source)
+        require(expected in normalized, f"{label} stored file mapping query changed")
+
+
+def load_compose_config(path: Path) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ContractViolation(f"cannot read resolved Compose config: {path}") from error
+    return require_mapping(value, "resolved Compose config")
+
+
+def bind_contract(volumes: object) -> set[tuple[Path, str, bool]]:
+    result: set[tuple[Path, str, bool]] = set()
+    for index, raw_volume in enumerate(require_list(volumes, "service volumes")):
+        volume = require_mapping(raw_volume, f"service volume {index}")
+        if volume.get("type") != "bind":
+            continue
+        source = volume.get("source")
+        target = volume.get("target")
+        if not isinstance(source, str) or not isinstance(target, str):
+            fail(f"bind volume {index} must have string source and target")
+        result.add((Path(source).resolve(), target, volume.get("read_only") is True))
+    return result
+
+
+def named_volume_contract(volumes: object) -> set[tuple[str, str, bool]]:
+    result: set[tuple[str, str, bool]] = set()
+    for index, raw_volume in enumerate(require_list(volumes, "service volumes")):
+        volume = require_mapping(raw_volume, f"service volume {index}")
+        if volume.get("type") != "volume":
+            continue
+        source = volume.get("source")
+        target = volume.get("target")
+        if not isinstance(source, str) or not isinstance(target, str):
+            fail(f"named volume {index} must have string source and target")
+        result.add((source, target, volume.get("read_only") is True))
+    return result
+
+
+def validate_root_credential_isolation(
+    db_environment: dict[str, object],
+    service_environments: dict[str, dict[str, object]],
+) -> None:
+    root_password = db_environment.get("MARIADB_ROOT_PASSWORD")
+    require(
+        isinstance(root_password, str) and bool(root_password),
+        "database root credential is missing",
+    )
+    for service_name, environment in service_environments.items():
+        credential_embedded = any(
+            isinstance(value, str) and root_password in value
+            for value in environment.values()
+        )
+        require(
+            "DEMO_DB_ROOT_PASSWORD" not in environment
+            and "MARIADB_ROOT_PASSWORD" not in environment
+            and not credential_embedded,
+            f"root DB credential leaked to {service_name}",
+        )
+
+
+def select_demo_services(config: dict[str, object]) -> dict[str, dict[str, object]]:
+    services_value = require_mapping(config.get("services"), "Compose services")
+    require(
+        set(services_value) == DEMO_SERVICE_NAMES,
+        "Compose service allowlist changed",
+    )
+    return {
+        name: require_mapping(services_value[name], f"service {name}")
+        for name in DEMO_SERVICE_NAMES
+    }
+
+
+def validate_service_contracts(config: dict[str, object]) -> dict[str, dict[str, object]]:
+    require(config.get("name") == "simple-erp-demo", "Compose project name changed")
+    services = select_demo_services(config)
+
+    db = services["db"]
+    backend = services["backend"]
+    web = services["web"]
+    tool = services["demo-tool"]
+    smoke_tool = services["demo-tool-smoke"]
+    backend_env = require_mapping(backend.get("environment"), "backend environment")
+    db_env = require_mapping(db.get("environment"), "db environment")
+    web_env = require_mapping(web.get("environment"), "web environment")
+    tool_env = require_mapping(tool.get("environment"), "demo-tool environment")
+    smoke_tool_env = require_mapping(
+        smoke_tool.get("environment"), "demo-tool-smoke environment"
+    )
+
+    require(not db.get("ports"), "database must not publish host ports")
+    require(not backend.get("ports"), "backend must not publish host ports")
+    require(backend_env.get("DB_USERNAME") == "simple_erp_app", "app DB user changed")
+    require(backend_env.get("DDL_AUTO") == "validate", "backend DDL mode must stay validate")
+    require(
+        backend_env.get("APP_SCHEMA_MAINTENANCE_ENABLED") == "false",
+        "schema maintenance must stay disabled",
+    )
+    require(
+        backend_env.get("APP_REFERENCE_BOOTSTRAP_ENABLED") == "false",
+        "reference bootstrap must stay disabled",
+    )
+    require(
+        backend_env.get("APP_ADMIN_BOOTSTRAP_ENABLED") == "true",
+        "recovery operator bootstrap must stay enabled",
+    )
+    require(
+        backend_env.get("DEMO_UPLOAD_ENABLED") == "true",
+        "demo upload capability must stay enabled",
+    )
+    for service_name in ("backend", "web"):
+        image = services[service_name].get("image")
+        require(
+            isinstance(image, str) and IMMUTABLE_IMAGE_PATTERN.fullmatch(image) is not None,
+            f"{service_name} image must be immutable",
+        )
+    validate_root_credential_isolation(
+        db_env,
+        {
+            "backend": backend_env,
+            "web": web_env,
+            "demo-tool": tool_env,
+            "demo-tool-smoke": smoke_tool_env,
+        },
+    )
+    require(
+        set(tool_env) == {"PYTHONDONTWRITEBYTECODE", "TZ"},
+        "demo-tool environment allowlist changed",
+    )
+    require(
+        set(smoke_tool_env) == {"PYTHONDONTWRITEBYTECODE", "TZ"},
+        "demo-tool-smoke environment allowlist changed",
+    )
+    require(web_env.get("API_REQUEST_BODY_MAX_SIZE") == "32MB", "web body limit changed")
+    require(
+        db_env.get("MARIADB_ROOT_PASSWORD") != backend_env.get("DB_PASSWORD"),
+        "database root and app credentials must differ",
+    )
+    for service_name in DEMO_SERVICE_NAMES:
+        require(
+            services[service_name].get("logging") == EXPECTED_LOGGING,
+            f"bounded logging contract changed for {service_name}",
+        )
+    for service_name in ("demo-tool", "demo-tool-smoke"):
+        service = services[service_name]
+        require(service.get("image") == CONTROL_IMAGE, f"{service_name} image changed")
+        require(
+            service.get("entrypoint") == ["python", "/opt/demo-control.py"],
+            f"{service_name} entrypoint changed",
+        )
+        require(
+            service.get("user") == "0:10001",
+            f"{service_name} must share the backend file group",
+        )
+        require(service.get("read_only") is True, f"{service_name} must stay read-only")
+        require(service.get("cap_drop") == ["ALL"], f"{service_name} capabilities changed")
+        require(
+            service.get("security_opt") == ["no-new-privileges:true"],
+            f"{service_name} security options changed",
+        )
+    require(tool.get("network_mode") == "none", "offline demo-tool gained network access")
+    require(
+        smoke_tool.get("network_mode") != "none",
+        "smoke tool must retain network access to the demo web service",
+    )
+
+    volumes = require_mapping(config.get("volumes"), "Compose volumes")
+    demo_files = require_mapping(volumes.get("demo_files"), "demo_files volume")
+    require(
+        demo_files.get("name") == "simple-erp-demo-files",
+        "demo files volume allowlist changed",
+    )
+    return services
+
+
+def validate_service_mount_contracts(
+    project_root: Path,
+    services: dict[str, dict[str, object]],
+) -> None:
+    state_source = (project_root / "runtime/state").resolve()
+    backend_volumes = services["backend"].get("volumes")
+    web_volumes = services["web"].get("volumes")
+
+    require(
+        bind_contract(backend_volumes)
+        == {(state_source, "/app/data/demo-state", True)},
+        "backend state mount must stay read-only and isolated",
+    )
+    require(
+        named_volume_contract(backend_volumes)
+        == {("demo_files", "/app/data/files", False)},
+        "backend demo files mount must stay writable and isolated",
+    )
+    require(
+        bind_contract(web_volumes) == {(state_source, "/srv/demo", True)},
+        "web state mount must stay read-only and isolated",
+    )
+    require(
+        named_volume_contract(web_volumes)
+        == {
+            ("demo_caddy_data", "/data", False),
+            ("demo_caddy_config", "/config", False),
+        },
+        "web named volume allowlist changed",
+    )
+
+
+def validate_tool_mount_contracts(
+    project_root: Path,
+    services: dict[str, dict[str, object]],
+) -> None:
+    tool_volumes = services["demo-tool"].get("volumes")
+    smoke_tool_volumes = services["demo-tool-smoke"].get("volumes")
+    expected_shared_binds = {
+        (project_root / "scripts/demo/demo_control.py", "/opt/demo-control.py", True),
+        (project_root / "demo/seed", "/seed", True),
+    }
+    expected_tool_binds = expected_shared_binds | {
+        (project_root / "runtime/state", "/state", False),
+        (project_root / "runtime/work", "/work", False),
+        (project_root / "runtime/logs", "/logs", False),
+    }
+    require(
+        bind_contract(tool_volumes) == expected_tool_binds,
+        "demo-tool bind allowlist changed; project-root mounts are forbidden",
+    )
+    require(
+        bind_contract(smoke_tool_volumes) == expected_shared_binds,
+        "demo-tool-smoke bind allowlist changed",
+    )
+    require(
+        named_volume_contract(tool_volumes) == {("demo_files", "/files", False)},
+        "demo-tool named volume contract changed",
+    )
+    require(
+        not named_volume_contract(smoke_tool_volumes),
+        "demo-tool-smoke must not mount named volumes",
+    )
+
+
+def require_ordered(text: str, *needles: str, label: str) -> None:
+    positions: list[int] = []
+    for needle in needles:
+        position = text.find(needle)
+        require(position >= 0, f"{label} is missing: {needle}")
+        positions.append(position)
+    require(positions == sorted(positions), f"{label} ordering changed")
+
+
+def shell_function_body(script: str, name: str) -> tuple[str, int]:
+    match = re.search(
+        rf"(?ms)^{re.escape(name)}\(\) \{{\n(?P<body>.*?)^\}}$",
+        script,
+    )
+    require(match is not None, f"shell function is missing: {name}")
+    return match.group("body"), match.end()
+
+
+def python_function_source(script: str, name: str) -> str:
+    try:
+        module = ast.parse(script)
+    except SyntaxError as error:
+        raise ContractViolation("demo control script is not valid Python") from error
+    matches = [
+        node
+        for node in module.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == name
+    ]
+    require(len(matches) == 1, f"Python function is missing or duplicated: {name}")
+    function = matches[0]
+    lines = script.splitlines(keepends=True)
+    return "".join(lines[function.lineno - 1 : function.end_lineno])
+
+
+def properties_contract(text: str, label: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line_number, raw_line in enumerate(text.splitlines(), start=1):
+        line = raw_line.strip()
+        if not line or line.startswith(("#", "!")):
+            continue
+        key, separator, value = line.partition("=")
+        require(
+            bool(separator) and bool(key.strip()),
+            f"{label}:{line_number} malformed property",
+        )
+        key = key.strip()
+        require(key not in values, f"{label} contains duplicate property: {key}")
+        values[key] = value.strip()
+    return values
+
+
+def validate_reset_script_text(reset_script: str) -> None:
+    require(
+        re.search(r'-v "\$\{DEMO_PROJECT_ROOT\}:[^"]+"', reset_script) is None,
+        "reset script mounts the whole project root",
+    )
+    require(
+        '${DEMO_PROJECT_ROOT}/scripts/demo/demo_control.py:/opt/demo-control.py:ro'
+        in reset_script,
+        "reset script lost the single-file read-only control mount",
+    )
+    require("--network none" in reset_script, "reset control container gained network access")
+    require('"${DEMO_CONTROL_IMAGE}"' in reset_script, "reset control image pin is missing")
+    candidate_generation_command = (
+        "IFS= read -r generated_candidate < /proc/sys/kernel/random/uuid"
+    )
+    candidate_validation = (
+        '[[ "${generated_candidate}" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-'
+        '[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]]'
+    )
+    candidate_promotion = 'candidate_generation="${generated_candidate}"'
+    require_ordered(
+        reset_script,
+        "trap 'on_failure $? $LINENO' ERR",
+        candidate_generation_command,
+        label="reset failure trap",
+    )
+    require_ordered(
+        reset_script,
+        candidate_generation_command,
+        candidate_validation,
+        candidate_promotion,
+        label="reset candidate validation",
+    )
+    require_ordered(
+        reset_script,
+        'candidate_generation="${generated_candidate}"',
+        'failure_stage="reset-schedule"',
+        'next_reset_at="$(demo_next_reset_at)"',
+        'failure_stage="resetting-state"',
+        "\nwrite_resetting_lifecycle_state\n",
+        'failure_stage="backend-stop"',
+        "demo_compose stop -t 30 backend",
+        'failure_stage="image-contract"',
+        "demo_require_immutable_image_reference BACKEND_IMAGE",
+        'failure_stage="preflight-credential"',
+        'preflight_secret="$(demo_tool new-generation',
+        'failure_stage="compose-contract"',
+        "demo_compose config --quiet",
+        'resolved_files_volume="$(docker volume inspect',
+        'failure_stage="files-volume-ownership"',
+        "demo_prepare_files_volume",
+        'failure_stage="retention-pre-prune"',
+        "demo_tool validate-bundle",
+        label="early reset write lock",
+    )
+    resetting_body, _ = shell_function_body(
+        reset_script, "write_resetting_lifecycle_state"
+    )
+    require(
+        "demo_tool write-resetting-state" in resetting_body
+        and "--seed-dir" not in resetting_body,
+        "RESETTING publication must not validate the seed bundle",
+    )
+    significant_lines = [
+        line.strip()
+        for line in reset_script.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    schedule_index = significant_lines.index('next_reset_at="$(demo_next_reset_at)"')
+    require(
+        significant_lines[schedule_index + 1 : schedule_index + 3]
+        == [
+            'failure_stage="resetting-state"',
+            "write_resetting_lifecycle_state",
+        ],
+        "reset write lock must immediately follow the resolved schedule",
+    )
+    write_lock_index = significant_lines.index("write_resetting_lifecycle_state")
+    require(
+        significant_lines[write_lock_index + 1 : write_lock_index + 3]
+        == [
+            'failure_stage="backend-stop"',
+            "demo_compose stop -t 30 backend",
+        ],
+        "live backend must stop immediately after the reset write lock",
+    )
+    require(
+        reset_script.count("demo_tool new-generation") == 1,
+        "candidate generation must not depend on a pre-lock demo-tool container",
+    )
+    require(
+        "if write_failed_lifecycle_state; then" in reset_script
+        and "demo_compose stop -t 10 backend" in reset_script,
+        "post-lock failure must publish FAILED and stop the backend",
+    )
+    require(
+        "write_lifecycle_state VERIFYING preflight.json" in reset_script
+        and "write_lifecycle_state READY preflight.json" not in reset_script,
+        "candidate preflight must stay write-locked",
+    )
+    require_ordered(
+        reset_script,
+        'failure_stage="verifying-state"',
+        'failure_stage="success-retention"',
+        'failure_stage="ready-promotion"',
+        label="successful generation retirement",
+    )
+    pre_prune_script = reset_script[: reset_script.find('pre_prune_completed="true"')]
+    early_stages = set(
+        re.findall(r'(?m)^failure_stage="([a-z][a-z0-9-]*)"$', pre_prune_script)
+    )
+    require(
+        early_stages
+        == {
+            "bootstrap",
+            "candidate-generation",
+            "reset-schedule",
+            "resetting-state",
+            "backend-stop",
+            "image-contract",
+            "preflight-credential",
+            "compose-contract",
+            "files-volume-ownership",
+            "retention-pre-prune",
+        },
+        "pre-prune failure stage contract changed",
+    )
+
+    require(
+        reset_script.count("demo_prepare_files_volume") == 1,
+        "files volume ownership initialization changed",
+    )
+
+
+def validate_files_volume_initializer(lib_script: str) -> None:
+    initializer, _ = shell_function_body(lib_script, "demo_prepare_files_volume")
+    for token in (
+        "--pull never",
+        "--network none",
+        "--read-only",
+        "--log-driver none",
+        "--user 0:10001",
+        "--cap-drop ALL",
+        "--cap-add CHOWN",
+        "--cap-add FOWNER",
+        "--security-opt no-new-privileges:true",
+        '-v "${DEMO_FILES_VOLUME}:/files"',
+        '"${DEMO_CONTROL_IMAGE}"',
+        '"0:0:755"',
+        "find /files -mindepth 1 -maxdepth 1 -print -quit",
+        "chown 10001:10001 /files",
+        "chmod 2775 /files",
+        '"10001:10001:2775"',
+    ):
+        require(token in initializer, f"files volume initializer changed: {token}")
+    require(
+        '"10001:10001:755"' not in initializer,
+        "files volume initializer must reject an existing app-owned volume with an invalid mode",
+    )
+
+
+def validate_control_plane_failure_contract(control_script: str) -> None:
+    pattern_match = re.search(
+        r'CONTROL_PLANE_FAILURE_STAGE_PATTERN\s*=\s*re\.compile\(\s*r"([^"]+)"',
+        control_script,
+    )
+    require(
+        pattern_match is not None
+        and pattern_match.group(1) == r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*",
+        "control-plane failure stage grammar changed",
+    )
+    failure_log_function = python_function_source(
+        control_script, "write_control_plane_failure_log_file"
+    )
+    require(
+        "CONTROL_PLANE_FAILURE_STAGE_PATTERN.fullmatch(stage)"
+        in failure_log_function,
+        "bounded failure log no longer validates its stage grammar",
+    )
+    failed_state_function = python_function_source(control_script, "write_failed_state")
+    require(
+        "if args.next_reset_at" in failed_state_function
+        and "else None" in failed_state_function,
+        "early FAILED publication must allow an unresolved reset schedule",
+    )
+
+
+def validate_reset_script_contract(project_root: Path) -> None:
+    reset_script = (project_root / "scripts/demo/reset-demo.sh").read_text(
+        encoding="utf-8"
+    )
+    control_script = (project_root / "scripts/demo/demo_control.py").read_text(
+        encoding="utf-8"
+    )
+    lib_script = (project_root / "scripts/demo/lib.sh").read_text(encoding="utf-8")
+    validate_reset_script_text(reset_script)
+    validate_files_volume_initializer(lib_script)
+    validate_control_plane_failure_contract(control_script)
+
+
+def validate_acceptance_shell_flow(acceptance_script: str) -> None:
+    finalize_body, finalize_end = shell_function_body(acceptance_script, "finalize_acceptance")
+    main_script = acceptance_script[finalize_end:]
+    trap_marker = "demo_install_acceptance_traps finalize_acceptance"
+    runtime_script = main_script[main_script.find(trap_marker) :]
+    require_ordered(
+        runtime_script,
+        trap_marker,
+        '# Start from the canonical seed',
+        '"${SCRIPT_DIR}/reset-demo.sh"',
+        'cleanup_required="true"',
+        'exercise_output="$(demo_compose run',
+        "--phase exercise",
+        'excel_customer_id="$(acceptance_field excelCustomer)"',
+        'sales_contact_id="$(acceptance_field salesContact)"',
+        'board_file_id="$(acceptance_field boardFile)"',
+        'approval_file_id="$(acceptance_field approvalFile)"',
+        'expense_file_id="$(acceptance_field expenseFile)"',
+        'pending_file_id="$(acceptance_field pendingFile)"',
+        'drive_file_id="$(acceptance_field driveFile)"',
+        "capture_file_evidence board",
+        "capture_file_evidence approval",
+        "capture_file_evidence expense",
+        "capture_file_evidence pending",
+        "capture_file_evidence drive",
+        "--phase delete-retained",
+        '--board-file-id "${board_file_id}"',
+        "assert_file_evidence board",
+        "verify_acceptance_file_bodies",
+        'exercise_succeeded="true"',
+        "demo_compose restart backend",
+        '--expected-state READY',
+        "--phase verify-live",
+        label="upload acceptance exercise, deletion, and restart verification",
+    )
+    live_phase_index = runtime_script.find("--phase verify-live")
+    require(live_phase_index >= 0, "acceptance live verification phase is missing")
+    require_ordered(
+        runtime_script[live_phase_index:],
+        "--phase verify-live",
+        "assert_file_evidence board",
+        "verify_acceptance_file_bodies",
+        label="acceptance restart file evidence",
+    )
+    require_ordered(
+        finalize_body,
+        '"${SCRIPT_DIR}/reset-demo.sh"',
+        'if [[ "${exercise_succeeded}" == "true" ]]; then',
+        "--phase verify-reset",
+        "assert_acceptance_file_rows_absent",
+        "demo_tool assert-generation-absent",
+        '--generation "${previous_generation}"',
+        label="upload acceptance cleanup proof",
+    )
+    require(
+        'if [[ "${cleanup_required}" == "true" ]]; then' in finalize_body,
+        "acceptance cleanup reset lost its execution guard",
+    )
+    require(
+        'local original_exit="$?"' in finalize_body
+        and 'exit "${original_exit}"' in finalize_body,
+        "acceptance cleanup must preserve the original success, failure, or signal status",
+    )
+    require(
+        'source "${SCRIPT_DIR}/acceptance_traps.sh"' in acceptance_script,
+        "acceptance signal handling helper is missing",
+    )
+
+    verify_live_tail = runtime_script[runtime_script.find("--phase verify-live") :]
+    verify_reset_tail = finalize_body[finalize_body.find("--phase verify-reset") :]
+    evidence_arguments = {
+        "marker": "marker",
+        "previous-generation": "previous_generation",
+        "excel-customer-id": "excel_customer_id",
+        "sales-contact-id": "sales_contact_id",
+        "board-file-id": "board_file_id",
+        "approval-file-id": "approval_file_id",
+        "expense-file-id": "expense_file_id",
+        "pending-file-id": "pending_file_id",
+        "drive-file-id": "drive_file_id",
+    }
+    for argument, variable in evidence_arguments.items():
+        evidence = f'--{argument} "${{{variable}}}"'
+        require(
+            evidence in verify_live_tail and evidence in verify_reset_tail,
+            f"acceptance evidence must reach live and reset verification: {argument}",
+        )
+    for field in (
+        "excelCustomer", "salesContact", "boardFile", "approvalFile",
+        "expenseFile", "pendingFile", "driveFile",
+    ):
+        require(
+            f"$(acceptance_field {field})" in runtime_script,
+            f"acceptance exercise output is missing upload evidence: {field}",
+        )
+
+
+def validate_acceptance_upload_flows(control_script: str) -> None:
+    upload_paths = (
+        'customer_upload_path = "/api/v1/customers/excel/upload"',
+        'contact_upload_path = "/api/v1/sales-contacts/excel/upload"',
+        'generic_upload_path = "/api/v1/files"',
+        'drive_upload_path = "/api/v1/drive/files"',
+    )
+    for upload_path in upload_paths:
+        require(upload_path in control_script, f"upload acceptance path is missing: {upload_path}")
+
+    boundary_function = python_function_source(
+        control_script, "request_acceptance_attachment_at_size_boundary"
+    )
+    require_ordered(
+        boundary_function,
+        "payload = acceptance_attachment_payload(context.marker)",
+        'payload=payload + b"x"',
+        "expected_status=413",
+        "require_error_response(oversized_error, 413, path)",
+        "payload=payload,",
+        label="30MiB upload boundary acceptance",
+    )
+    upload_function = python_function_source(control_script, "exercise_upload_acceptance")
+    excel_upload_function = python_function_source(
+        control_script, "exercise_excel_upload_acceptance"
+    )
+    pending_upload_function = python_function_source(
+        control_script, "upload_pending_acceptance_file"
+    )
+    generic_upload_function = python_function_source(
+        control_script, "exercise_generic_file_upload_acceptance"
+    )
+    drive_upload_function = python_function_source(
+        control_script, "exercise_drive_file_upload_acceptance"
+    )
+    require_ordered(
+        upload_function,
+        "exercise_excel_upload_acceptance(context)",
+        "exercise_generic_file_upload_acceptance(context)",
+        "exercise_drive_file_upload_acceptance(context)",
+        "return UploadAcceptanceResult(",
+        label="file upload surface orchestration",
+    )
+    require_ordered(
+        excel_upload_function,
+        "customer_upload_path =",
+        "contact_upload_path =",
+        "return ExcelUploadAcceptanceResult(",
+        label="Excel upload surfaces",
+    )
+    require_ordered(
+        generic_upload_function,
+        "generic_upload_path =",
+        "request_acceptance_attachment_at_size_boundary(",
+        "approval_file_id = upload_pending_acceptance_file(",
+        "expense_file_id = upload_pending_acceptance_file(",
+        "pending_file_id = upload_pending_acceptance_file(",
+        "return GenericFileUploadAcceptanceResult(",
+        label="generic PENDING upload surfaces",
+    )
+    require(
+        'context, "approval", context.staff_token, context.staff_id'
+        in generic_upload_function
+        and 'context, "expense", context.staff_token, context.staff_id'
+        in generic_upload_function
+        and 'context, "pending", context.manager_token, context.manager_id'
+        in generic_upload_function
+        and 'path = "/api/v1/files"' in pending_upload_function
+        and "request_file_upload(" in pending_upload_function
+        and 'uploaded.get("uploaderId") != expected_uploader_id'
+        in pending_upload_function,
+        "generic PENDING uploader isolation changed",
+    )
+    require(
+        'drive_upload_path = "/api/v1/drive/files"' in drive_upload_function
+        and "atomic store-and-DRIVE_FILE claim" in drive_upload_function
+        and "consume a generic PENDING upload" in drive_upload_function,
+        "Drive acceptance must preserve its atomic store-and-claim endpoint",
+    )
+
+
+def validate_acceptance_owner_flows(control_script: str) -> None:
+    board_function = python_function_source(control_script, "exercise_board_file_acceptance")
+    approval_function = python_function_source(
+        control_script, "exercise_approval_file_acceptance"
+    )
+    expense_function = python_function_source(
+        control_script, "exercise_expense_file_acceptance"
+    )
+    require_ordered(
+        board_function,
+        'board_path = "/api/v1/boards"',
+        '"attachmentFileIds": [upload.board_file_id]',
+        "foreign_pending_error = request_json(",
+        '"attachmentFileIds": [upload.pending_file_id]',
+        "expected_status=400",
+        label="board uploader isolation",
+    )
+    foreign_pending_tail = board_function[
+        board_function.find("foreign_pending_error = request_json(") :
+    ]
+    require(
+        'token=context.staff_token' in foreign_pending_tail,
+        "board foreign uploader identity changed",
+    )
+    require_ordered(
+        approval_function,
+        'create_path = "/api/v1/approvals"',
+        '"attachmentFileIds": [upload.approval_file_id]',
+        "reused_error = request_json(",
+        '"attachmentFileIds": [upload.board_file_id]',
+        "require_hidden_download(",
+        label="approval owner isolation",
+    )
+    require(
+        'f"{detail_path}/attachments/{upload.board_file_id}"' in approval_function
+        and (
+            'f"/api/v1/boards/{board.board_id}/attachments/'
+            '{upload.approval_file_id}"' in approval_function
+        ),
+        "approval cross-owner downloads changed",
+    )
+    require_ordered(
+        expense_function,
+        'create_path = "/api/v1/expenses"',
+        '"receiptFileId": upload.expense_file_id',
+        "reused_error = request_json(",
+        '"receiptFileId": upload.board_file_id',
+        "require_hidden_download(",
+        "verify_expense_approval_acceptance(",
+        label="expense owner isolation",
+    )
+    require(
+        'f"{detail_path}/receipts/{upload.board_file_id}"' in expense_function,
+        "expense cross-owner download changed",
+    )
+    require(
+        sum(
+            function.count(
+                'expected_message="업로드한 본인의 미사용 파일만 연결할 수 있습니다."'
+            )
+            for function in (board_function, approval_function, expense_function)
+        )
+        == 3,
+        "file claim rejection paths changed",
+    )
+
+
+def validate_acceptance_storage_lifecycle(acceptance_script: str) -> None:
+    for function_name in (
+        "capture_file_evidence",
+        "assert_file_evidence",
+        "verify_acceptance_file_bodies",
+        "assert_acceptance_file_rows_absent",
+    ):
+        shell_function_body(acceptance_script, function_name)
+    require(
+        (
+            "SELECT id, stored_name, DATE_FORMAT(created_at, '%Y/%m'), status, "
+            "COALESCE(owner_type, 'NULL'), COALESCE(owner_id, 0), "
+            "COALESCE(uploader_id, 0), size FROM stored_files"
+        )
+        in acceptance_script,
+        "stored file evidence query fields changed",
+    )
+    require(
+        all(
+            token in acceptance_script
+            for token in (
+                "stored_name", "status", "owner_type", "owner_id", "uploader_id",
+                "CLAIMED BOARD_POST", "CLAIMED APPROVAL_DOCUMENT",
+                "CLAIMED EXPENSE_CLAIM", "PENDING NULL 0", "CLAIMED DRIVE_FILE",
+                "DELETE_PENDING BOARD_POST", "DELETE_PENDING DRIVE_FILE",
+                "verify-acceptance-file", "assert_acceptance_file_rows_absent",
+            )
+        ),
+        "stored file lifecycle evidence contract changed",
+    )
+
+
+def validate_acceptance_script_text(acceptance_script: str, control_script: str) -> None:
+    validate_acceptance_shell_flow(acceptance_script)
+    validate_acceptance_upload_flows(control_script)
+    validate_acceptance_owner_flows(control_script)
+    validate_acceptance_storage_lifecycle(acceptance_script)
+
+
+def validate_acceptance_signal_helper(helper_script: str) -> None:
+    require_ordered(
+        helper_script,
+        "demo_acceptance_signal()",
+        'exit "$1"',
+        "demo_install_acceptance_traps()",
+        'trap "${finalize_function}" EXIT',
+        "trap 'demo_acceptance_signal 130' INT",
+        "trap 'demo_acceptance_signal 143' TERM",
+        label="acceptance signal handling",
+    )
+
+
+def validate_acceptance_script_contract(project_root: Path) -> None:
+    validate_acceptance_script_text(
+        (project_root / "scripts/demo/acceptance-demo.sh").read_text(encoding="utf-8"),
+        (project_root / "scripts/demo/demo_control.py").read_text(encoding="utf-8"),
+    )
+    validate_acceptance_signal_helper(
+        (project_root / "scripts/demo/acceptance_traps.sh").read_text(encoding="utf-8")
+    )
+
+
+def validate_upload_size_texts(
+    application_properties: str,
+    demo_properties: str,
+    caddyfile: str,
+) -> None:
+    base = properties_contract(application_properties, "application.properties")
+    demo = properties_contract(demo_properties, "application-demo.properties")
+    effective = base | demo
+    require(
+        effective.get("spring.servlet.multipart.max-file-size") == "30MB",
+        "demo multipart file limit must stay 30MB",
+    )
+    require(
+        demo.get("spring.servlet.multipart.max-request-size") == "32MB"
+        and effective.get("spring.servlet.multipart.max-request-size") == "32MB",
+        "demo multipart request limit must reserve 32MB for multipart overhead",
+    )
+    require(
+        caddyfile.count("max_size {$API_REQUEST_BODY_MAX_SIZE:32MB}") == 1,
+        "Caddy upload body limit must stay 32MB",
+    )
+
+
+def validate_upload_size_contract(project_root: Path) -> None:
+    validate_upload_size_texts(
+        (project_root / "backend/src/main/resources/application.properties").read_text(
+            encoding="utf-8"
+        ),
+        (project_root / "backend/src/main/resources/application-demo.properties").read_text(
+            encoding="utf-8"
+        ),
+        (project_root / "frontend/Caddyfile").read_text(encoding="utf-8"),
+    )
+
+
+def validate_control_image_contract(project_root: Path) -> None:
+    lib_script = (project_root / "scripts/demo/lib.sh").read_text(encoding="utf-8")
+    image_match = re.search(
+        r'^readonly DEMO_CONTROL_IMAGE="([^"]+)"$', lib_script, flags=re.MULTILINE
+    )
+    require(
+        image_match is not None and image_match.group(1) == CONTROL_IMAGE,
+        "shell and Compose control image pins diverged",
+    )
+
+
+def validate_demo_contract(project_root: Path, config: dict[str, object]) -> None:
+    root = project_root.resolve()
+    services = validate_service_contracts(config)
+    validate_service_mount_contracts(root, services)
+    validate_tool_mount_contracts(root, services)
+    validate_reset_script_contract(root)
+    validate_stored_file_mapping_queries(
+        (root / "scripts/demo/reset-demo.sh").read_text(encoding="utf-8"),
+        (root / ".github/workflows/demo-seed.yml").read_text(encoding="utf-8"),
+    )
+    validate_acceptance_script_contract(root)
+    validate_upload_size_contract(root)
+    validate_control_image_contract(root)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--compose-config", type=Path, required=True)
+    parser.add_argument("--project-root", type=Path, default=Path.cwd())
+    return parser
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+    try:
+        validate_demo_contract(
+            args.project_root,
+            load_compose_config(args.compose_config),
+        )
+    except (ContractViolation, OSError) as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    print("demo-static-contract-ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,351 @@
+name: Demo Seed Contract
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-demo-seed-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DB_NAME: simple_erp_demo
+      DB_PASSWORD: ci-app-password-not-for-deploy
+      DEMO_DB_ROOT_PASSWORD: ci-root-password-not-for-deploy
+      JWT_SECRET: Y2ktb25seS1qd3Qtc2VjcmV0LXdpdGgtYXQtbGVhc3QtNjQtYnl0ZXMtc2ltcGxlLWVycA==
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:18080
+      APP_ADMIN_LOGIN_ID: ci.demo.operator
+      APP_ADMIN_PASSWORD: ci-recovery-operator-password
+      DEMO_SEED_EXPECTED_VERSION: 2026.08.08.1
+      DEMO_COMPATIBLE_APP_VERSION: 0.0.1-demo-schema-v3
+      BACKEND_IMAGE: sha256:1111111111111111111111111111111111111111111111111111111111111111
+      WEB_IMAGE: sha256:2222222222222222222222222222222222222222222222222222222222222222
+      SITE_ADDRESS: :80
+      DEMO_HTTP_BIND: 127.0.0.1
+      DEMO_HTTP_PORT: "18080"
+      DEMO_HTTPS_BIND: 127.0.0.1
+      DEMO_HTTPS_PORT: "18443"
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+
+      - name: Verify deterministic seed bundle
+        run: |
+          python demo/tools/generate_seed.py --check
+          python scripts/demo/demo_control.py validate-bundle \
+            --seed-dir demo/seed \
+            --expected-app-version "$DEMO_COMPATIBLE_APP_VERSION"
+          python scripts/demo/test_demo_control.py
+          python scripts/demo/test_verify_demo_contract.py
+
+      - name: Validate shell and Compose contracts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          for script in scripts/demo/*.sh; do
+            bash -n "$script"
+          done
+          shellcheck -x scripts/demo/*.sh
+          source scripts/demo/lib.sh
+          demo_is_immutable_image_reference \
+            'sha256:1111111111111111111111111111111111111111111111111111111111111111'
+          demo_is_immutable_image_reference \
+            'registry.example/demo/backend@sha256:2222222222222222222222222222222222222222222222222222222222222222'
+          if demo_is_immutable_image_reference 'registry.example/demo/backend:latest'; then
+            exit 1
+          fi
+          if demo_is_immutable_image_reference 'registry.example/demo/backend:sha-deadbeef'; then
+            exit 1
+          fi
+          if ! demo_is_immutable_image_reference \
+            'registry.example/demo/backend:stable@sha256:3333333333333333333333333333333333333333333333333333333333333333'; then
+            exit 1
+          fi
+          grep -F '/actuator/health/readiness' scripts/demo/reset-demo.sh
+          grep -F '"/actuator/health/readiness"' scripts/demo/demo_control.py
+          grep -F '/actuator/health/readiness' backend/Dockerfile
+          grep -Fx 'management.endpoint.health.probes.enabled=true' \
+            backend/src/main/resources/application.properties
+          grep -Fx 'management.endpoint.health.group.readiness.include=readinessState,db' \
+            backend/src/main/resources/application.properties
+          grep -F -- '--phase pre-reset' scripts/demo/reset-demo.sh
+          grep -F -- '--phase post-success' scripts/demo/reset-demo.sh
+          grep -F 'pre_prune_completed="false"' scripts/demo/reset-demo.sh
+          grep -F 'write-control-plane-failure-log' scripts/demo/reset-demo.sh
+          reset_timers=(ops/systemd/*reset*.timer)
+          [[ "${#reset_timers[@]}" == 1 && -f "${reset_timers[0]}" ]]
+          grep -Fx 'OnCalendar=*-*-* 00/6:00:00 Asia/Seoul' \
+            ops/systemd/simple-erp-demo-reset.timer
+          if grep -Eq '^ConditionPath' ops/systemd/simple-erp-demo-reset.service; then
+            echo "required reset prerequisites must fail loudly, not skip the unit" >&2
+            exit 1
+          fi
+          grep -Fx 'ExecStartPre=/usr/bin/test -d /opt/simple-erp-demo' \
+            ops/systemd/simple-erp-demo-reset.service
+          grep -Fx 'ExecStartPre=/usr/bin/test -f /opt/simple-erp-demo/.env.demo' \
+            ops/systemd/simple-erp-demo-reset.service
+          grep -Fx 'ExecStartPre=/usr/bin/test -f /etc/simple-erp-demo/reset.env' \
+            ops/systemd/simple-erp-demo-reset.service
+          grep -F '@demoStatus path /api/v1/demo/status' frontend/Caddyfile
+          grep -F 'Cache-Control "no-store, max-age=0"' frontend/Caddyfile
+          grep -F "max_size {\$API_REQUEST_BODY_MAX_SIZE:32MB}" frontend/Caddyfile
+          if grep -Eq '^[[:space:]]*log[[:space:]]*\{' frontend/Caddyfile; then
+            echo "Caddy access log must stay disabled for the demo environment" >&2
+            exit 1
+          fi
+          cp .env.demo.example .env.demo
+          docker compose \
+            --project-name simple-erp-demo \
+            --env-file .env.demo \
+            -f compose.yml -f compose.demo.yml --profile tools config --format json \
+            > "$RUNNER_TEMP/demo-compose.json"
+          python scripts/demo/verify_demo_contract.py \
+            --compose-config "$RUNNER_TEMP/demo-compose.json" \
+            --project-root "$PWD"
+
+      - name: Import and verify on MariaDB 11.8.6
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          keys = (
+              "DB_NAME",
+              "DB_PASSWORD",
+              "JWT_SECRET",
+              "CORS_ALLOWED_ORIGINS",
+              "APP_ADMIN_LOGIN_ID",
+              "APP_ADMIN_PASSWORD",
+              "DEMO_SEED_EXPECTED_VERSION",
+              "DEMO_COMPATIBLE_APP_VERSION",
+              "BACKEND_IMAGE",
+              "WEB_IMAGE",
+              "SITE_ADDRESS",
+          )
+          values = []
+          for key in keys:
+              value = os.environ[key]
+              if "\n" in value or "\r" in value:
+                  raise ValueError(f"CI environment contains a newline: {key}")
+              values.append(f"{key}={value}")
+          Path(".env.demo").write_text("\n".join(values) + "\n", encoding="utf-8")
+          PY
+          mkdir -p runtime/state runtime/work/ci runtime/logs
+          docker compose \
+            --project-name simple-erp-demo \
+            --env-file .env.demo \
+            -f compose.yml -f compose.demo.yml up -d db
+
+          for attempt in $(seq 1 60); do
+            container="$(docker compose --project-name simple-erp-demo --env-file .env.demo -f compose.yml -f compose.demo.yml ps -q db)"
+            if [[ -n "$container" ]] && [[ "$(docker inspect --format '{{.State.Health.Status}}' "$container")" == healthy ]]; then
+              break
+            fi
+            [[ "$attempt" != 60 ]] || { docker logs "$container"; exit 1; }
+            sleep 2
+          done
+
+          compose=(docker compose --project-name simple-erp-demo --env-file .env.demo -f compose.yml -f compose.demo.yml)
+          root_db() {
+            "${compose[@]}" exec -T -e "MYSQL_PWD=$DEMO_DB_ROOT_PASSWORD" db mariadb -uroot "$@"
+          }
+          restore_seed() {
+            root_db -e "DROP DATABASE IF EXISTS simple_erp_demo; CREATE DATABASE simple_erp_demo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+            root_db simple_erp_demo < demo/seed/schema.sql
+            root_db simple_erp_demo < demo/seed/seed-data.sql
+          }
+          seed_violations() {
+            root_db --batch --raw --skip-column-names simple_erp_demo < demo/seed/verify-seed.sql
+          }
+          run_seed_verifier() {
+            DEMO_TEST_MODE=true DEMO_TEST_PROJECT_ROOT="$PWD" \
+              bash scripts/demo/verify-seed.sh --database simple_erp_demo
+          }
+          assert_seed_valid() {
+            local verification_output
+            if ! verification_output="$(run_seed_verifier 2>&1)"; then
+              printf '%s\n' "$verification_output" >&2
+              exit 1
+            fi
+          }
+          assert_mutation_group_rejected() {
+            local label="$1"
+            local mutation="$2"
+            shift 2
+            local expected_check verification_output violations
+            root_db simple_erp_demo -e "$mutation"
+            violations="$(seed_violations)"
+            if [[ -z "$violations" ]]; then
+              echo "verify-seed accepted mutation group: $label" >&2
+              exit 1
+            fi
+            for expected_check in "$@"; do
+              if ! grep -Fq "$expected_check"$'\t' <<< "$violations"; then
+                echo "expected check missing for mutation group $label: $expected_check" >&2
+                printf '%s\n' "$violations" >&2
+                exit 1
+              fi
+            done
+            if verification_output="$(run_seed_verifier 2>&1)"; then
+              echo "verify-seed.sh returned zero for mutation group: $label" >&2
+              exit 1
+            fi
+            if ! grep -Fq 'seed verification returned violation rows for simple_erp_demo' \
+              <<< "$verification_output"; then
+              echo "verify-seed.sh failed for an unexpected reason: $label" >&2
+              printf '%s\n' "$verification_output" >&2
+              exit 1
+            fi
+            echo "mutation-group-rejected: $label"
+            restore_seed
+            assert_seed_valid
+          }
+          assert_mutation_group_accepted() {
+            local label="$1"
+            local mutation="$2"
+            local violations
+            root_db simple_erp_demo -e "$mutation"
+            violations="$(seed_violations)"
+            if [[ -n "$violations" ]]; then
+              echo "verify-seed rejected valid mutation group: $label" >&2
+              printf '%s\n' "$violations" >&2
+              exit 1
+            fi
+            assert_seed_valid
+            echo "valid-mutation-group-accepted: $label"
+            restore_seed
+            assert_seed_valid
+          }
+
+          restore_seed
+          assert_seed_valid
+
+          IFS=$'\t' read -r manifest_generated_at manifest_source_epoch < <(
+            python -c 'import json; m=json.load(open("demo/seed/manifest.json", encoding="utf-8")); print(m["generatedAt"], m["sourceDateEpoch"], sep="\t")'
+          )
+          db_manifest_contract="$(root_db --batch --raw --skip-column-names simple_erp_demo -e \
+            "SET time_zone='+00:00';
+             SELECT DATE_FORMAT(generated_at, '%Y-%m-%dT%H:%i:%s+09:00'),
+                    CAST(UNIX_TIMESTAMP(CONVERT_TZ(generated_at, '+09:00', '+00:00')) AS UNSIGNED)
+             FROM demo_seed_manifest WHERE id=1")"
+          IFS=$'\t' read -r db_generated_at db_source_epoch <<< "$db_manifest_contract"
+          [[ "$db_generated_at" == "$manifest_generated_at" ]]
+          [[ "$db_source_epoch" == "$manifest_source_epoch" ]]
+
+          assert_mutation_group_rejected core-contracts \
+            "UPDATE employees SET status='BROKEN_ENUM' WHERE id=1;
+             UPDATE employees SET password='not-a-bcrypt-hash' WHERE login_id='demo.manager';
+             UPDATE role_menus SET can_write=1 WHERE role_id=3 AND menu_code='CUSTOMERS';
+             DELETE FROM code_sequences WHERE target='CUSTOMER' AND scope_key='GLOBAL';
+             UPDATE service_expenses SET amount=-1 WHERE id=1;
+             INSERT INTO acquisition_sources (name, type) VALUES ('CI extra source', 'OTHER');" \
+            enum.employee.status demo.manager role.permission_mismatch sequence.missing \
+            service_expense.date_state count.acquisition_sources
+
+          assert_mutation_group_rejected structural-and-privacy-contracts \
+            "UPDATE contracts SET contract_no=CONCAT('CT',YEAR(contract_date),'-999') WHERE id=1;
+             UPDATE departments SET parent_id=2 WHERE id=1;
+             UPDATE drive_folders SET parent_id=2 WHERE id=1;
+             UPDATE sales_activities SET activity_date='2000-01-01 09:00:00' WHERE id=1;
+             UPDATE sales_assignments SET is_primary=0 WHERE id=1;
+             UPDATE approval_steps SET document_id=18,step_order=2,status='APPROVED',decided_at=DATE_ADD(created_at,INTERVAL 2 HOUR) WHERE document_id=17;
+             UPDATE approval_documents SET current_step_order=2 WHERE id=18;
+             UPDATE expense_items SET claim_id=2,receipt_file_id=20 WHERE claim_id=1;
+             UPDATE expense_claims SET total_amount=(SELECT SUM(amount) FROM expense_items WHERE claim_id=2) WHERE id=2;
+             UPDATE employees SET email='real-person@invalid.test' WHERE id=1;
+             UPDATE customers SET email='real@invalid.test',website='https://invalid.test',phone='02-1234-5678',representative='실명' WHERE id=1;
+             UPDATE audit_logs SET actor_login_id='someone.else' WHERE id=1;
+             UPDATE stored_files SET content_type='text/html',original_name='private-document.html',size=size+1 WHERE id=1;" \
+            sequence.value department.cycle drive_folder.cycle activity.contact_customer \
+            assignment.primary approval.steps expense.total privacy.employee \
+            privacy.customer_identity privacy.audit_actor file.metadata
+
+          assert_mutation_group_accepted dto-and-weekday-contracts \
+            "SET @ci_today=DATE(UTC_TIMESTAMP()+INTERVAL 9 HOUR);
+             SET @ci_start=DATE_ADD(MAKEDATE(YEAR(@ci_today),1),INTERVAL MOD(7-WEEKDAY(MAKEDATE(YEAR(@ci_today),1)),7) DAY);
+             UPDATE service_expenses SET amount=0 WHERE id=1;
+             UPDATE contract_payments SET planned_amount=0,invoice_amount=0,paid_amount=0 WHERE id=25;
+             UPDATE leave_requests SET days=2.0,start_date=@ci_start,end_date=DATE_ADD(@ci_start,INTERVAL 1 DAY),created_at=TIMESTAMP(DATE_SUB(@ci_start,INTERVAL 10 DAY),'09:00:00') WHERE id=6;
+             UPDATE approval_documents SET created_at=TIMESTAMP(DATE_SUB(@ci_start,INTERVAL 10 DAY),'09:00:00') WHERE id=26;
+             UPDATE approval_steps SET created_at=TIMESTAMP(DATE_SUB(@ci_start,INTERVAL 10 DAY),'09:00:00'),decided_at=TIMESTAMP(DATE_SUB(@ci_start,INTERVAL 10 DAY),'10:00:00') WHERE document_id=26;
+             UPDATE leave_balances SET used_days=2.0 WHERE employee_id=7 AND year=YEAR(@ci_today);"
+
+          count="$("${compose[@]}" exec -T -e "MYSQL_PWD=$DB_PASSWORD" db mariadb --batch --raw --skip-column-names -usimple_erp_app simple_erp_demo -e 'SELECT COUNT(*) FROM employees')"
+          [[ "$count" == 22 ]]
+          if "${compose[@]}" exec -T -e "MYSQL_PWD=$DB_PASSWORD" db mariadb -usimple_erp_app simple_erp_demo -e 'CREATE TABLE privilege_escape(id int)'; then
+            echo "app user unexpectedly has DDL privilege" >&2
+            exit 1
+          fi
+
+          "${compose[@]}" exec -T -e "MYSQL_PWD=$DEMO_DB_ROOT_PASSWORD" db mariadb --batch --raw --skip-column-names -uroot simple_erp_demo -e \
+            "SELECT id, stored_name, original_name, content_type, size,
+                    DATE_FORMAT(created_at, '%Y-%m-%d'),
+                    DATE_FORMAT((SELECT reset_at FROM demo_seed_manifest WHERE id=1), '%Y-%m-%d'),
+                    status, owner_type, owner_id, uploader_id
+             FROM stored_files ORDER BY id" \
+            > runtime/work/ci/stored-files.tsv
+          generation=00000000-0000-4000-8000-000000000001
+          "${compose[@]}" run --rm --no-deps -T demo-tool stage-files \
+            --seed-dir /seed --files-root /files \
+            --mapping /work/ci/stored-files.tsv --generation "$generation" \
+            --expected-app-version "$DEMO_COMPATIBLE_APP_VERSION"
+          "${compose[@]}" run --rm --no-deps -T demo-tool promote-files \
+            --seed-dir /seed --files-root /files \
+            --mapping /work/ci/stored-files.tsv --generation "$generation" \
+            --expected-app-version "$DEMO_COMPATIBLE_APP_VERSION"
+          "${compose[@]}" run --rm --no-deps -T demo-tool verify-current-files \
+            --seed-dir /seed --files-root /files \
+            --mapping /work/ci/stored-files.tsv --generation "$generation" \
+            --expected-app-version "$DEMO_COMPATIBLE_APP_VERSION"
+
+          "${compose[@]}" run --rm --no-deps -T demo-tool write-state \
+            --seed-dir /seed --state-dir /state \
+            --state READY --candidate "$generation" \
+            --next-reset-at 2099-01-01T00:00:00+09:00 \
+            --expected-app-version "$DEMO_COMPATIBLE_APP_VERSION"
+          [[ "$(stat -c '%a' runtime/state/status.json)" == 644 ]]
+          python - <<'PY'
+          import datetime as dt
+          import json
+          from pathlib import Path
+
+          state = json.loads(Path("runtime/state/status.json").read_text(encoding="utf-8"))["data"]
+          assert state["state"] == "READY"
+          assert state["writeLocked"] is False
+          assert len(state["publicAccounts"]) == 2
+          assert dt.datetime.fromisoformat(state["stateChangedAt"]).tzinfo is not None
+          PY
+
+          "${compose[@]}" run --rm --no-deps -T demo-tool write-failed-state \
+            --state-dir /state --candidate 00000000-0000-4000-8000-000000000099 \
+            --next-reset-at 2099-01-01T00:00:00+09:00
+          python - <<'PY'
+          import datetime as dt
+          import json
+          from pathlib import Path
+
+          state = json.loads(Path("runtime/state/status.json").read_text(encoding="utf-8"))["data"]
+          assert state["state"] == "FAILED"
+          assert state["writeLocked"] is True
+          assert len(state["publicAccounts"]) == 2
+          assert dt.datetime.fromisoformat(state["stateChangedAt"]).tzinfo is not None
+          PY
+
+      - name: Stop isolated CI services
+        if: always()
+        run: |
+          docker compose \
+            --project-name simple-erp-demo \
+            --env-file .env.demo \
+            -f compose.yml -f compose.demo.yml down --remove-orphans || true
