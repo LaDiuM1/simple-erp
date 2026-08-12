@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 from copy import deepcopy
+import json
 from pathlib import Path
 import sys
 import unittest
@@ -62,6 +63,15 @@ def service_mount_fixture() -> dict[str, dict[str, object]]:
             ]
         },
     }
+
+
+def build_workflow_jobs() -> tuple[str, str]:
+    workflow = (ROOT / ".github/workflows/build-and-push.yml").read_text(
+        encoding="utf-8"
+    )
+    verify_jobs, publish_job = workflow.split("\n  publish:\n", maxsplit=1)
+    live_job = verify_jobs.split("\n  verify-live-demo:\n", maxsplit=1)[1]
+    return live_job, publish_job
 
 
 class StaticContractVerifierTest(unittest.TestCase):
@@ -512,6 +522,169 @@ class StaticContractVerifierTest(unittest.TestCase):
             "evidence query fields",
         ):
             verifier.validate_acceptance_script_text(missing_uploader_field, control)
+
+    def test_tested_image_pair_contract_accepts_current_workflow(self) -> None:
+        live_job, publish_job = build_workflow_jobs()
+
+        verifier.validate_tested_image_pair_flow(live_job, publish_job)
+
+    def test_build_workflow_runs_for_master_and_demo_branch_pushes(self) -> None:
+        workflow = (ROOT / ".github/workflows/build-and-push.yml").read_text(
+            encoding="utf-8"
+        )
+
+        verifier.validate_build_workflow_trigger(workflow)
+        for invalid in (
+            workflow.replace("branches: [master, demo]", "branches: [master]", 1),
+            workflow.replace("branches: [master, demo]", "branches: [master, feat/demo]", 1),
+            workflow.replace("branches: [master, demo]", "branches: ['**']", 1),
+        ):
+            with self.assertRaisesRegex(
+                verifier.ContractViolation,
+                "master and demo pushes",
+            ):
+                verifier.validate_build_workflow_trigger(invalid)
+
+    def test_build_workflow_rejects_floating_action_references(self) -> None:
+        workflow = (ROOT / ".github/workflows/build-and-push.yml").read_text(
+            encoding="utf-8"
+        )
+
+        verifier.validate_action_pins(workflow)
+        floating = workflow.replace(
+            f"actions/checkout@{verifier.ACTION_PINS['actions/checkout']}",
+            "actions/checkout@v4",
+            1,
+        )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "not pinned to a full commit",
+        ):
+            verifier.validate_action_pins(floating)
+
+        wrong_commit = workflow.replace(
+            verifier.ACTION_PINS["actions/checkout"],
+            "0" * 40,
+            1,
+        )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "not pinned to the approved commit",
+        ):
+            verifier.validate_action_pins(wrong_commit)
+
+    def test_all_workflows_pin_external_actions_to_full_commits(self) -> None:
+        verifier.validate_all_workflow_action_pins(ROOT)
+
+        demo_seed = (ROOT / ".github/workflows/demo-seed.yml").read_text(
+            encoding="utf-8"
+        )
+        floating = demo_seed.replace(
+            f"actions/setup-python@{verifier.ACTION_PINS['actions/setup-python']}",
+            "actions/setup-python@v5",
+            1,
+        )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "not pinned to a full commit",
+        ):
+            verifier.validate_action_pins(floating)
+
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "not pinned to a full commit",
+        ):
+            verifier.validate_action_pins("steps:\n  - uses: ./local-action")
+
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "local workflow reference is invalid",
+        ):
+            verifier.validate_action_pins(
+                "steps:\n  - uses: ./.github/workflows/../local-action.yml"
+            )
+
+    def test_image_platform_filter_pins_single_and_map_shapes(self) -> None:
+        filter_text = (
+            ROOT / "scripts/demo/require-linux-arm64.jq"
+        ).read_text(encoding="utf-8")
+        fixture = json.loads(
+            (ROOT / "scripts/demo/fixtures/imagetools-image-map.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        single_fixture = json.loads(
+            (ROOT / "scripts/demo/fixtures/imagetools-image-single.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(
+            " ".join(filter_text.split()),
+            (
+                'if type != "object" then empty '
+                'elif has("os") or has("architecture") then '
+                'select(.os == "linux" and .architecture == "arm64") '
+                'else .["linux/arm64"]? | select(type == "object" and '
+                '.os == "linux" and .architecture == "arm64") end'
+            ),
+        )
+        self.assertEqual(fixture["linux/arm64"]["os"], "linux")
+        self.assertEqual(fixture["linux/arm64"]["architecture"], "arm64")
+        self.assertEqual(single_fixture["os"], "linux")
+        self.assertEqual(single_fixture["architecture"], "arm64")
+
+        live_job, publish_job = build_workflow_jobs()
+        wrong_shape = publish_job.replace("{{json .Image}}", "{{json .Manifest}}", 1)
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "registry digests",
+        ):
+            verifier.validate_tested_image_pair_flow(live_job, wrong_shape)
+
+    def test_tested_image_pair_contract_rejects_different_tag_source(self) -> None:
+        live_job, publish_job = build_workflow_jobs()
+        publish_job = publish_job.replace(
+            "docker tag simple-erp-backend:acceptance",
+            "docker pull untested-backend:latest\n"
+            "          docker tag untested-backend:latest",
+        )
+
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "only the exact tested image pair",
+        ):
+            verifier.validate_tested_image_pair_flow(live_job, publish_job)
+
+    def test_tested_image_pair_contract_rejects_later_overwrite_step(self) -> None:
+        live_job, publish_job = build_workflow_jobs()
+        publish_job += """
+      - name: Overwrite published pair
+        run: |
+          docker pull untested-backend:latest
+          docker tag untested-backend:latest "${backend}"
+          docker push "${backend}"
+"""
+
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "publish step allowlist",
+        ):
+            verifier.validate_tested_image_pair_flow(live_job, publish_job)
+
+    def test_tested_image_pair_contract_rejects_artifact_name_mismatch(self) -> None:
+        live_job, publish_job = build_workflow_jobs()
+        publish_job = publish_job.replace(
+            verifier.TESTED_ARTIFACT_NAME,
+            "untested-demo-images-${{ github.sha }}",
+        )
+
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "download contract",
+        ):
+            verifier.validate_tested_image_pair_flow(live_job, publish_job)
+
 
 if __name__ == "__main__":
     unittest.main()

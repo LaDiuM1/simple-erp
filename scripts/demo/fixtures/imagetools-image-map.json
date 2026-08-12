@@ -1,0 +1,1 @@
+{  "linux/amd64": {    "architecture": "amd64",    "os": "linux"  },  "linux/arm64": {    "architecture": "arm64",    "os": "linux",    "variant": "v8"  }}

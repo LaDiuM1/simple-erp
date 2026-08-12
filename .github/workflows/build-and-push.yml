@@ -2,65 +2,248 @@ name: Build and Push
 
 on:
   push:
-    branches: [master]
+    branches: [master, demo]
   pull_request:
 
 permissions:
   contents: read
-  packages: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    name: build (${{ matrix.component.name }})
+  verify-demo-contract:
+    name: verify demo contract
+    uses: ./.github/workflows/demo-seed.yml
+
+  verify-backend:
+    name: verify backend
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        component:
-          - name: backend
-            context: backend
-            dockerfile: backend/Dockerfile
-            image: simple-erp-backend
-          - name: web
-            context: frontend
-            dockerfile: frontend/Dockerfile
-            image: simple-erp-web
-
+    defaults:
+      run:
+        working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Lowercase repo owner
-        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "25"
 
-      - uses: docker/setup-qemu-action@v3
+      - name: Run backend tests
+        run: |
+          chmod +x gradlew
+          ./gradlew test --no-daemon
+
+  verify-web:
+    name: verify web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+  verify-live-demo:
+    name: verify live demo
+    needs: [verify-demo-contract, verify-backend, verify-web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Verify image platform filter
+        run: |
+          bash scripts/demo/test-image-platform-filter.sh
+
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
         with:
           platforms: arm64
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build backend acceptance image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          platforms: linux/arm64
+          pull: true
+          load: true
+          tags: simple-erp-backend:acceptance
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Build web acceptance image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          platforms: linux/arm64
+          pull: true
+          load: true
+          tags: simple-erp-web:acceptance
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+      - name: Configure isolated demo
+        run: |
+          set -euo pipefail
+          root_password="$(openssl rand -hex 24)"
+          app_password="$(openssl rand -hex 24)"
+          jwt_secret="$(openssl rand -hex 32)"
+          operator_password="$(openssl rand -hex 24)"
+          backend_image="$(docker image inspect simple-erp-backend:acceptance --format '{{.Id}}')"
+          web_image="$(docker image inspect simple-erp-web:acceptance --format '{{.Id}}')"
+          echo "::add-mask::${root_password}"
+          echo "::add-mask::${app_password}"
+          echo "::add-mask::${jwt_secret}"
+          echo "::add-mask::${operator_password}"
+          {
+            echo "DEMO_DB_ROOT_PASSWORD=${root_password}"
+            echo "DEMO_TEST_MODE=true"
+            echo "DEMO_TEST_PROJECT_ROOT=${GITHUB_WORKSPACE}"
+            echo "DEMO_SMOKE_TIMEOUT_SECONDS=420"
+          } >> "$GITHUB_ENV"
+          cat > .env.demo <<EOF
+          DB_NAME=simple_erp_demo
+          DB_PASSWORD=${app_password}
+          JWT_SECRET=${jwt_secret}
+          CORS_ALLOWED_ORIGINS=http://127.0.0.1:18080
+          APP_ADMIN_LOGIN_ID=ci.demo.operator
+          APP_ADMIN_PASSWORD=${operator_password}
+          DEMO_SEED_EXPECTED_VERSION=2026.08.08.1
+          DEMO_COMPATIBLE_APP_VERSION=0.0.1-demo-schema-v3
+          BACKEND_IMAGE=${backend_image}
+          WEB_IMAGE=${web_image}
+          SITE_ADDRESS=:80
+          DEMO_HTTP_BIND=127.0.0.1
+          DEMO_HTTP_PORT=18080
+          DEMO_HTTPS_BIND=127.0.0.1
+          DEMO_HTTPS_PORT=18443
+          EOF
+          chmod 600 .env.demo
+
+      - name: Run reset-safe live acceptance
+        run: bash scripts/demo/acceptance-demo.sh
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+
+      - name: Run live browser contract
+        working-directory: frontend
+        env:
+          DEMO_E2E_BASE_URL: http://127.0.0.1:18080
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+
+      - name: Export tested images
+        if: github.event_name == 'push'
+        run: |
+          docker save simple-erp-backend:acceptance | gzip -1 > /tmp/simple-erp-backend.tar.gz
+          docker save simple-erp-web:acceptance | gzip -1 > /tmp/simple-erp-web.tar.gz
+
+      - name: Upload tested images
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tested-demo-images-${{ github.sha }}
+          path: |
+            /tmp/simple-erp-backend.tar.gz
+            /tmp/simple-erp-web.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Clean isolated demo
+        if: always()
+        run: |
+          docker compose --project-name simple-erp-demo --env-file .env.demo \
+            -f compose.yml -f compose.demo.yml down --volumes --remove-orphans || true
+
+  publish:
+    name: publish tested image pair
+    if: github.event_name == 'push'
+    needs: [verify-live-demo]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Download tested images
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: tested-demo-images-${{ github.sha }}
+          path: /tmp/tested-demo-images
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Lowercase repo owner
+        run: |
+          echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - name: Login to GHCR
-        if: github.event_name == 'push'
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ env.OWNER }}/${{ matrix.component.image }}
-          tags: |
-            type=sha,format=long
-            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Load and publish exact tested pair
+        run: |
+          set -euo pipefail
+          gzip -dc /tmp/tested-demo-images/simple-erp-backend.tar.gz | docker load
+          gzip -dc /tmp/tested-demo-images/simple-erp-web.tar.gz | docker load
+          tag="sha-${GITHUB_SHA}"
+          backend_repository="ghcr.io/${OWNER}/simple-erp-backend"
+          web_repository="ghcr.io/${OWNER}/simple-erp-web"
+          backend="${backend_repository}:${tag}"
+          web="${web_repository}:${tag}"
+          docker tag simple-erp-backend:acceptance "${backend}"
+          docker tag simple-erp-web:acceptance "${web}"
+          docker push "${backend}"
+          docker push "${web}"
+          docker buildx imagetools inspect "${backend}" --format '{{json .Image}}' | jq -e -f scripts/demo/require-linux-arm64.jq > /dev/null
+          docker buildx imagetools inspect "${web}" --format '{{json .Image}}' | jq -e -f scripts/demo/require-linux-arm64.jq > /dev/null
+          backend_digest="$(docker buildx imagetools inspect "${backend}" --format '{{json .Manifest}}' | jq -er '.digest | select(test("^sha256:[0-9a-f]{64}$"))')"
+          web_digest="$(docker buildx imagetools inspect "${web}" --format '{{json .Manifest}}' | jq -er '.digest | select(test("^sha256:[0-9a-f]{64}$"))')"
+          backend_ref="${backend_repository}@${backend_digest}"
+          web_ref="${web_repository}@${web_digest}"
+          jq -n \
+            --arg commit "${GITHUB_SHA}" \
+            --arg platform "linux/arm64" \
+            --arg backend "${backend_ref}" \
+            --arg web "${web_ref}" \
+            '{commit: $commit, platform: $platform, backend: $backend, web: $web}' \
+            > image-digests.json
+          {
+            echo "### Tested image pair"
+            echo "- Backend: \`${backend_ref}\`"
+            echo "- Web: \`${web_ref}\`"
+            echo "- Platform: \`linux/arm64\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
-      - uses: docker/build-push-action@v6
+      - name: Upload image digest handoff
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          context: ${{ matrix.component.context }}
-          file: ${{ matrix.component.dockerfile }}
-          platforms: linux/arm64
-          push: ${{ github.event_name == 'push' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.component.name }}
-          cache-to: type=gha,scope=${{ matrix.component.name }},mode=max
+          name: demo-image-digests-${{ github.sha }}
+          path: image-digests.json
+          if-no-files-found: error
+          retention-days: 30

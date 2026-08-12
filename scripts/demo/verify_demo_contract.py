@@ -16,6 +16,25 @@ CONTROL_IMAGE = (
     "python:3.13-alpine@sha256:"
     "399babc8b49529dabfd9c922f2b5eea81d611e4512e3ed250d75bd2e7683f4b0"
 )
+TESTED_BACKEND_IMAGE = "simple-erp-backend:acceptance"
+TESTED_WEB_IMAGE = "simple-erp-web:acceptance"
+TESTED_BACKEND_ARCHIVE = "/tmp/simple-erp-backend.tar.gz"
+TESTED_WEB_ARCHIVE = "/tmp/simple-erp-web.tar.gz"
+DOWNLOADED_ARTIFACT_DIR = "/tmp/tested-demo-images"
+TESTED_ARTIFACT_NAME = "tested-demo-images-${{ github.sha }}"
+DIGEST_ARTIFACT_NAME = "demo-image-digests-${{ github.sha }}"
+ACTION_PINS = {
+    "actions/checkout": "11d5960a326750d5838078e36cf38b85af677262",
+    "actions/setup-java": "b6effb05e454b25005698d916606bdc6ffcbf961",
+    "actions/setup-node": "49933ea5288caeca8642d1e84afbd3f7d6820020",
+    "actions/setup-python": "a26af69be951a213d495a4c3e4e4022e16d87065",
+    "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+    "actions/download-artifact": "d3f86a106a0bac45b974a628896c90dbdf5c8093",
+    "docker/setup-qemu-action": "c7c53464625b32c7a7e944ae62b3e17d2b600130",
+    "docker/setup-buildx-action": "8d2750c68a42422c14e847fe6c8ac0403b4cbd6f",
+    "docker/build-push-action": "10e90e3645eae34f1e60eeb005ba3a3d33f178e8",
+    "docker/login-action": "c94ce9fb468520275223c153574b00df6fe4bcc9",
+}
 DEMO_SERVICE_NAMES = {"db", "backend", "web", "demo-tool", "demo-tool-smoke"}
 EXPECTED_LOGGING = {
     "driver": "local",
@@ -355,6 +374,233 @@ def properties_contract(text: str, label: str) -> dict[str, str]:
         require(key not in values, f"{label} contains duplicate property: {key}")
         values[key] = value.strip()
     return values
+
+
+def workflow_steps(job: str) -> list[str]:
+    starts = [match.start() for match in re.finditer(r"(?m)^      - ", job)]
+    return [
+        job[start : starts[index + 1] if index + 1 < len(starts) else len(job)].rstrip()
+        for index, start in enumerate(starts)
+    ]
+
+
+def workflow_step_identities(job: str, label: str) -> list[str]:
+    identities: list[str] = []
+    for step in workflow_steps(job):
+        first_line = step.splitlines()[0]
+        if first_line.startswith("      - name: "):
+            identities.append(first_line.removeprefix("      - name: "))
+        elif first_line.startswith("      - uses: "):
+            reference = first_line.removeprefix("      - uses: ").split(" #", 1)[0]
+            identities.append(f"uses:{reference}")
+        else:
+            fail(f"{label} contains an unnamed or unsupported step")
+    return identities
+
+
+def workflow_named_step(job: str, name: str) -> str:
+    marker = f"      - name: {name}"
+    matches = [step for step in workflow_steps(job) if step.splitlines()[0] == marker]
+    require(len(matches) == 1, f"workflow step must appear exactly once: {name}")
+    return matches[0]
+
+
+def workflow_run_commands(step: str, name: str) -> list[str]:
+    marker = "\n        run: |\n"
+    start = step.find(marker)
+    require(start >= 0, f"workflow step has no run block: {name}")
+    body = step[start + len(marker) :]
+    commands: list[str] = []
+    for line in body.splitlines():
+        require(line.startswith("          "), f"workflow run indentation changed: {name}")
+        if command := line[10:].strip():
+            commands.append(command)
+    return commands
+
+
+def validate_tested_image_pair_flow(live_job: str, publish_job: str) -> None:
+    require(
+        workflow_step_identities(live_job, "live verification job")
+        == [
+            f"uses:actions/checkout@{ACTION_PINS['actions/checkout']}",
+            "Verify image platform filter",
+            f"uses:docker/setup-qemu-action@{ACTION_PINS['docker/setup-qemu-action']}",
+            f"uses:docker/setup-buildx-action@{ACTION_PINS['docker/setup-buildx-action']}",
+            "Build backend acceptance image",
+            "Build web acceptance image",
+            "Configure isolated demo",
+            "Run reset-safe live acceptance",
+            f"uses:actions/setup-node@{ACTION_PINS['actions/setup-node']}",
+            "Run live browser contract",
+            "Export tested images",
+            "Upload tested images",
+            "Clean isolated demo",
+        ],
+        "live verification step allowlist or ordering changed",
+    )
+    require(
+        all(
+            command not in live_job
+            for command in ("docker pull ", "docker load", "docker tag ", "docker build ")
+        ),
+        "live verification gained an unapproved image mutation command",
+    )
+    require(
+        workflow_step_identities(publish_job, "publish job")
+        == [
+            f"uses:actions/checkout@{ACTION_PINS['actions/checkout']}",
+            "Download tested images",
+            f"uses:docker/setup-buildx-action@{ACTION_PINS['docker/setup-buildx-action']}",
+            "Lowercase repo owner",
+            "Login to GHCR",
+            "Load and publish exact tested pair",
+            "Upload image digest handoff",
+        ],
+        "publish step allowlist or ordering changed",
+    )
+
+    export_step = workflow_named_step(live_job, "Export tested images")
+    export_commands = workflow_run_commands(export_step, "Export tested images")
+    require(
+        export_commands
+        == [
+            f"docker save {TESTED_BACKEND_IMAGE} | gzip -1 > {TESTED_BACKEND_ARCHIVE}",
+            f"docker save {TESTED_WEB_IMAGE} | gzip -1 > {TESTED_WEB_ARCHIVE}",
+        ],
+        "tested image export commands changed",
+    )
+
+    upload_step = workflow_named_step(live_job, "Upload tested images")
+    require(
+        f"uses: actions/upload-artifact@{ACTION_PINS['actions/upload-artifact']}" in upload_step,
+        "tested image upload action changed",
+    )
+    require(
+        "if: github.event_name == 'push'" in upload_step
+        and f"name: {TESTED_ARTIFACT_NAME}" in upload_step
+        and upload_step.count(TESTED_ARTIFACT_NAME) == 1,
+        "tested image upload identity or push gate changed",
+    )
+    require(
+        f"path: |\n            {TESTED_BACKEND_ARCHIVE}\n"
+        f"            {TESTED_WEB_ARCHIVE}" in upload_step
+        and upload_step.count(".tar.gz") == 2,
+        "tested image upload pair changed",
+    )
+
+    download_step = workflow_named_step(publish_job, "Download tested images")
+    require(
+        (
+            f"uses: actions/download-artifact@{ACTION_PINS['actions/download-artifact']}"
+            in download_step
+        )
+        and f"name: {TESTED_ARTIFACT_NAME}" in download_step
+        and f"path: {DOWNLOADED_ARTIFACT_DIR}" in download_step,
+        "tested image download contract changed",
+    )
+
+    owner_step = workflow_named_step(publish_job, "Lowercase repo owner")
+    require(
+        workflow_run_commands(owner_step, "Lowercase repo owner")
+        == [
+            "echo \"OWNER=$(echo '${{ github.repository_owner }}' | "
+            "tr '[:upper:]' '[:lower:]')\" >> \"$GITHUB_ENV\""
+        ],
+        "publish owner normalization command changed",
+    )
+    login_step = workflow_named_step(publish_job, "Login to GHCR")
+    require(
+        f"uses: docker/login-action@{ACTION_PINS['docker/login-action']}" in login_step
+        and "registry: ghcr.io" in login_step
+        and "username: ${{ github.actor }}" in login_step
+        and "password: ${{ secrets.GITHUB_TOKEN }}" in login_step,
+        "registry login contract changed",
+    )
+
+    validate_registry_digest_handoff(live_job, publish_job)
+
+
+def validate_registry_digest_handoff(live_job: str, publish_job: str) -> None:
+    publish_step = workflow_named_step(publish_job, "Load and publish exact tested pair")
+    publish_commands = workflow_run_commands(
+        publish_step,
+        "Load and publish exact tested pair",
+    )
+    expected_image_mutations = [
+        f"gzip -dc {DOWNLOADED_ARTIFACT_DIR}/simple-erp-backend.tar.gz | docker load",
+        f"gzip -dc {DOWNLOADED_ARTIFACT_DIR}/simple-erp-web.tar.gz | docker load",
+        f'docker tag {TESTED_BACKEND_IMAGE} "${{backend}}"',
+        f'docker tag {TESTED_WEB_IMAGE} "${{web}}"',
+        'docker push "${backend}"',
+        'docker push "${web}"',
+    ]
+    image_mutation_pattern = re.compile(
+        r"(?:^|\| )docker (?:load|tag|push|pull|build|import|image|create|commit)\b"
+    )
+    require(
+        [
+            command
+            for command in publish_commands
+            if image_mutation_pattern.search(command)
+        ]
+        == expected_image_mutations,
+        "publish must load, tag, and push only the exact tested image pair",
+    )
+    require_ordered(
+        "\n".join(publish_commands),
+        "set -euo pipefail",
+        f"gzip -dc {DOWNLOADED_ARTIFACT_DIR}/simple-erp-backend.tar.gz | docker load",
+        f"gzip -dc {DOWNLOADED_ARTIFACT_DIR}/simple-erp-web.tar.gz | docker load",
+        'tag="sha-${GITHUB_SHA}"',
+        'backend_repository="ghcr.io/${OWNER}/simple-erp-backend"',
+        'web_repository="ghcr.io/${OWNER}/simple-erp-web"',
+        f'docker tag {TESTED_BACKEND_IMAGE} "${{backend}}"',
+        f'docker tag {TESTED_WEB_IMAGE} "${{web}}"',
+        'docker push "${backend}"',
+        'docker push "${web}"',
+        'docker buildx imagetools inspect "${backend}" --format',
+        'docker buildx imagetools inspect "${web}" --format',
+        'backend_ref="${backend_repository}@${backend_digest}"',
+        'web_ref="${web_repository}@${web_digest}"',
+        '> image-digests.json',
+        '>> "${GITHUB_STEP_SUMMARY}"',
+        label="tested ARM64 image digest handoff",
+    )
+    require(
+        all(
+            token in publish_step
+            for token in (
+                "jq -e -f scripts/demo/require-linux-arm64.jq",
+                "--format '{{json .Image}}'",
+                "--format '{{json .Manifest}}'",
+                '^sha256:[0-9a-f]{64}$',
+                "'{commit: $commit, platform: $platform, backend: $backend, web: $web}'",
+                'echo "- Backend: \\`${backend_ref}\\`"',
+                'echo "- Web: \\`${web_ref}\\`"',
+            )
+        )
+        and publish_step.count("--format '{{json .Image}}'") == 2
+        and publish_step.count("--format '{{json .Manifest}}'") == 2
+        and "docker pull " not in publish_step
+        and "docker build " not in publish_step,
+        "publish must preserve the tested pair and prove linux/arm64 registry digests",
+    )
+
+    digest_upload = workflow_named_step(publish_job, "Upload image digest handoff")
+    require(
+        f"uses: actions/upload-artifact@{ACTION_PINS['actions/upload-artifact']}" in digest_upload
+        and f"name: {DIGEST_ARTIFACT_NAME}" in digest_upload
+        and "path: image-digests.json" in digest_upload
+        and "if-no-files-found: error" in digest_upload,
+        "registry digest handoff artifact contract changed",
+    )
+
+    filter_step = workflow_named_step(live_job, "Verify image platform filter")
+    require(
+        workflow_run_commands(filter_step, "Verify image platform filter")
+        == ["bash scripts/demo/test-image-platform-filter.sh"],
+        "image platform filter regression command changed",
+    )
 
 
 def validate_reset_script_text(reset_script: str) -> None:
@@ -899,6 +1145,125 @@ def validate_upload_size_contract(project_root: Path) -> None:
     )
 
 
+def validate_action_pins(workflow: str) -> None:
+    references = re.findall(r"(?m)^\s+(?:-\s+)?uses:\s+([^\s#]+)", workflow)
+    require(references, "workflow actions are missing")
+    for reference in references:
+        if reference.startswith("./.github/workflows/"):
+            require(
+                re.fullmatch(
+                    r"\./\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml",
+                    reference,
+                )
+                is not None,
+                f"local workflow reference is invalid: {reference}",
+            )
+            continue
+        owner_action, separator, revision = reference.partition("@")
+        require(
+            separator == "@"
+            and re.fullmatch(r"[0-9a-f]{40}", revision) is not None,
+            f"workflow action is not pinned to a full commit: {reference}",
+        )
+        approved_revision = ACTION_PINS.get(owner_action)
+        require(
+            approved_revision is None or revision == approved_revision,
+            f"workflow action is not pinned to the approved commit: {reference}",
+        )
+
+
+def validate_all_workflow_action_pins(project_root: Path) -> None:
+    workflow_paths = sorted(
+        {
+            *project_root.glob(".github/workflows/*.yml"),
+            *project_root.glob(".github/workflows/*.yaml"),
+        }
+    )
+    require(workflow_paths, "GitHub workflows are missing")
+    for workflow_path in workflow_paths:
+        validate_action_pins(workflow_path.read_text(encoding="utf-8"))
+
+
+def validate_build_workflow_trigger(workflow: str) -> None:
+    trigger = "\n  push:\n    branches: [master, demo]\n  pull_request:\n"
+    require(
+        workflow.count(trigger) == 1,
+        "build workflow must verify and publish master and demo pushes",
+    )
+
+
+def validate_build_workflow_contract(project_root: Path) -> None:
+    workflow = (project_root / ".github/workflows/build-and-push.yml").read_text(
+        encoding="utf-8"
+    )
+    validate_build_workflow_trigger(workflow)
+    validate_all_workflow_action_pins(project_root)
+    platform_filter = (
+        project_root / "scripts/demo/require-linux-arm64.jq"
+    ).read_text(encoding="utf-8")
+    normalized_filter = " ".join(platform_filter.split())
+    require(
+        normalized_filter
+        == (
+            'if type != "object" then empty '
+            'elif has("os") or has("architecture") then '
+            'select(.os == "linux" and .architecture == "arm64") '
+            'else .["linux/arm64"]? | select(type == "object" and '
+            '.os == "linux" and .architecture == "arm64") end'
+        ),
+        "linux/arm64 imagetools single/map filter changed",
+    )
+    platform_fixture = json.loads(
+        (project_root / "scripts/demo/fixtures/imagetools-image-map.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    require(
+        isinstance(platform_fixture, dict)
+        and isinstance(platform_fixture.get("linux/arm64"), dict)
+        and platform_fixture["linux/arm64"].get("os") == "linux"
+        and platform_fixture["linux/arm64"].get("architecture") == "arm64",
+        "imagetools image-map regression fixture changed",
+    )
+    single_fixture = json.loads(
+        (project_root / "scripts/demo/fixtures/imagetools-image-single.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    require(
+        isinstance(single_fixture, dict)
+        and single_fixture.get("os") == "linux"
+        and single_fixture.get("architecture") == "arm64",
+        "imagetools single-image regression fixture changed",
+    )
+    require(
+        "group: ${{ github.workflow }}-${{ github.ref }}" in workflow,
+        "build workflow concurrency key changed",
+    )
+    require(workflow.count("cancel-in-progress: true") == 1, "build cancellation contract changed")
+    require("\n  publish:\n" in workflow, "publish job is missing")
+    verify_jobs, publish_job = workflow.split("\n  publish:\n", maxsplit=1)
+    require("\n  verify-live-demo:\n" in verify_jobs, "live demo verification job is missing")
+    live_job = verify_jobs.split("\n  verify-live-demo:\n", maxsplit=1)[1]
+    require(
+        "\n          cache: " not in verify_jobs,
+        "verification jobs may not use build cache actions",
+    )
+    require("packages: write" not in verify_jobs, "verification jobs gained package write access")
+    require(live_job.count("platforms: linux/arm64") == 2, "arm64 live image builds changed")
+    require(live_job.count("load: true") == 2, "live acceptance must load both images")
+    for required in (
+        "timeout-minutes: 40",
+        'echo "DEMO_SMOKE_TIMEOUT_SECONDS=420"',
+        "bash scripts/demo/acceptance-demo.sh",
+    ):
+        require(required in live_job, f"live demo workflow is missing: {required}")
+    require("if: github.event_name == 'push'" in publish_job, "publish push gate changed")
+    require(publish_job.count("packages: write") == 1, "publish permission contract changed")
+    validate_tested_image_pair_flow(live_job, publish_job)
+    require("value=latest" not in workflow, "workflow must not publish a mutable latest tag")
+
+
 def validate_control_image_contract(project_root: Path) -> None:
     lib_script = (project_root / "scripts/demo/lib.sh").read_text(encoding="utf-8")
     image_match = re.search(
@@ -922,6 +1287,7 @@ def validate_demo_contract(project_root: Path, config: dict[str, object]) -> Non
     )
     validate_acceptance_script_contract(root)
     validate_upload_size_contract(root)
+    validate_build_workflow_contract(root)
     validate_control_image_contract(root)
 
 
