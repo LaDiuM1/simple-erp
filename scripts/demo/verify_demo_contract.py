@@ -200,23 +200,24 @@ def select_demo_services(config: dict[str, object]) -> dict[str, dict[str, objec
 
 def validate_web_public_ports(value: object) -> None:
     ports = require_list(value, "web ports")
-    normalized: set[tuple[str, int, str, str]] = set()
+    normalized: set[tuple[int, str]] = set()
     for index, raw_port in enumerate(ports):
         port = require_mapping(raw_port, f"web port {index}")
         host_ip = port.get("host_ip")
         target = port.get("target")
         published = port.get("published")
         protocol = port.get("protocol")
-        if not isinstance(host_ip, str) or not isinstance(target, int):
-            fail(f"web port {index} has an invalid host/target")
-        normalized.add((host_ip, target, str(published), str(protocol)))
+        if not isinstance(host_ip, str) or not host_ip:
+            fail(f"web port {index} has an invalid host bind")
+        if not isinstance(target, int):
+            fail(f"web port {index} has an invalid container target")
+        published_text = str(published)
+        if not published_text.isdecimal() or not 1 <= int(published_text) <= 65535:
+            fail(f"web port {index} has an invalid published host port")
+        normalized.add((target, str(protocol)))
     require(
-        normalized
-        == {
-            ("0.0.0.0", 80, "80", "tcp"),
-            ("0.0.0.0", 443, "443", "tcp"),
-        },
-        "web must publish only public TCP ports 80 and 443",
+        len(ports) == 2 and normalized == {(80, "tcp"), (443, "tcp")},
+        "web must publish exactly container TCP targets 80 and 443",
     )
 
 

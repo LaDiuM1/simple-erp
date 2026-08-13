@@ -116,7 +116,7 @@ class StaticContractVerifierTest(unittest.TestCase):
         with self.assertRaisesRegex(verifier.ContractViolation, "network allowlist"):
             verifier.require(False, "network allowlist changed")
 
-    def test_web_resolved_ports_publish_only_80_and_443(self) -> None:
+    def test_web_resolved_ports_publish_only_container_targets_80_and_443(self) -> None:
         ports = [
             {
                 "mode": "ingress",
@@ -134,9 +134,17 @@ class StaticContractVerifierTest(unittest.TestCase):
             },
         ]
         verifier.validate_web_public_ports(ports)
+
+        ci_override = deepcopy(ports)
+        ci_override[0]["host_ip"] = "127.0.0.1"
+        ci_override[0]["published"] = "18080"
+        ci_override[1]["host_ip"] = "127.0.0.1"
+        ci_override[1]["published"] = "18443"
+        verifier.validate_web_public_ports(ci_override)
+
         with self.assertRaisesRegex(
             verifier.ContractViolation,
-            "only public TCP ports 80 and 443",
+            "exactly container TCP targets 80 and 443",
         ):
             verifier.validate_web_public_ports(
                 ports
