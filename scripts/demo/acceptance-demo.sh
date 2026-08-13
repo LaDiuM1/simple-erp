@@ -49,7 +49,7 @@ finalize_acceptance() {
   if [[ "${cleanup_required}" == "true" ]]; then
     demo_log "acceptance cleanup reset start"
     set +e
-    "${SCRIPT_DIR}/reset-demo.sh"
+    bash "${SCRIPT_DIR}/reset-demo.sh"
     reset_exit="$?"
     set -e
     if ((reset_exit != 0)); then
@@ -194,7 +194,7 @@ assert_acceptance_file_rows_absent() {
 demo_install_acceptance_traps finalize_acceptance
 
 # Start from the canonical seed so a prior demo session cannot make the exercise flaky.
-"${SCRIPT_DIR}/reset-demo.sh"
+bash "${SCRIPT_DIR}/reset-demo.sh"
 cleanup_required="true"
 
 marker_generation="$(demo_smoke_tool new-generation)"

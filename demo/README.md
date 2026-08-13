@@ -152,7 +152,7 @@ sudo systemctl enable --now simple-erp-demo-reset.timer
 
 # timer의 다음 실행 시각을 상태 파일에 기록하며 최초 generation을 복원한다.
 sudo systemctl start simple-erp-demo-reset.service
-sudo bash -c 'set -a; source /etc/simple-erp-demo/reset.env; set +a; exec /opt/simple-erp-demo/scripts/demo/acceptance-demo.sh'
+sudo bash -c 'set -a; source /etc/simple-erp-demo/reset.env; set +a; exec /usr/bin/bash /opt/simple-erp-demo/scripts/demo/acceptance-demo.sh'
 systemctl list-timers simple-erp-demo-reset.timer
 ```
 

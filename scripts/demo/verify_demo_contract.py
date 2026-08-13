@@ -926,7 +926,7 @@ def validate_acceptance_shell_flow(acceptance_script: str) -> None:
         runtime_script,
         trap_marker,
         '# Start from the canonical seed',
-        '"${SCRIPT_DIR}/reset-demo.sh"',
+        'bash "${SCRIPT_DIR}/reset-demo.sh"',
         'cleanup_required="true"',
         'exercise_output="$(demo_compose run',
         "--phase exercise",
@@ -963,7 +963,7 @@ def validate_acceptance_shell_flow(acceptance_script: str) -> None:
     )
     require_ordered(
         finalize_body,
-        '"${SCRIPT_DIR}/reset-demo.sh"',
+        'bash "${SCRIPT_DIR}/reset-demo.sh"',
         'if [[ "${exercise_succeeded}" == "true" ]]; then',
         "--phase verify-reset",
         "assert_acceptance_file_rows_absent",
