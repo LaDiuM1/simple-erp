@@ -554,7 +554,7 @@ WHERE a.status NOT IN ('IN_PROGRESS','COMPLETED') OR x.paid_date<a.received_date
 INSERT INTO demo_seed_violations
 SELECT 'service_expense.type_amount',x.id,CONCAT(a.type,':',x.amount)
 FROM service_expenses x JOIN after_services a ON a.id=x.after_service_id
-WHERE x.amount<>(CASE a.type
+WHERE x.amount<>0 AND x.amount<>(CASE a.type
   WHEN 'REPAIR' THEN 110000 WHEN 'INSTALL_SUPPORT' THEN 85000
   WHEN 'TRAINING' THEN 55000 WHEN 'INTERPRET' THEN 65000
   WHEN 'TUNING' THEN 75000 END) + MOD(x.id,6)*12000;

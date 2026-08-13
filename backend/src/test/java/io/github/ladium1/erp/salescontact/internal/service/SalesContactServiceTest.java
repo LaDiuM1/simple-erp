@@ -4,6 +4,8 @@ import io.github.ladium1.erp.customer.api.CustomerApi;
 import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.customer.internal.exception.CustomerErrorCode;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactCreateRequest;
 import io.github.ladium1.erp.salescontact.internal.dto.SalesContactEmploymentCreateRequest;
@@ -57,6 +59,20 @@ class SalesContactServiceTest {
     @Mock private SalesContactMapper salesContactMapper;
     @Mock private CustomerApi customerApi;
     @Mock private AcquisitionSourceService acquisitionSourceService;
+    @Mock private DemoExcelExportGuard demoExcelExportGuard;
+
+    @Test
+    @DisplayName("Excel preflight 실패는 영업명부 전체 목록 materialization 전에 중단")
+    void excel_preflight_runs_before_search_all() {
+        willThrow(new BusinessException(DemoErrorCode.DEMO_EXCEL_EXPORT_TOO_LARGE))
+                .given(demoExcelExportGuard)
+                .assertExportAllowed(DemoExcelExportGuard.Table.SALES_CONTACTS);
+
+        assertThatThrownBy(() -> salesContactService.exportExcel(null, org.springframework.data.domain.Sort.unsorted()))
+                .isInstanceOf(BusinessException.class);
+
+        verify(contactRepository, never()).searchAll(any(), any());
+    }
 
     @Test
     @DisplayName("고객사 담당자 판정은 종료되지 않은 현재 재직 관계만 사용")

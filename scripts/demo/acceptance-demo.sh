@@ -61,7 +61,7 @@ finalize_acceptance() {
       set +e
       demo_smoke_tool acceptance \
         --seed-dir /seed \
-        --base-url http://web \
+        --base-url http://web:8080 \
         --phase verify-reset \
         --marker "${marker}" \
         --previous-generation "${previous_generation}" \
@@ -207,7 +207,7 @@ exercise_output="$(demo_compose run --rm --no-deps -T \
   -e APP_ADMIN_PASSWORD \
   demo-tool-smoke acceptance \
   --seed-dir /seed \
-  --base-url http://web \
+  --base-url http://web:8080 \
   --phase exercise \
   --marker "${marker}" \
   --verify-operator-protection \
@@ -272,7 +272,7 @@ printf '%s\n' \
 
 demo_smoke_tool acceptance \
   --seed-dir /seed \
-  --base-url http://web \
+  --base-url http://web:8080 \
   --phase delete-retained \
   --marker "${marker}" \
   --previous-generation "${previous_generation}" \
@@ -293,12 +293,12 @@ exercise_succeeded="true"
 # READY must remain restartable after visitor files have made the current generation mutable.
 demo_compose restart backend
 bash "${SCRIPT_DIR}/smoke-demo.sh" \
-  --base-url http://web \
+  --base-url http://web:8080 \
   --expected-state READY \
   --candidate "${previous_generation}"
 demo_smoke_tool acceptance \
   --seed-dir /seed \
-  --base-url http://web \
+  --base-url http://web:8080 \
   --phase verify-live \
   --marker "${marker}" \
   --previous-generation "${previous_generation}" \

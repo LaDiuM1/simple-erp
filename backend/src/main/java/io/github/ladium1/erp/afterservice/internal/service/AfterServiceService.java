@@ -35,6 +35,7 @@ import io.github.ladium1.erp.equipment.api.dto.EquipmentInfo;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
@@ -68,6 +69,7 @@ public class AfterServiceService implements AfterServiceApi {
     private final CustomerApi customerApi;
     private final EquipmentApi equipmentApi;
     private final ProductApi productApi;
+    private final DemoExcelExportGuard demoExcelExportGuard;
 
     public PageResponse<AfterServiceSummaryResponse> search(AfterServiceSearchCondition condition, Pageable pageable) {
         Page<AfterService> page = afterServiceRepository.search(condition, pageable);
@@ -81,6 +83,7 @@ public class AfterServiceService implements AfterServiceApi {
      * 검색 조건 + 정렬 그대로 전체 페이지를 .xlsx 바이트로 직렬화. 페이지네이션 무시 — 필터링된 전체.
      */
     public byte[] exportExcel(AfterServiceSearchCondition condition, Sort sort) {
+        demoExcelExportGuard.assertExportAllowed(DemoExcelExportGuard.Table.AFTER_SERVICES);
         List<AfterService> services = afterServiceRepository.searchAll(condition, sort);
         RefNames refs = loadRefNames(services);
         Map<Long, Long> expenseSums = expenseRepository.sumAmountByAfterServiceIds(

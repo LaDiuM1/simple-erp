@@ -29,7 +29,7 @@ while (($#)); do
   esac
 done
 
-[[ "${base_url}" == "http://web" || "${base_url}" == "http://${DEMO_PREFLIGHT_CONTAINER}:8080" ]] \
+[[ "${base_url}" == "http://web:8080" || "${base_url}" == "http://${DEMO_PREFLIGHT_CONTAINER}:8080" ]] \
   || demo_fail "smoke base URL allowlist mismatch: ${base_url}"
 [[ "${expected_state}" == "READY" || "${expected_state}" == "VERIFYING" ]] \
   || demo_fail "smoke state allowlist mismatch: ${expected_state}"

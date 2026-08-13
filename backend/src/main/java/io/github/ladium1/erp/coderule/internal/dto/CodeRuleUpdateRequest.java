@@ -19,7 +19,7 @@ public record CodeRuleUpdateRequest(
         String description,
 
         /** 분류값 매핑 — null 이면 유지, 빈 리스트면 전체 삭제, 값이 있으면 전체 교체. */
-        @Valid
-        List<CodeRuleAttributeMappingPayload> attributeMappings
+        @Valid @Size(max = 20)
+        List<@NotNull @Valid CodeRuleAttributeMappingPayload> attributeMappings
 ) {
 }

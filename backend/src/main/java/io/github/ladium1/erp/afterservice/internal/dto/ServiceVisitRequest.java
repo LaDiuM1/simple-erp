@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.afterservice.internal.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
@@ -14,8 +15,10 @@ public record ServiceVisitRequest(
         @NotNull
         Long engineerId,
 
+        @Size(max = 4000)
         String problem,
 
+        @Size(max = 4000)
         String resolution
 ) {
 }

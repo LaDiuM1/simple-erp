@@ -2,6 +2,7 @@ package io.github.ladium1.erp.global.storage.internal.service;
 
 import io.github.ladium1.erp.global.demo.DemoErrorCode;
 import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
+import io.github.ladium1.erp.global.demo.DemoUploadQuotaGuard;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.StoredFileInfo;
@@ -52,6 +53,7 @@ class FileStorageServiceTest {
 
     @Mock private StoredFileRepository storedFileRepository;
     @Mock private DemoProtectionPolicy demoProtectionPolicy;
+    @Mock private DemoUploadQuotaGuard demoUploadQuotaGuard;
 
     @TempDir
     Path tempDir;
@@ -66,7 +68,7 @@ class FileStorageServiceTest {
     @BeforeEach
     void setUp() {
         fileStorageService = new FileStorageService(
-                storedFileRepository, demoProtectionPolicy, tempDir.toString());
+                storedFileRepository, demoProtectionPolicy, demoUploadQuotaGuard, tempDir.toString());
     }
 
     private void stubSaveWithJpaAudit() {
@@ -373,7 +375,7 @@ class FileStorageServiceTest {
         Path current = Path.of(fixture);
         Assumptions.assumeTrue(Files.isSymbolicLink(current) && supportsUnixMode(current));
         fileStorageService = new FileStorageService(
-                storedFileRepository, demoProtectionPolicy, current.toString());
+                storedFileRepository, demoProtectionPolicy, demoUploadQuotaGuard, current.toString());
 
         stubSaveWithJpaAudit(LocalDateTime.of(2026, 7, 7, 10, 0));
         fileStorageService.store(
@@ -447,6 +449,7 @@ class FileStorageServiceTest {
         fileStorageService = new FileStorageService(
                 storedFileRepository,
                 demoProtectionPolicy,
+                demoUploadQuotaGuard,
                 tempDir.toString(),
                 (target, content, sharedStorage) -> {
                     Files.createDirectories(target.getParent());
@@ -471,6 +474,41 @@ class FileStorageServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", StorageErrorCode.EMPTY_FILE);
 
         verify(storedFileRepository, never()).save(any(StoredFile.class));
+    }
+
+    @Test
+    @DisplayName("데모 누적 quota는 metadata와 파일을 만들기 전에 차단")
+    void store_checks_demo_quota_before_side_effects() {
+        byte[] content = "blocked".getBytes(StandardCharsets.UTF_8);
+        willThrow(new BusinessException(DemoErrorCode.DEMO_UPLOAD_QUOTA_EXCEEDED))
+                .given(demoUploadQuotaGuard)
+                .assertUploadAllowed(UPLOADER_ID, content.length, tempDir);
+
+        assertThatThrownBy(() -> fileStorageService.store(
+                "quota.txt", "text/plain", content, UPLOADER_ID))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode",
+                        DemoErrorCode.DEMO_UPLOAD_QUOTA_EXCEEDED
+                );
+
+        verify(storedFileRepository, never()).save(any(StoredFile.class));
+        assertThat(tempDir).isEmptyDirectory();
+    }
+
+    @Test
+    @DisplayName("파일 본체를 쓰기 직전에 실제 generation 디스크 여유를 다시 확인")
+    void store_rechecks_disk_reserve_immediately_before_content_write() {
+        byte[] content = "payload".getBytes(StandardCharsets.UTF_8);
+        stubSaveWithJpaAudit();
+
+        fileStorageService.store("safe.txt", "text/plain", content, UPLOADER_ID);
+
+        verify(demoUploadQuotaGuard)
+                .assertUploadAllowed(UPLOADER_ID, content.length, tempDir);
+        verify(demoUploadQuotaGuard)
+                .assertDiskReserve(tempDir.resolve("2026/07"), content.length);
+        assertThat(contentPathOf(savedFile.get())).exists();
     }
 
     @Test

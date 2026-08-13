@@ -60,6 +60,7 @@ public record CustomerUpdateRequest(
 
         LocalDate tradeStartDate,
 
+        @Size(max = 4000)
         String note
 ) {
 }

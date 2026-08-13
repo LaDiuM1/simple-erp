@@ -31,6 +31,8 @@ import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.equipment.api.EquipmentApi;
 import io.github.ladium1.erp.equipment.api.dto.EquipmentInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
 import io.github.ladium1.erp.global.web.PageResponse;
 import io.github.ladium1.erp.product.api.ProductApi;
 import io.github.ladium1.erp.product.api.dto.ProductInfo;
@@ -75,6 +77,20 @@ class AfterServiceServiceTest {
     @Mock private CustomerApi customerApi;
     @Mock private EquipmentApi equipmentApi;
     @Mock private ProductApi productApi;
+    @Mock private DemoExcelExportGuard demoExcelExportGuard;
+
+    @Test
+    @DisplayName("Excel preflight 실패는 AS 전체 목록 materialization 전에 중단")
+    void excel_preflight_runs_before_search_all() {
+        org.mockito.BDDMockito.willThrow(new BusinessException(DemoErrorCode.DEMO_EXCEL_EXPORT_TOO_LARGE))
+                .given(demoExcelExportGuard)
+                .assertExportAllowed(DemoExcelExportGuard.Table.AFTER_SERVICES);
+
+        assertThatThrownBy(() -> afterServiceService.exportExcel(null, org.springframework.data.domain.Sort.unsorted()))
+                .isInstanceOf(BusinessException.class);
+
+        verify(afterServiceRepository, never()).searchAll(any(), any());
+    }
 
     @Test
     @DisplayName("search 성공 — 고객사 / 설비 / 엔지니어 enrich + 경비 합계")

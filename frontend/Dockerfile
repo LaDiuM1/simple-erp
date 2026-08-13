@@ -15,7 +15,7 @@ FROM caddy:2-alpine AS runtime
 COPY --from=build /app/dist /srv
 COPY Caddyfile /etc/caddy/Caddyfile
 
-EXPOSE 80 443
+EXPOSE 80 443 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- http://localhost/ > /dev/null 2>&1 || exit 1
+    CMD wget -qO- http://localhost:8080/ > /dev/null 2>&1 || exit 1

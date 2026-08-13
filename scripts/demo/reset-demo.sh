@@ -243,12 +243,12 @@ demo_db_root -e "DROP DATABASE IF EXISTS \`${DEMO_CANDIDATE_DB}\`; CREATE DATABA
 candidate_db_present="true"
 demo_db_root "${DEMO_CANDIDATE_DB}" < "${DEMO_SEED_DIR}/schema.sql"
 demo_db_root "${DEMO_CANDIDATE_DB}" < "${DEMO_SEED_DIR}/seed-data.sql"
-demo_db_root -e "
+demo_db_root <<SQL
   DROP USER IF EXISTS '${DEMO_PREFLIGHT_DB_USER}'@'%';
   CREATE USER '${DEMO_PREFLIGHT_DB_USER}'@'%' IDENTIFIED BY '${preflight_db_password}';
   GRANT SELECT ON \`${DEMO_CANDIDATE_DB}\`.* TO '${DEMO_PREFLIGHT_DB_USER}'@'%';
   FLUSH PRIVILEGES;
-"
+SQL
 bash "${SCRIPT_DIR}/verify-seed.sh" --database "${DEMO_CANDIDATE_DB}"
 
 failure_stage="candidate-file-staging"
@@ -272,15 +272,18 @@ write_lifecycle_state VERIFYING preflight.json
 if docker container inspect "${DEMO_PREFLIGHT_CONTAINER}" >/dev/null 2>&1; then
   docker rm -f "${DEMO_PREFLIGHT_CONTAINER}" >/dev/null
 fi
-demo_compose run -d --no-deps \
-  --name "${DEMO_PREFLIGHT_CONTAINER}" \
-  -e "DB_URL=jdbc:mariadb://db:3306/${DEMO_CANDIDATE_DB}?characterEncoding=UTF-8&serverTimezone=Asia/Seoul" \
-  -e "DB_USERNAME=${DEMO_PREFLIGHT_DB_USER}" \
-  -e "DB_PASSWORD=${preflight_db_password}" \
-  -e "APP_ADMIN_BOOTSTRAP_ENABLED=false" \
-  -e "DEMO_STATE_PATH=/app/data/demo-state/preflight.json" \
-  -e "STORAGE_BASE_PATH=/app/data/files/generations/${candidate_generation}" \
-  backend >/dev/null
+(
+  export DB_PASSWORD="${preflight_db_password}"
+  demo_compose run -d --no-deps \
+    --name "${DEMO_PREFLIGHT_CONTAINER}" \
+    -e "DB_URL=jdbc:mariadb://db:3306/${DEMO_CANDIDATE_DB}?characterEncoding=UTF-8&serverTimezone=Asia/Seoul" \
+    -e "DB_USERNAME=${DEMO_PREFLIGHT_DB_USER}" \
+    -e DB_PASSWORD \
+    -e "APP_ADMIN_BOOTSTRAP_ENABLED=false" \
+    -e "DEMO_STATE_PATH=/app/data/demo-state/preflight.json" \
+    -e "STORAGE_BASE_PATH=/app/data/files/generations/${candidate_generation}" \
+    backend >/dev/null
+)
 preflight_image_id="$(docker inspect --format '{{.Image}}' "${DEMO_PREFLIGHT_CONTAINER}")"
 [[ "${preflight_image_id}" =~ ^sha256:[0-9a-f]{64}$ ]] \
   || demo_fail "candidate backend image digest is not immutable: ${preflight_image_id}"
@@ -332,7 +335,7 @@ live_backend_image_id="$(docker inspect --format '{{.Image}}' "${live_backend_co
 [[ "${live_backend_image_id}" == "${preflight_image_id}" ]] \
   || demo_fail "preflight/live backend image mismatch: preflight=${preflight_image_id}, live=${live_backend_image_id}"
 bash "${SCRIPT_DIR}/smoke-demo.sh" \
-  --base-url http://web \
+  --base-url http://web:8080 \
   --expected-state VERIFYING \
   --candidate "${candidate_generation}"
 

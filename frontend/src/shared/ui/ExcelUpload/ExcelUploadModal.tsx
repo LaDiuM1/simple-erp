@@ -10,10 +10,7 @@ import {
 } from '@/shared/ui/GenericDetailModal/GenericDetailModal.styles';
 import { useSnackbar } from '@/shared/ui/feedback/snackbar';
 import { getErrorMessage } from '@/shared/api/error';
-import {
-  getUploadFileSizeError,
-  UPLOAD_FILE_SIZE_GUIDE,
-} from '@/shared/utils/uploadFileSize';
+import { formatFileSize } from '@/shared/utils/formatFileSize';
 import {
   DropZone,
   DropZoneHint,
@@ -61,6 +58,9 @@ interface Props {
 }
 
 const VALID_EXTENSIONS = ['.xlsx'];
+export const MAX_EXCEL_UPLOAD_FILE_SIZE_BYTES = 1024 * 1024;
+export const EXCEL_UPLOAD_FILE_SIZE_GUIDE =
+  `최대 ${formatFileSize(MAX_EXCEL_UPLOAD_FILE_SIZE_BYTES)} · 데이터 최대 100행`;
 
 /**
  * 엑셀 일괄 업로드 모달 — 가이드 + 양식 다운로드 + 드래그앤드롭 업로드 + 결과까지 한 화면.
@@ -108,9 +108,10 @@ export default function ExcelUploadModal({
       snackbar.error('.xlsx 파일만 업로드할 수 있습니다.');
       return;
     }
-    const sizeError = getUploadFileSizeError([file]);
-    if (sizeError) {
-      snackbar.error(sizeError);
+    if (file.size > MAX_EXCEL_UPLOAD_FILE_SIZE_BYTES) {
+      snackbar.error(
+        `${file.name} — ${formatFileSize(MAX_EXCEL_UPLOAD_FILE_SIZE_BYTES)} 이하만 업로드할 수 있습니다.`,
+      );
       return;
     }
     const form = new FormData();
@@ -246,7 +247,7 @@ export default function ExcelUploadModal({
                     ? '여기에 놓아 업로드'
                     : '파일을 끌어다 놓거나 클릭해 선택'}
               </DropZoneLabel>
-              <DropZoneHint>.xlsx 형식 · {UPLOAD_FILE_SIZE_GUIDE}</DropZoneHint>
+              <DropZoneHint>.xlsx 형식 · {EXCEL_UPLOAD_FILE_SIZE_GUIDE}</DropZoneHint>
               <HiddenFileInput
                 ref={inputRef}
                 type="file"

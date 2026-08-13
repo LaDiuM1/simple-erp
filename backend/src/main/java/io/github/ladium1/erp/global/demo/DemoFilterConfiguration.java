@@ -16,6 +16,31 @@ public class DemoFilterConfiguration {
     }
 
     @Bean
+    public DemoTransferLimiter demoTransferLimiter(DemoProperties properties) {
+        return new DemoTransferLimiter(properties);
+    }
+
+    @Bean
+    public DemoRequestConcurrencyLimiter demoRequestConcurrencyLimiter(DemoProperties properties) {
+        return new DemoRequestConcurrencyLimiter(properties);
+    }
+
+    @Bean
+    public DemoIngressGuardFilter demoIngressGuardFilter(
+            DemoProperties properties,
+            DemoRateLimiter rateLimiter,
+            DemoRequestConcurrencyLimiter requestConcurrencyLimiter,
+            @Qualifier("handlerExceptionResolver") ObjectProvider<HandlerExceptionResolver> exceptionResolver
+    ) {
+        return new DemoIngressGuardFilter(
+                properties,
+                rateLimiter,
+                requestConcurrencyLimiter,
+                exceptionResolver
+        );
+    }
+
+    @Bean
     public DemoWebConfiguration demoWebConfiguration(
             DemoProperties properties,
             DemoRateLimiter rateLimiter
@@ -29,6 +54,8 @@ public class DemoFilterConfiguration {
             DemoStartupVerificationGate startupVerificationGate,
             DemoProtectionPolicy protectionPolicy,
             DemoRateLimiter rateLimiter,
+            DemoTransferLimiter transferLimiter,
+            DemoRequestConcurrencyLimiter requestConcurrencyLimiter,
             @Qualifier("handlerExceptionResolver") ObjectProvider<HandlerExceptionResolver> exceptionResolver
     ) {
         return new DemoRequestGuardFilter(
@@ -36,6 +63,8 @@ public class DemoFilterConfiguration {
                 startupVerificationGate,
                 protectionPolicy,
                 rateLimiter,
+                transferLimiter,
+                requestConcurrencyLimiter,
                 exceptionResolver
         );
     }
@@ -46,6 +75,15 @@ public class DemoFilterConfiguration {
             DemoRequestGuardFilter filter
     ) {
         FilterRegistrationBean<DemoRequestGuardFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<DemoIngressGuardFilter> demoIngressGuardFilterRegistration(
+            DemoIngressGuardFilter filter
+    ) {
+        FilterRegistrationBean<DemoIngressGuardFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
     }

@@ -10,6 +10,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 final class DemoLoginRateLimitInterceptor implements HandlerInterceptor {
 
     private static final String FORWARDED_FOR = "X-Forwarded-For";
+    private static final String GLOBAL_IDENTITY = "demo-global";
 
     private final DemoProperties properties;
     private final DemoRateLimiter rateLimiter;
@@ -29,8 +30,17 @@ final class DemoLoginRateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        int limit = properties.getRateLimit().getLoginLimit();
-        if (!rateLimiter.tryAcquire("login", transientClientIp(request), limit)) {
+        DemoProperties.RateLimit limits = properties.getRateLimit();
+        if (!rateLimiter.tryAcquireBoth(
+                "login",
+                transientClientIp(request),
+                limits.getLoginLimit(),
+                "login-global",
+                GLOBAL_IDENTITY,
+                limits.getLoginGlobalLimit(),
+                1,
+                limits.getWindow()
+        )) {
             response.setHeader(
                     "Retry-After",
                     Long.toString(properties.getRateLimit().getWindow().toSeconds())

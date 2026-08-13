@@ -116,6 +116,69 @@ class StaticContractVerifierTest(unittest.TestCase):
         with self.assertRaisesRegex(verifier.ContractViolation, "network allowlist"):
             verifier.require(False, "network allowlist changed")
 
+    def test_web_resolved_ports_publish_only_80_and_443(self) -> None:
+        ports = [
+            {
+                "mode": "ingress",
+                "host_ip": "0.0.0.0",
+                "target": 80,
+                "published": "80",
+                "protocol": "tcp",
+            },
+            {
+                "mode": "ingress",
+                "host_ip": "0.0.0.0",
+                "target": 443,
+                "published": "443",
+                "protocol": "tcp",
+            },
+        ]
+        verifier.validate_web_public_ports(ports)
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "only public TCP ports 80 and 443",
+        ):
+            verifier.validate_web_public_ports(
+                ports
+                + [
+                    {
+                        "mode": "ingress",
+                        "host_ip": "0.0.0.0",
+                        "target": 8080,
+                        "published": "8080",
+                        "protocol": "tcp",
+                    }
+                ]
+            )
+
+    def test_public_resource_limits_are_exact_and_fail_closed(self) -> None:
+        verifier.validate_public_resource_limits(dict(verifier.PUBLIC_RESOURCE_LIMITS))
+        weakened = dict(verifier.PUBLIC_RESOURCE_LIMITS)
+        weakened["DEMO_UPLOAD_GENERATION_QUOTA_BYTES"] = "1073741824"
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "resource and cost envelope",
+        ):
+            verifier.validate_public_resource_limits(weakened)
+
+    def test_demo_transaction_isolation_is_read_committed(self) -> None:
+        verifier.validate_demo_transaction_isolation(
+            {
+                "SPRING_DATASOURCE_HIKARI_TRANSACTION_ISOLATION":
+                    "TRANSACTION_READ_COMMITTED"
+            }
+        )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "transaction isolation must stay READ_COMMITTED",
+        ):
+            verifier.validate_demo_transaction_isolation(
+                {
+                    "SPRING_DATASOURCE_HIKARI_TRANSACTION_ISOLATION":
+                        "TRANSACTION_REPEATABLE_READ"
+                }
+            )
+
     def test_root_credential_isolation_rejects_disguised_environment_key(self) -> None:
         with self.assertRaisesRegex(verifier.ContractViolation, "leaked to backend"):
             verifier.validate_root_credential_isolation(
@@ -357,6 +420,109 @@ class StaticContractVerifierTest(unittest.TestCase):
                     "spring.servlet.multipart.max-request-size=30MB",
                 ),
                 caddyfile,
+            )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "non-upload API body limit",
+        ):
+            verifier.validate_upload_size_texts(
+                application,
+                demo,
+                caddyfile.replace(
+                    "max_size {$API_JSON_REQUEST_BODY_MAX_SIZE:1MB}",
+                    "max_size {$API_JSON_REQUEST_BODY_MAX_SIZE:32MB}",
+                ),
+            )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "four exact POST upload paths",
+        ):
+            verifier.validate_upload_size_texts(
+                application,
+                demo,
+                caddyfile.replace("\t\tmethod POST\n", "", 1),
+            )
+
+    def test_caddy_internal_probe_is_shared_but_not_published(self) -> None:
+        caddyfile = (ROOT / "frontend/Caddyfile").read_text(encoding="utf-8")
+        dockerfile = (ROOT / "frontend/Dockerfile").read_text(encoding="utf-8")
+        compose_overlay = (ROOT / "compose.demo.yml").read_text(encoding="utf-8")
+        reset_script = (ROOT / "scripts/demo/reset-demo.sh").read_text(encoding="utf-8")
+        smoke_script = (ROOT / "scripts/demo/smoke-demo.sh").read_text(encoding="utf-8")
+        acceptance_script = (ROOT / "scripts/demo/acceptance-demo.sh").read_text(
+            encoding="utf-8"
+        )
+        control_script = (ROOT / "scripts/demo/demo_control.py").read_text(
+            encoding="utf-8"
+        )
+
+        verifier.validate_caddy_internal_probe_texts(
+            caddyfile,
+            dockerfile,
+            compose_overlay,
+            reset_script,
+            smoke_script,
+            acceptance_script,
+            control_script,
+        )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "HSTS",
+        ):
+            verifier.validate_caddy_internal_probe_texts(
+                caddyfile.replace(
+                    'header Strict-Transport-Security "max-age=31536000"',
+                    "",
+                ),
+                dockerfile,
+                compose_overlay,
+                reset_script,
+                smoke_script,
+                acceptance_script,
+                control_script,
+            )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "overwrite X-Forwarded-For",
+        ):
+            verifier.validate_caddy_internal_probe_texts(
+                caddyfile.replace("\t\t\theader_up X-Forwarded-For {remote_host}\n", "", 1),
+                dockerfile,
+                compose_overlay,
+                reset_script,
+                smoke_script,
+                acceptance_script,
+                control_script,
+            )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "actuator health must be 404 publicly",
+        ):
+            verifier.validate_caddy_internal_probe_texts(
+                caddyfile.replace("\t\trespond 404\n", "\t\treverse_proxy backend:8080\n", 1),
+                dockerfile,
+                compose_overlay,
+                reset_script,
+                smoke_script,
+                acceptance_script,
+                control_script,
+            )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation,
+            "must not be published",
+        ):
+            verifier.validate_caddy_internal_probe_texts(
+                caddyfile,
+                dockerfile,
+                compose_overlay.replace(
+                    '- "${DEMO_HTTPS_BIND:-0.0.0.0}:${DEMO_HTTPS_PORT:-443}:443"',
+                    '- "${DEMO_HTTPS_BIND:-0.0.0.0}:${DEMO_HTTPS_PORT:-443}:443"\n'
+                    '      - "0.0.0.0:8080:8080"',
+                ),
+                reset_script,
+                smoke_script,
+                acceptance_script,
+                control_script,
             )
 
     def test_acceptance_contract_preserves_upload_evidence_through_cleanup(self) -> None:

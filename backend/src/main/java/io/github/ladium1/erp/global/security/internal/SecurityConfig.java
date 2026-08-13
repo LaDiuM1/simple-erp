@@ -2,6 +2,7 @@ package io.github.ladium1.erp.global.security.internal;
 
 import io.github.ladium1.erp.employee.api.LoginAccountApi;
 import io.github.ladium1.erp.global.demo.DemoRequestGuardFilter;
+import io.github.ladium1.erp.global.demo.DemoIngressGuardFilter;
 import io.github.ladium1.erp.global.logging.LoggingMdcFilter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +44,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, DemoRequestGuardFilter demoRequestGuardFilter) {
+    public SecurityFilterChain filterChain(
+            HttpSecurity http,
+            DemoIngressGuardFilter demoIngressGuardFilter,
+            DemoRequestGuardFilter demoRequestGuardFilter
+    ) {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -67,9 +72,12 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                .addFilterBefore(
+                // 공개 API burst는 JWT 검증·계정 상태 DB 조회 전에 먼저 제한한다.
+                .addFilterBefore(demoIngressGuardFilter, UsernamePasswordAuthenticationFilter.class)
+
+                .addFilterAfter(
                         new JwtAuthenticationFilter(jwtTokenProvider, loginAccountApi),
-                        UsernamePasswordAuthenticationFilter.class)
+                        DemoIngressGuardFilter.class)
 
                 // 인증 직후 MDC를 먼저 부착해 demo guard의 조기 거부 응답도 같은 trace 계약을 유지
                 .addFilterAfter(new LoggingMdcFilter(), JwtAuthenticationFilter.class)

@@ -7,6 +7,7 @@ import io.github.ladium1.erp.employee.internal.repository.EmployeeRepository;
 import io.github.ladium1.erp.employee.internal.service.EmployeeDataScopePrincipalReader;
 import io.github.ladium1.erp.employee.internal.service.EmployeeService;
 import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
 import io.github.ladium1.erp.global.security.internal.PasswordEncodingConfiguration;
 import io.github.ladium1.erp.position.api.PositionApi;
 import io.github.ladium1.erp.role.api.RoleApi;
@@ -78,6 +79,11 @@ class DataScopeBeanDependencyTest {
         @Bean
         DemoProtectionPolicy demoProtectionPolicy() {
             return mock(DemoProtectionPolicy.class);
+        }
+
+        @Bean
+        DemoExcelExportGuard demoExcelExportGuard() {
+            return mock(DemoExcelExportGuard.class);
         }
     }
 }

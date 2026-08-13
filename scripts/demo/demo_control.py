@@ -2067,7 +2067,7 @@ def validate_acceptance_marker(value: str) -> str:
 
 
 def validate_acceptance_base_url(value: str) -> str:
-    if value != "http://web":
+    if value != "http://web:8080":
         raise ControlError("acceptance base URL mount allowlist violation")
     return value
 

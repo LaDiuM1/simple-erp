@@ -5,6 +5,8 @@ import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoExcelImportQuotaGuard;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
@@ -80,6 +82,8 @@ public class SalesContactService implements SalesContactApi {
     private final CustomerApi customerApi;
     private final AcquisitionSourceService acquisitionSourceService;
     private final Validator validator;
+    private final DemoExcelImportQuotaGuard demoExcelImportQuotaGuard;
+    private final DemoExcelExportGuard demoExcelExportGuard;
 
     @Override
     public SalesContactInfo getById(Long id) {
@@ -178,6 +182,7 @@ public class SalesContactService implements SalesContactApi {
      * 검색 조건 + 정렬 그대로 전체 페이지를 .xlsx 바이트로 직렬화. 페이지네이션 무시 — 필터링된 전체.
      */
     public byte[] exportExcel(SalesContactSearchCondition condition, Sort sort) {
+        demoExcelExportGuard.assertExportAllowed(DemoExcelExportGuard.Table.SALES_CONTACTS);
         List<SalesContact> contacts = contactRepository.searchAll(condition, sort);
         if (contacts.isEmpty()) {
             return excelExporter.export(List.of());
@@ -230,6 +235,7 @@ public class SalesContactService implements SalesContactApi {
 
         // 모든 행에서 참조된 source 이름 lookup 1번에 처리.
         Set<String> allSourceNames = new HashSet<>();
+        List<Long> importedIds = new ArrayList<>();
         for (ParsedRow<Holder> pr : parsed.builders()) {
             allSourceNames.addAll(pr.builder().sourceNames);
         }
@@ -292,6 +298,7 @@ public class SalesContactService implements SalesContactApi {
                     .note(h.note)
                     .build();
             Long contactId = contactRepository.save(contact).getId();
+            importedIds.add(contactId);
 
             if (!h.sourceNames.isEmpty()) {
                 List<SalesContactSource> rows = h.sourceNames.stream()
@@ -315,6 +322,12 @@ public class SalesContactService implements SalesContactApi {
                         .build();
                 employmentRepository.save(employment);
             }
+        }
+        if (!importedIds.isEmpty()) {
+            demoExcelImportQuotaGuard.assertRowsAllowedAndRecord(
+                    DemoExcelImportQuotaGuard.ImportKind.SALES_CONTACT,
+                    importedIds
+            );
         }
         return ExcelUploadResult.success(parsed.totalRows());
     }

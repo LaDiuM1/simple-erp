@@ -37,6 +37,7 @@ import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
@@ -88,6 +89,7 @@ public class ContractService implements ContractApi {
     private final DataScopeResolver dataScopeResolver;
     private final DataScopeContextProvider dataScopeContextProvider;
     private final ApplicationEventPublisher eventPublisher;
+    private final DemoExcelExportGuard demoExcelExportGuard;
     private final Clock businessClock;
 
     @Override
@@ -169,6 +171,7 @@ public class ContractService implements ContractApi {
      * 검색 조건 + 정렬 그대로 전체 페이지를 .xlsx 바이트로 직렬화. 페이지네이션 무시 — 필터링된 전체.
      */
     public byte[] exportExcel(ContractSearchCondition condition, Sort sort) {
+        demoExcelExportGuard.assertExportAllowed(DemoExcelExportGuard.Table.CONTRACTS);
         Optional<Set<Long>> visible = resolveVisibleEmployeeIds();
         if (visible.isPresent() && visible.get().isEmpty()) {
             return excelExporter.export(List.of());

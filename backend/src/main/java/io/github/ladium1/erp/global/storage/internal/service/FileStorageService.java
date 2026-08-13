@@ -1,6 +1,7 @@
 package io.github.ladium1.erp.global.storage.internal.service;
 
 import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
+import io.github.ladium1.erp.global.demo.DemoUploadQuotaGuard;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.storage.FileOwner;
 import io.github.ladium1.erp.global.storage.FileStorageApi;
@@ -51,6 +52,7 @@ public class FileStorageService implements FileStorageApi {
 
     private final StoredFileRepository storedFileRepository;
     private final DemoProtectionPolicy demoProtectionPolicy;
+    private final DemoUploadQuotaGuard demoUploadQuotaGuard;
     private final Path basePath;
     private final ContentWriter contentWriter;
     private final Object sharedDirectoryCreationMonitor = new Object();
@@ -59,19 +61,28 @@ public class FileStorageService implements FileStorageApi {
     public FileStorageService(
             StoredFileRepository storedFileRepository,
             DemoProtectionPolicy demoProtectionPolicy,
+            DemoUploadQuotaGuard demoUploadQuotaGuard,
             @Value("${erp.storage.local.base-path}") String basePath
     ) {
-        this(storedFileRepository, demoProtectionPolicy, basePath, FileStorageService::writeAtomically);
+        this(
+                storedFileRepository,
+                demoProtectionPolicy,
+                demoUploadQuotaGuard,
+                basePath,
+                FileStorageService::writeAtomically
+        );
     }
 
     FileStorageService(
             StoredFileRepository storedFileRepository,
             DemoProtectionPolicy demoProtectionPolicy,
+            DemoUploadQuotaGuard demoUploadQuotaGuard,
             String basePath,
             ContentWriter contentWriter
     ) {
         this.storedFileRepository = storedFileRepository;
         this.demoProtectionPolicy = demoProtectionPolicy;
+        this.demoUploadQuotaGuard = demoUploadQuotaGuard;
         this.basePath = Path.of(basePath);
         this.contentWriter = contentWriter;
     }
@@ -83,6 +94,7 @@ public class FileStorageService implements FileStorageApi {
         if (content == null || content.length == 0) {
             throw new BusinessException(StorageErrorCode.EMPTY_FILE);
         }
+        demoUploadQuotaGuard.assertUploadAllowed(uploaderId, content.length, basePath);
 
         StoredFile file = StoredFile.builder()
                 .originalName(normalizeOriginalName(originalName))
@@ -254,6 +266,7 @@ public class FileStorageService implements FileStorageApi {
         try {
             boolean sharedStorage = hasSharedDirectoryContract(basePath);
             prepareParentDirectories(path.getParent(), sharedStorage);
+            demoUploadQuotaGuard.assertDiskReserve(path.getParent(), content.length);
             contentWriter.write(path, content, sharedStorage);
             registerRollbackCleanup(path);
         } catch (IOException e) {

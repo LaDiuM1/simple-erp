@@ -35,6 +35,8 @@ import io.github.ladium1.erp.customer.api.dto.CustomerInfo;
 import io.github.ladium1.erp.employee.api.EmployeeApi;
 import io.github.ladium1.erp.employee.api.dto.EmployeeInfo;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.DataScope;
 import io.github.ladium1.erp.global.security.DataScopeContext;
@@ -107,6 +109,21 @@ class ContractServiceTest {
     @Mock private DataScopeResolver dataScopeResolver;
     @Mock private DataScopeContextProvider dataScopeContextProvider;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private DemoExcelExportGuard demoExcelExportGuard;
+
+    @Test
+    @DisplayName("Excel preflight 실패는 계약 전체 목록 materialization 전에 중단")
+    void excel_preflight_runs_before_search_all() {
+        org.mockito.BDDMockito.willThrow(new BusinessException(DemoErrorCode.DEMO_EXCEL_EXPORT_TOO_LARGE))
+                .given(demoExcelExportGuard)
+                .assertExportAllowed(DemoExcelExportGuard.Table.CONTRACTS);
+
+        assertThatThrownBy(() -> contractService.exportExcel(
+                null, org.springframework.data.domain.Sort.unsorted()))
+                .isInstanceOf(BusinessException.class);
+
+        verify(contractRepository, never()).searchAll(any(), any());
+    }
 
     @BeforeEach
     void setupVisibility() {

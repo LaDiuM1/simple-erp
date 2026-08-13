@@ -167,9 +167,10 @@ demo_smoke_tool() {
 }
 
 demo_db_root() {
-  demo_compose exec -T \
-    -e "MYSQL_PWD=${DEMO_DB_ROOT_PASSWORD}" \
-    db mariadb -uroot "$@"
+  (
+    export MYSQL_PWD="${DEMO_DB_ROOT_PASSWORD}"
+    demo_compose exec -T -e MYSQL_PWD db mariadb -uroot "$@"
+  )
 }
 
 demo_prepare_files_volume() {

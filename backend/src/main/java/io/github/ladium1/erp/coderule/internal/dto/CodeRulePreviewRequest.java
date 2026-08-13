@@ -21,13 +21,15 @@ public record CodeRulePreviewRequest(
         @NotNull
         InputMode inputMode,
 
+        @Size(max = 100)
         String parentCode,
 
         /** 미리보기 시 분류 토큰 치환에 사용할 sourceValue 들 (사용자가 모달에서 선택) */
-        Map<String, String> previewAttributes,
+        @Size(max = 20)
+        Map<@NotBlank @Size(max = 50) String, @NotBlank @Size(max = 100) String> previewAttributes,
 
         /** 폼에서 편집 중인 매핑 — DB 저장된 매핑 대신 이 값을 사용해 정확한 미리보기 시뮬레이션 */
-        @Valid
-        List<CodeRuleAttributeMappingPayload> attributeMappings
+        @Valid @Size(max = 20)
+        List<@NotNull @Valid CodeRuleAttributeMappingPayload> attributeMappings
 ) {
 }

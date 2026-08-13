@@ -2,6 +2,7 @@ package io.github.ladium1.erp.coderule.internal.web;
 
 import io.github.ladium1.erp.coderule.api.CodeRuleTarget;
 import io.github.ladium1.erp.coderule.api.InputMode;
+import io.github.ladium1.erp.coderule.internal.dto.CodeRuleAttributeMappingPayload;
 import io.github.ladium1.erp.coderule.internal.dto.CodeRulePreviewRequest;
 import io.github.ladium1.erp.coderule.internal.dto.CodeRulePreviewResponse;
 import io.github.ladium1.erp.coderule.internal.dto.CodeRuleResponse;
@@ -22,11 +23,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.IntStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -151,6 +157,131 @@ class CodeRuleControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.nextCode").value("D004"))
                 .andExpect(jsonPath("$.data.samples", org.hamcrest.Matchers.hasSize(5)));
+    }
+
+    @Test
+    @DisplayName("미리보기 map/list는 정확히 20개까지 허용")
+    void preview_collection_exact_boundary_is_allowed() throws Exception {
+        Map<String, String> attributes = new LinkedHashMap<>();
+        IntStream.range(0, 20).forEach(index -> attributes.put("key-" + index, "value-" + index));
+        List<CodeRuleAttributeMappingPayload> mappings = IntStream.range(0, 20)
+                .mapToObj(index -> new CodeRuleAttributeMappingPayload(
+                        "key-" + index, "value-" + index, "C" + index
+                ))
+                .toList();
+        CodeRulePreviewRequest request = new CodeRulePreviewRequest(
+                "D{SEQ:3}", InputMode.AUTO, "PARENT", attributes, mappings
+        );
+        given(codeRuleService.previewFromRequest(eq(CodeRuleTarget.DEPARTMENT), any()))
+                .willReturn(CodeRulePreviewResponse.builder()
+                        .nextCode("D004")
+                        .samples(List.of("D004"))
+                        .build());
+
+        mockMvc.perform(post("/api/v1/code-rules/{target}/preview", "DEPARTMENT")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("미리보기 map/list 21개는 service 진입 전에 거부")
+    void preview_collection_overflow_is_rejected() throws Exception {
+        Map<String, String> attributes = new LinkedHashMap<>();
+        IntStream.range(0, 21).forEach(index -> attributes.put("key-" + index, "value-" + index));
+        CodeRulePreviewRequest mapOverflow = new CodeRulePreviewRequest(
+                "D{SEQ:3}", InputMode.AUTO, null, attributes, null
+        );
+        List<CodeRuleAttributeMappingPayload> mappings = IntStream.range(0, 21)
+                .mapToObj(index -> new CodeRuleAttributeMappingPayload(
+                        "key-" + index, "value-" + index, "C" + index
+                ))
+                .toList();
+        CodeRulePreviewRequest listOverflow = new CodeRulePreviewRequest(
+                "D{SEQ:3}", InputMode.AUTO, null, null, mappings
+        );
+
+        for (CodeRulePreviewRequest request : List.of(mapOverflow, listOverflow)) {
+            mockMvc.perform(post("/api/v1/code-rules/{target}/preview", "DEPARTMENT")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+        }
+        verify(codeRuleService, never()).previewFromRequest(any(), any());
+    }
+
+    @Test
+    @DisplayName("미리보기 map key/value·parent 길이와 null list 원소를 제한")
+    void preview_nested_values_are_bounded() throws Exception {
+        List<CodeRulePreviewRequest> invalidRequests = List.of(
+                new CodeRulePreviewRequest(
+                        "D{SEQ:3}", InputMode.AUTO, "P".repeat(101), null, null
+                ),
+                new CodeRulePreviewRequest(
+                        "D{SEQ:3}", InputMode.AUTO, null, Map.of("K".repeat(51), "value"), null
+                ),
+                new CodeRulePreviewRequest(
+                        "D{SEQ:3}", InputMode.AUTO, null, Map.of("key", "V".repeat(101)), null
+                ),
+                new CodeRulePreviewRequest(
+                        "D{SEQ:3}", InputMode.AUTO, null,
+                        java.util.Collections.singletonMap("key", null), null
+                ),
+                new CodeRulePreviewRequest(
+                        "D{SEQ:3}", InputMode.AUTO, null, Map.of("", "value"), null
+                ),
+                new CodeRulePreviewRequest(
+                        "D{SEQ:3}", InputMode.AUTO, null, null,
+                        java.util.Collections.singletonList(null)
+                )
+        );
+
+        for (CodeRulePreviewRequest request : invalidRequests) {
+            mockMvc.perform(post("/api/v1/code-rules/{target}/preview", "DEPARTMENT")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+        }
+        verify(codeRuleService, never()).previewFromRequest(any(), any());
+    }
+
+    @Test
+    @DisplayName("수정 매핑은 정확히 20개까지 허용")
+    void update_mapping_exact_boundary_is_allowed() throws Exception {
+        List<CodeRuleAttributeMappingPayload> mappings = IntStream.range(0, 20)
+                .mapToObj(index -> new CodeRuleAttributeMappingPayload(
+                        "key-" + index, "value-" + index, "C" + index
+                ))
+                .toList();
+        CodeRuleUpdateRequest request = new CodeRuleUpdateRequest(
+                "D{SEQ:3}", InputMode.AUTO, null, mappings
+        );
+        given(codeRuleService.update(eq(CodeRuleTarget.DEPARTMENT), any()))
+                .willReturn(sampleResponse());
+
+        mockMvc.perform(put("/api/v1/code-rules/{target}", "DEPARTMENT")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("수정 매핑 21개는 service 진입 전에 거부")
+    void update_mapping_overflow_is_rejected() throws Exception {
+        List<CodeRuleAttributeMappingPayload> mappings = IntStream.range(0, 21)
+                .mapToObj(index -> new CodeRuleAttributeMappingPayload(
+                        "key-" + index, "value-" + index, "C" + index
+                ))
+                .toList();
+        CodeRuleUpdateRequest request = new CodeRuleUpdateRequest(
+                "D{SEQ:3}", InputMode.AUTO, null, mappings
+        );
+
+        mockMvc.perform(put("/api/v1/code-rules/{target}", "DEPARTMENT")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(codeRuleService, never()).update(any(), any());
     }
 
     private static CodeRuleResponse sampleResponse() {

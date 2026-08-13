@@ -52,6 +52,7 @@ public record EquipmentCreateRequest(
         @NotNull
         Boolean warrantyInsurance,
 
+        @Size(max = 4000)
         String note
 ) {
 }

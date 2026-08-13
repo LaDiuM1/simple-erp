@@ -5,6 +5,7 @@ import io.github.ladium1.erp.department.api.dto.DepartmentInfo;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.demo.DemoProtectionPolicy;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
 import io.github.ladium1.erp.global.exception.BusinessException;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.DataScope;
@@ -70,6 +71,7 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
     private final DataScopeResolver dataScopeResolver;
     private final DataScopeContextProvider dataScopeContextProvider;
     private final DemoProtectionPolicy demoProtectionPolicy;
+    private final DemoExcelExportGuard demoExcelExportGuard;
 
     @Override
     public Long getRoleIdByLoginId(String loginId) {
@@ -264,6 +266,7 @@ public class EmployeeService implements EmployeeApi, LoginAccountApi {
     }
 
     public byte[] exportExcel(String viewerLoginId, EmployeeSearchCondition condition, Sort sort) {
+        demoExcelExportGuard.assertExportAllowed(DemoExcelExportGuard.Table.EMPLOYEES);
         EmployeeSearchCondition visibleCondition = condition.withExcludedLoginId(
                 demoProtectionPolicy.hiddenOperationsEmployeeLoginId(viewerLoginId));
         List<Employee> employees = employeeRepository.searchAll(visibleCondition, sort);

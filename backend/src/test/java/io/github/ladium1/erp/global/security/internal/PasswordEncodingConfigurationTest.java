@@ -2,6 +2,7 @@ package io.github.ladium1.erp.global.security.internal;
 
 import io.github.ladium1.erp.employee.api.LoginAccountApi;
 import io.github.ladium1.erp.global.demo.DemoRequestGuardFilter;
+import io.github.ladium1.erp.global.demo.DemoIngressGuardFilter;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
@@ -41,6 +42,11 @@ class PasswordEncodingConfigurationTest {
         @Bean
         DemoRequestGuardFilter demoRequestGuardFilter() {
             return mock(DemoRequestGuardFilter.class);
+        }
+
+        @Bean
+        DemoIngressGuardFilter demoIngressGuardFilter() {
+            return mock(DemoIngressGuardFilter.class);
         }
 
         @Bean

@@ -7,6 +7,7 @@ import io.github.ladium1.erp.global.validation.MoneyPolicy;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
@@ -25,6 +26,7 @@ public record AfterServiceUpdateRequest(
         @NotNull
         ServiceType type,
 
+        @Size(max = 4000)
         String symptom,
 
         @NotNull

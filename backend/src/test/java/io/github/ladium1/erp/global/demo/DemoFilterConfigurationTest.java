@@ -34,6 +34,7 @@ class DemoFilterConfigurationTest {
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(DemoRequestGuardFilter.class);
+                    assertThat(context).hasSingleBean(DemoIngressGuardFilter.class);
                     assertThat(resolverCreations).hasValue(0);
                 });
     }

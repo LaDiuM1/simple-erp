@@ -1,11 +1,11 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithTheme } from '@/test/renderWithTheme';
-import {
-  MAX_UPLOAD_FILE_SIZE_BYTES,
-  UPLOAD_FILE_SIZE_GUIDE,
-} from '@/shared/utils/uploadFileSize';
-import ExcelUploadModal, { type ExcelUploadResult } from './ExcelUploadModal';
+import ExcelUploadModal, {
+  EXCEL_UPLOAD_FILE_SIZE_GUIDE,
+  MAX_EXCEL_UPLOAD_FILE_SIZE_BYTES,
+  type ExcelUploadResult,
+} from './ExcelUploadModal';
 
 const mocks = vi.hoisted(() => ({
   error: vi.fn(),
@@ -39,7 +39,7 @@ describe('ExcelUploadModal', () => {
     vi.clearAllMocks();
   });
 
-  it('공통 파일 상한을 안내하고 초과 파일은 mutation 전에 거부한다', () => {
+  it('Excel 전용 파일·행 상한을 안내하고 초과 파일은 mutation 전에 거부한다', () => {
     const upload = createUploadMock(vi.fn<() => Promise<ExcelUploadResult>>());
     renderWithTheme(
       <ExcelUploadModal
@@ -49,7 +49,7 @@ describe('ExcelUploadModal', () => {
       />,
     );
 
-    expect(screen.getByText(`.xlsx 형식 · ${UPLOAD_FILE_SIZE_GUIDE}`)).toBeInTheDocument();
+    expect(screen.getByText(`.xlsx 형식 · ${EXCEL_UPLOAD_FILE_SIZE_GUIDE}`)).toBeInTheDocument();
 
     const input = document.querySelector<HTMLInputElement>('input[type="file"]');
     expect(input).not.toBeNull();
@@ -57,13 +57,13 @@ describe('ExcelUploadModal', () => {
       target: {
         files: [{
           name: 'oversized.xlsx',
-          size: MAX_UPLOAD_FILE_SIZE_BYTES + 1,
+          size: MAX_EXCEL_UPLOAD_FILE_SIZE_BYTES + 1,
         }],
       },
     });
 
     expect(mocks.error).toHaveBeenCalledWith(
-      `oversized.xlsx — ${UPLOAD_FILE_SIZE_GUIDE}까지 업로드할 수 있습니다.`,
+      'oversized.xlsx — 1.0MB 이하만 업로드할 수 있습니다.',
     );
     expect(upload).not.toHaveBeenCalled();
   });

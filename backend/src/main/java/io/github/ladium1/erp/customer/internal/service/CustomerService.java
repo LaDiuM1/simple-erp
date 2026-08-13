@@ -29,6 +29,8 @@ import io.github.ladium1.erp.customer.internal.repository.CustomerRepository;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoExcelImportQuotaGuard;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
 import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRow;
 import io.github.ladium1.erp.global.excel.ExcelImporter.ParsedRows;
 import io.github.ladium1.erp.global.excel.ExcelRowError;
@@ -77,6 +79,8 @@ public class CustomerService implements CustomerApi {
     private final DataScopeContextProvider dataScopeContextProvider;
     private final List<CustomerVisibilityContributor> visibilityContributors;
     private final ApplicationEventPublisher eventPublisher;
+    private final DemoExcelImportQuotaGuard demoExcelImportQuotaGuard;
+    private final DemoExcelExportGuard demoExcelExportGuard;
 
     @Override
     public CustomerInfo getById(Long id) {
@@ -187,6 +191,7 @@ public class CustomerService implements CustomerApi {
     }
 
     public byte[] exportExcel(CustomerSearchCondition condition, Sort sort) {
+        demoExcelExportGuard.assertExportAllowed(DemoExcelExportGuard.Table.CUSTOMERS);
         List<Customer> customers = customerRepository.searchAll(condition, sort);
         List<CustomerSummaryResponse> rows = customers.stream()
                 .map(customerMapper::toSummaryResponse)
@@ -212,6 +217,7 @@ public class CustomerService implements CustomerApi {
         Set<String> seenCodes = new HashSet<>();
         Set<String> seenBizRegNos = new HashSet<>();
 
+        List<Long> importedIds = new ArrayList<>();
         for (ParsedRow<Holder> pr : parsed.builders()) {
             int rowNum = pr.rowNum();
             Holder holder = pr.builder();
@@ -267,7 +273,13 @@ public class CustomerService implements CustomerApi {
                     .status(h.status)
                     .tradeStartDate(h.tradeStartDate)
                     .build();
-            customerRepository.save(customer);
+            importedIds.add(customerRepository.save(customer).getId());
+        }
+        if (!importedIds.isEmpty()) {
+            demoExcelImportQuotaGuard.assertRowsAllowedAndRecord(
+                    DemoExcelImportQuotaGuard.ImportKind.CUSTOMER,
+                    importedIds
+            );
         }
         return ExcelUploadResult.success(parsed.totalRows());
     }

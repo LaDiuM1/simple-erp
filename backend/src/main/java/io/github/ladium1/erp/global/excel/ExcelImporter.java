@@ -7,6 +7,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,10 +31,28 @@ public class ExcelImporter {
 
     private static final DataFormatter FORMATTER = new DataFormatter();
     private static final DateTimeFormatter ISO_DATE = DateTimeFormatter.ISO_LOCAL_DATE;
+    private static final long MAX_COMPRESSED_BYTES = 1L * 1024 * 1024;
+    private static final int MAX_DATA_ROWS = 100;
+    private static final long MAX_ZIP_ENTRY_BYTES = 8L * 1024 * 1024;
+    private static final long MAX_ZIP_TEXT_CHARS = 4L * 1024 * 1024;
+
+    static {
+        // POI의 OOXML zip-bomb 검사는 process-wide 설정이다. 이 애플리케이션의 import/export가 공유한다.
+        ZipSecureFile.setMinInflateRatio(0.05d);
+        ZipSecureFile.setMaxEntrySize(MAX_ZIP_ENTRY_BYTES);
+        ZipSecureFile.setMaxTextSize(MAX_ZIP_TEXT_CHARS);
+        ZipSecureFile.setMaxFileCount(100);
+    }
 
     public <B> ParsedRows<B> parse(MultipartFile file,
                                    List<ExcelImportColumn<B>> columns,
                                    Supplier<B> builderFactory) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("비어 있는 엑셀 파일은 업로드할 수 없습니다.");
+        }
+        if (file.getSize() < 0 || file.getSize() > MAX_COMPRESSED_BYTES) {
+            throw new IllegalArgumentException("엑셀 파일은 1MiB 이하만 업로드할 수 있습니다.");
+        }
         try (InputStream input = file.getInputStream();
              Workbook workbook = WorkbookFactory.create(input)) {
 
@@ -45,10 +64,15 @@ public class ExcelImporter {
             int totalRows = 0;
 
             int lastRowNum = sheet.getLastRowNum();
+            if (lastRowNum > MAX_DATA_ROWS) {
+                throw new IllegalArgumentException("엑셀 데이터는 최대 100행까지 업로드할 수 있습니다.");
+            }
             for (int rowIdx = 1; rowIdx <= lastRowNum; rowIdx++) {
                 Row row = sheet.getRow(rowIdx);
                 if (isBlankRow(row, columns.size())) continue;
-                totalRows++;
+                if (++totalRows > MAX_DATA_ROWS) {
+                    throw new IllegalArgumentException("엑셀 데이터는 최대 100행까지 업로드할 수 있습니다.");
+                }
                 int userRowNum = rowIdx; // 헤더 다음 첫 데이터 행이 1.
 
                 B builder = builderFactory.get();

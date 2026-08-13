@@ -46,6 +46,8 @@ public class DemoProperties {
     @Valid
     private RateLimit rateLimit = new RateLimit();
     @Valid
+    private Excel excel = new Excel();
+    @Valid
     private Seed seed = new Seed();
 
     @AssertTrue(message = "demo 모드에는 seed expected-version이 필요합니다.")
@@ -98,6 +100,38 @@ public class DemoProperties {
     @Setter
     public static class Upload {
         private boolean enabled = true;
+        @Min(1)
+        private long accountQuotaBytes = 256L * 1024 * 1024;
+        @Min(1)
+        private int accountQuotaFiles = 16;
+        @Min(1)
+        private long generationQuotaBytes = 512L * 1024 * 1024;
+        @Min(1)
+        private int generationQuotaFiles = 32;
+        @Min(1)
+        private long minFreeBytes = 5L * 1024 * 1024 * 1024;
+        @DecimalMin(value = "0.0", inclusive = false)
+        @DecimalMax("1.0")
+        private double minFreeRatio = 0.20;
+        @Min(1)
+        private int maxConcurrentTransfers = 2;
+        @Min(1)
+        private int maxConcurrentUploadsPerAccount = 1;
+        @Min(1)
+        private int maxConcurrentDownloadsPerAccount = 2;
+        @Min(1)
+        private int excelAccountQuotaRows = 500;
+        @Min(1)
+        private int excelGenerationQuotaRows = 1_000;
+
+        @AssertTrue(message = "demo upload global quota와 transfer 한도는 account 한도 이상이어야 합니다.")
+        public boolean isValidQuotaHierarchy() {
+            return generationQuotaBytes >= accountQuotaBytes
+                    && generationQuotaFiles >= accountQuotaFiles
+                    && maxConcurrentTransfers >= maxConcurrentUploadsPerAccount
+                    && maxConcurrentTransfers >= maxConcurrentDownloadsPerAccount
+                    && excelGenerationQuotaRows >= excelAccountQuotaRows;
+        }
     }
 
     @Getter
@@ -114,19 +148,85 @@ public class DemoProperties {
 
     @Getter
     @Setter
+    public static class Excel {
+        @Min(1)
+        @jakarta.validation.constraints.Max(10_000)
+        private int exportMaxRows = 500;
+    }
+
+    @Getter
+    @Setter
     public static class RateLimit {
         @NotNull
         private Duration window = Duration.ofMinutes(1);
         @Min(1)
         private int loginLimit = 10;
         @Min(1)
+        private int loginGlobalLimit = 30;
+        @Min(1)
         private int writeLimit = 60;
+        @Min(1)
+        private int writeGlobalLimit = 90;
+        @Min(1)
+        private int ingressLimit = 300;
+        @Min(1)
+        private int ingressGlobalLimit = 600;
+        @Min(1)
+        private int maxConcurrentIngress = 8;
+        @Min(1)
+        private int maxConcurrentWrites = 4;
+        @Min(1)
+        private int readLimit = 120;
+        @Min(1)
+        private int readGlobalLimit = 180;
+        @Min(1)
+        private int previewLimit = 20;
+        @Min(1)
+        private int previewGlobalLimit = 30;
+        @Min(1)
+        private int maxConcurrentReads = 4;
+        @Min(1)
+        private int maxConcurrentPreviews = 2;
+        @Min(1)
+        private int uploadLimit = 10;
+        @Min(1)
+        private int uploadGlobalLimit = 16;
+        @Min(1)
+        private int excelUploadLimit = 2;
+        @Min(1)
+        private int excelUploadGlobalLimit = 2;
+        @Min(1)
+        private int downloadLimit = 20;
+        @Min(1)
+        private int downloadGlobalLimit = 30;
+        @NotNull
+        private Duration downloadByteWindow = Duration.ofHours(1);
+        @Min(1)
+        private long downloadByteLimit = 64L * 1024 * 1024;
+        @Min(1)
+        private long downloadGlobalByteLimit = 96L * 1024 * 1024;
         @Min(1)
         private int maxTrackedKeys = 10_000;
 
         @AssertTrue(message = "rate-limit window는 양수여야 합니다.")
         public boolean isValidWindow() {
-            return window != null && window.toSeconds() >= 1;
+            return window != null
+                    && window.toSeconds() >= 1
+                    && downloadByteWindow != null
+                    && downloadByteWindow.toSeconds() >= 1;
+        }
+
+        @AssertTrue(message = "demo global rate limit은 account limit 이상이어야 합니다.")
+        public boolean isValidLimitHierarchy() {
+            return loginGlobalLimit >= loginLimit
+                    && ingressGlobalLimit >= ingressLimit
+                    && writeGlobalLimit >= writeLimit
+                    && readGlobalLimit >= readLimit
+                    && previewGlobalLimit >= previewLimit
+                    && uploadGlobalLimit >= uploadLimit
+                    && excelUploadGlobalLimit >= excelUploadLimit
+                    && downloadGlobalLimit >= downloadLimit
+                    && downloadGlobalByteLimit >= downloadByteLimit;
         }
     }
 

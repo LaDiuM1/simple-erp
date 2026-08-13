@@ -5,6 +5,7 @@ import io.github.ladium1.erp.employee.internal.service.EmployeeService;
 import io.github.ladium1.erp.employee.internal.web.EmployeeController;
 import io.github.ladium1.erp.global.security.MenuPermissionEvaluator;
 import io.github.ladium1.erp.global.demo.DemoRequestGuardFilter;
+import io.github.ladium1.erp.global.demo.DemoIngressGuardFilter;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,6 +56,9 @@ class JwtAccountStatusIntegrationTest {
     @MockitoBean
     private DemoRequestGuardFilter demoRequestGuardFilter;
 
+    @MockitoBean
+    private DemoIngressGuardFilter demoIngressGuardFilter;
+
     @BeforeEach
     void continueAfterDemoGuard() throws Exception {
         doAnswer(invocation -> {
@@ -62,6 +66,11 @@ class JwtAccountStatusIntegrationTest {
             chain.doFilter(invocation.getArgument(0), invocation.getArgument(1));
             return null;
         }).when(demoRequestGuardFilter).doFilter(any(), any(), any());
+        doAnswer(invocation -> {
+            FilterChain chain = invocation.getArgument(2);
+            chain.doFilter(invocation.getArgument(0), invocation.getArgument(1));
+            return null;
+        }).when(demoIngressGuardFilter).doFilter(any(), any(), any());
     }
 
     @Test

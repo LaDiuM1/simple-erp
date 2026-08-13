@@ -71,6 +71,69 @@ class DemoRateLimiterTest {
         assertThat(limiter.tryAcquire("login", null, 1)).isFalse();
         assertThat(limiter.tryAcquire("login", " ", 1)).isFalse();
         assertThat(limiter.tryAcquire("login", "identity", 0)).isFalse();
+        assertThat(limiter.tryAcquire("bytes", "identity", 0, 1, Duration.ofHours(1))).isFalse();
+        assertThat(limiter.tryAcquire("bytes", "identity", 2, 1, Duration.ofHours(1))).isFalse();
+        assertThat(limiter.tryAcquire("bytes", "identity", 1, 1, null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("가중 byte budget은 정확한 경계를 허용하고 독립된 1시간 window 뒤 만료")
+    void weighted_budget_uses_its_own_window() {
+        DemoProperties properties = new DemoProperties();
+        MutableClock clock = new MutableClock(Instant.parse("2026-08-02T03:00:00Z"));
+        DemoRateLimiter limiter = new DemoRateLimiter(properties, clock);
+
+        assertThat(limiter.tryAcquire("download-bytes", "demo.staff", 6, 10, Duration.ofHours(1)))
+                .isTrue();
+        assertThat(limiter.tryAcquire("download-bytes", "demo.staff", 4, 10, Duration.ofHours(1)))
+                .isTrue();
+        assertThat(limiter.tryAcquire("download-bytes", "demo.staff", 1, 10, Duration.ofHours(1)))
+                .isFalse();
+
+        clock.advance(Duration.ofHours(1));
+        assertThat(limiter.tryAcquire("download-bytes", "demo.staff", 10, 10, Duration.ofHours(1)))
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("long 최대치 근처의 weighted 누적도 overflow로 우회되지 않음")
+    void weighted_budget_is_overflow_safe() {
+        DemoRateLimiter limiter = new DemoRateLimiter(new DemoProperties());
+
+        assertThat(limiter.tryAcquire(
+                "download-bytes",
+                "demo.staff",
+                Long.MAX_VALUE - 1,
+                Long.MAX_VALUE,
+                Duration.ofHours(1)
+        )).isTrue();
+        assertThat(limiter.tryAcquire(
+                "download-bytes",
+                "demo.staff",
+                2,
+                Long.MAX_VALUE,
+                Duration.ofHours(1)
+        )).isFalse();
+    }
+
+    @Test
+    @DisplayName("계정·global weighted budget은 하나가 부족하면 어느 쪽도 부분 차감하지 않음")
+    void paired_weighted_budget_is_atomic() {
+        DemoRateLimiter limiter = new DemoRateLimiter(new DemoProperties());
+
+        assertThat(limiter.tryAcquire(
+                "global", "all", 5, 5, Duration.ofHours(1)
+        )).isTrue();
+        assertThat(limiter.tryAcquireBoth(
+                "account", "demo.staff", 1,
+                "global", "all", 5,
+                1, Duration.ofHours(1)
+        )).isFalse();
+        assertThat(limiter.tryAcquireBoth(
+                "account", "demo.staff", 1,
+                "other-global", "all", 1,
+                1, Duration.ofHours(1)
+        )).isTrue();
     }
 
     @Test

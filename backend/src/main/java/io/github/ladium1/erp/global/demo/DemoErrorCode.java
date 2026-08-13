@@ -23,6 +23,26 @@ public enum DemoErrorCode implements ErrorCode {
     DEMO_RATE_LIMIT_EXCEEDED(
             HttpStatus.TOO_MANY_REQUESTS,
             "데모 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요."
+    ),
+    DEMO_UPLOAD_QUOTA_EXCEEDED(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "데모 업로드 한도를 초과했습니다. 다음 초기화 후 다시 시도해 주세요."
+    ),
+    DEMO_EXCEL_ROW_QUOTA_EXCEEDED(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "데모 엑셀 등록 한도를 초과했습니다. 다음 초기화 후 다시 시도해 주세요."
+    ),
+    DEMO_EXCEL_EXPORT_TOO_LARGE(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "데모 엑셀 다운로드 행 한도를 초과했습니다. 검색 조건을 줄이거나 다음 초기화 후 다시 시도해 주세요."
+    ),
+    DEMO_STORAGE_UNAVAILABLE(
+            HttpStatus.INSUFFICIENT_STORAGE,
+            "데모 파일 저장소의 안전 여유 공간을 확보할 수 없습니다."
+    ),
+    DEMO_UNSUPPORTED_MULTIPART(
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+            "데모에서 지원하지 않는 multipart 요청입니다."
     );
 
     private final HttpStatus status;

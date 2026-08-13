@@ -1,6 +1,9 @@
 package io.github.ladium1.erp.global.demo;
 
+import io.github.ladium1.erp.global.web.DownloadResponse;
 import org.springframework.boot.test.context.TestComponent;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,6 +42,15 @@ public class DemoGuardProbeController {
     })
     ProbeResponse upload() {
         return new ProbeResponse("upload");
+    }
+
+    @GetMapping("/api/v1/drive/files/{id}/download")
+    ResponseEntity<ByteArrayResource> download(@PathVariable Long id) {
+        return DownloadResponse.attachment(
+                "payload".getBytes(),
+                "probe-" + id + ".txt",
+                "text/plain"
+        );
     }
 
     record ProbeResponse(String result) {

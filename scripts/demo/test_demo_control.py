@@ -67,6 +67,96 @@ class ResetScriptResourceContractTest(unittest.TestCase):
         )
         self.assertIn("demo_prepare_files_volume", reset_script)
 
+    def test_database_password_values_are_not_compose_arguments(self) -> None:
+        library = (ROOT / "scripts/demo/lib.sh").read_text(encoding="utf-8")
+        reset_script = (ROOT / "scripts/demo/reset-demo.sh").read_text(encoding="utf-8")
+        readme = (ROOT / "demo/README.md").read_text(encoding="utf-8")
+
+        self.assertIn('export MYSQL_PWD="${DEMO_DB_ROOT_PASSWORD}"', library)
+        self.assertIn("demo_compose exec -T -e MYSQL_PWD", library)
+        self.assertNotIn('MYSQL_PWD=${DEMO_DB_ROOT_PASSWORD}', library)
+
+        self.assertIn('export DB_PASSWORD="${preflight_db_password}"', reset_script)
+        self.assertIn("    -e DB_PASSWORD \\", reset_script)
+        self.assertNotIn('DB_PASSWORD=${preflight_db_password}', reset_script)
+        self.assertIn("demo_db_root <<SQL", reset_script)
+        self.assertNotIn('demo_db_root -e "\n  DROP USER', reset_script)
+
+        self.assertIn("-e MARIADB_ROOT_PASSWORD mariadb:", readme)
+        self.assertIn("docker exec -e MYSQL_PWD simple-erp-seed-check", readme)
+        self.assertNotIn("-e MARIADB_ROOT_PASSWORD=", readme)
+        self.assertNotIn("-e MYSQL_PWD=", readme)
+
+
+@unittest.skipUnless(os.name == "posix" and shutil.which("bash"), "POSIX bash 필요")
+class DbSecretArgvContractTest(unittest.TestCase):
+
+    def test_root_db_password_reaches_docker_environment_but_not_actual_argv(self) -> None:
+        marker = "root-password-must-not-appear-in-argv"
+        sql_marker = "preflight-password-must-travel-on-stdin"
+        sql = f"CREATE USER demo IDENTIFIED BY '{sql_marker}';\n"
+        with tempfile.TemporaryDirectory(prefix="demo-db-argv-") as directory:
+            temporary = Path(directory)
+            capture = temporary / "capture.json"
+            fake_docker = temporary / "docker"
+            fake_docker.write_text(
+                "#!/usr/bin/env python3\n"
+                "import json\n"
+                "import os\n"
+                "from pathlib import Path\n"
+                "import sys\n"
+                "capture = {\n"
+                "    'argv': sys.argv,\n"
+                "    'procCmdline': Path('/proc/self/cmdline').read_bytes().decode().split('\\0'),\n"
+                "    'mysqlPwd': os.environ.get('MYSQL_PWD'),\n"
+                "    'stdin': sys.stdin.read(),\n"
+                "}\n"
+                "Path(os.environ['DEMO_ARGV_CAPTURE']).write_text(\n"
+                "    json.dumps(capture), encoding='utf-8'\n"
+                ")\n",
+                encoding="utf-8",
+            )
+            fake_docker.chmod(0o755)
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "PATH": f"{temporary}{os.pathsep}{environment['PATH']}",
+                    "DEMO_ARGV_CAPTURE": str(capture),
+                    "DEMO_DB_ROOT_PASSWORD": marker,
+                }
+            )
+
+            subprocess.run(
+                [
+                    "bash",
+                    "-c",
+                    f"source {json.dumps(str(ROOT / 'scripts/demo/lib.sh'))}; "
+                    "demo_db_root simple_erp_demo",
+                ],
+                input=sql,
+                text=True,
+                check=True,
+                env=environment,
+            )
+
+            observed = json.loads(capture.read_text(encoding="utf-8"))
+            self.assertEqual(observed["mysqlPwd"], marker)
+            self.assertEqual(observed["stdin"], sql)
+            self.assertTrue(
+                all(
+                    marker not in argument and sql_marker not in argument
+                    for argument in observed["argv"]
+                )
+            )
+            self.assertTrue(
+                all(
+                    marker not in argument and sql_marker not in argument
+                    for argument in observed["procCmdline"]
+                )
+            )
+            self.assertNotIn(f"MYSQL_PWD={marker}", observed["argv"])
+            self.assertIn("MYSQL_PWD", observed["argv"])
+
 
 @unittest.skipUnless(os.name == "posix" and shutil.which("bash"), "POSIX bash 필요")
 class AcceptanceTrapTest(unittest.TestCase):
@@ -934,7 +1024,7 @@ class AcceptanceContractTest(unittest.TestCase):
                 r"HTTP POST /api/v1/contracts transport failure after 8s: timed out",
             ):
                 control.request(
-                    "http://web",
+                    "http://web:8080",
                     "/api/v1/contracts",
                     method="POST",
                     body=b"{}",
@@ -983,7 +1073,7 @@ class AcceptanceContractTest(unittest.TestCase):
     def test_prepare_acceptance_context_snapshots_ready_identity(self) -> None:
         args = mock.Mock(
             marker="demo-it-0123456789abcdef0123456789abcdef",
-            base_url="http://web",
+            base_url="http://web:8080",
             verify_operator_protection=True,
             timeout_seconds=420,
         )
@@ -1001,7 +1091,7 @@ class AcceptanceContractTest(unittest.TestCase):
 
         after = dt.datetime.now(tz=control.KST)
         ready.assert_called_once_with(args)
-        self.assertEqual(context.base_url, "http://web")
+        self.assertEqual(context.base_url, "http://web:8080")
         self.assertEqual(context.marker, args.marker)
         self.assertEqual(context.generation, status["generation"])
         self.assertEqual(context.manager_token, "manager-token")
@@ -1015,7 +1105,7 @@ class AcceptanceContractTest(unittest.TestCase):
 
     def test_exercise_acceptance_orchestrates_named_stages(self) -> None:
         context = control.AcceptanceContext(
-            base_url="http://web",
+            base_url="http://web:8080",
             marker="demo-it-0123456789abcdef0123456789abcdef",
             generation="00000000-0000-4000-8000-000000000001",
             manager_token="manager-token",
@@ -1208,7 +1298,7 @@ class AcceptanceContractTest(unittest.TestCase):
         marker = "demo-it-0123456789abcdef0123456789abcdef"
         context = mock.Mock(
             marker=marker,
-            base_url="http://web",
+            base_url="http://web:8080",
             manager_token="manager-token",
             today=dt.date(2026, 8, 13),
             heavy_request_timeout_seconds=420,
@@ -1319,7 +1409,7 @@ class AcceptanceContractTest(unittest.TestCase):
     def test_attachment_boundary_requests_plus_one_then_exact_30_mib(self) -> None:
         context = mock.Mock(
             marker="demo-it-0123456789abcdef0123456789abcdef",
-            base_url="http://web",
+            base_url="http://web:8080",
             staff_token="staff-token",
             heavy_request_timeout_seconds=420,
         )
@@ -1391,7 +1481,7 @@ class AcceptanceContractTest(unittest.TestCase):
 
         with mock.patch.object(control, "request", side_effect=respond) as request:
             control.require_download_contract(
-                "http://web",
+                "http://web:8080",
                 "/api/v1/owners/1/files/2",
                 token="token",
                 expected_name=name,
@@ -1407,7 +1497,7 @@ class AcceptanceContractTest(unittest.TestCase):
         ):
             with self.assertRaises(control.ControlError):
                 control.require_download_contract(
-                    "http://web",
+                    "http://web:8080",
                     "/api/v1/owners/1/files/2",
                     token="token",
                     expected_name=name,
@@ -1446,8 +1536,15 @@ class AcceptanceContractTest(unittest.TestCase):
     def test_marker_and_page_contracts_are_fail_closed(self) -> None:
         marker = "demo-it-0123456789abcdef0123456789abcdef"
         self.assertEqual(control.validate_acceptance_marker(marker), marker)
-        self.assertEqual(control.validate_acceptance_base_url("http://web"), "http://web")
-        for base_url in ("http://web/", "http://localhost", "https://demo.example.com"):
+        self.assertEqual(
+            control.validate_acceptance_base_url("http://web:8080"), "http://web:8080"
+        )
+        for base_url in (
+            "http://web",
+            "http://web:8080/",
+            "http://localhost",
+            "https://demo.example.com",
+        ):
             with self.subTest(base_url=base_url):
                 with self.assertRaises(control.ControlError):
                     control.validate_acceptance_base_url(base_url)

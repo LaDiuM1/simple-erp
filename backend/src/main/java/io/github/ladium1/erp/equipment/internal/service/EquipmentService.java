@@ -24,6 +24,7 @@ import io.github.ladium1.erp.equipment.internal.repository.EquipmentRepository;
 import io.github.ladium1.erp.global.audit.AuditAction;
 import io.github.ladium1.erp.global.audit.Auditable;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.validation.RequestCollectionPolicy;
 import io.github.ladium1.erp.global.web.PageResponse;
@@ -60,6 +61,7 @@ public class EquipmentService implements EquipmentApi {
     private final ProductApi productApi;
     private final ContractApi contractApi;
     private final ApplicationEventPublisher eventPublisher;
+    private final DemoExcelExportGuard demoExcelExportGuard;
 
     @Override
     public EquipmentInfo getById(Long id) {
@@ -129,6 +131,7 @@ public class EquipmentService implements EquipmentApi {
      * 검색 조건 + 정렬 그대로 전체 페이지를 .xlsx 바이트로 직렬화. 페이지네이션 무시 — 필터링된 전체.
      */
     public byte[] exportExcel(EquipmentSearchCondition condition, Sort sort) {
+        demoExcelExportGuard.assertExportAllowed(DemoExcelExportGuard.Table.EQUIPMENTS);
         List<Equipment> equipments = equipmentRepository.searchAll(condition, sort);
         RefNames refs = loadRefNames(equipments);
         List<EquipmentExcelRow> rows = equipments.stream()

@@ -2,7 +2,7 @@
 #   - prod: SITE_ADDRESS=erp.example.com  (Caddy 가 Let's Encrypt 자동 TLS)
 #   - local: SITE_ADDRESS=:80             (HTTP only — TLS 시도 안 함)
 
-{$SITE_ADDRESS::80} {
+(simple_erp_routes) {
 	encode gzip
 	header {
 		X-Content-Type-Options "nosniff"
@@ -11,16 +11,12 @@
 		Permissions-Policy "geolocation=(self)"
 	}
 
-	# JSON·multipart를 포함한 API 요청 본문은 backend가 읽는 시점에 상한을 적용한다.
-	# Spring multipart 30MB에 multipart 경계 여유를 더해 proxy 한도를 맞춘다.
-	@apiRequest path /api/*
-	request_body @apiRequest {
-		max_size {$API_REQUEST_BODY_MAX_SIZE:32MB}
-	}
-
 	# 데모 상태는 backend reset/중지 중에도 정적 web 컨테이너에서 계속 제공한다.
 	# demo overlay 가 /srv/demo/status.json 을 원자적으로 교체하며, 기본 이미지는 disabled 상태다.
-	@demoStatus path /api/v1/demo/status
+	@demoStatus {
+		method GET HEAD
+		path /api/v1/demo/status
+	}
 	handle @demoStatus {
 		root * /srv
 		rewrite * /demo/status.json
@@ -28,15 +24,30 @@
 		file_server
 	}
 
-	# 백엔드 API + actuator 헬스체크 → backend:8080
-	handle /api/* {
-		reverse_proxy backend:8080
+	# 30MiB multipart가 필요한 공개 POST 4개만 경계 여유를 포함한 32MB를 허용한다.
+	@uploadApi {
+		method POST
+		path /api/v1/files /api/v1/drive/files /api/v1/customers/excel/upload /api/v1/sales-contacts/excel/upload
 	}
-	@health path /actuator/health /actuator/health/*
-	handle @health {
-		reverse_proxy backend:8080
+	handle @uploadApi {
+		request_body {
+			max_size {$API_REQUEST_BODY_MAX_SIZE:32MB}
+		}
+		reverse_proxy backend:8080 {
+			# backend의 login limiter가 신뢰하는 값을 외부 입력이 아니라 직전 peer로 고정한다.
+			header_up X-Forwarded-For {remote_host}
+		}
 	}
 
+	# 나머지 API DTO는 훨씬 작다. 대형 JSON 동시 역직렬화로 512MiB heap을 소진하지 못하게 한다.
+	handle /api/* {
+		request_body {
+			max_size {$API_JSON_REQUEST_BODY_MAX_SIZE:1MB}
+		}
+		reverse_proxy backend:8080 {
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
 	# SPA — index.html fallback
 	handle {
 		root * /srv
@@ -51,4 +62,27 @@
 	# index.html 은 no-cache (다음 빌드 즉시 반영)
 	@html path / /index.html
 	header @html Cache-Control "no-cache"
+}
+
+# 공개 진입점은 실제 도메인만 수락하고 Caddy 자동 TLS를 사용한다.
+{$SITE_ADDRESS::80} {
+	header Strict-Transport-Security "max-age=31536000"
+	# Actuator는 공개 SPA fallback에도 도달시키지 않는다.
+	@publicActuator path /actuator /actuator/*
+	handle @publicActuator {
+		respond 404
+	}
+	import simple_erp_routes
+}
+
+# reset·acceptance·컨테이너 healthcheck 전용 내부 HTTP 진입점이다.
+# Compose가 host port로 publish하지 않으므로 인터넷에서는 접근할 수 없다.
+:8080 {
+	@internalHealth path /actuator/health /actuator/health/*
+	handle @internalHealth {
+		reverse_proxy backend:8080 {
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+	import simple_erp_routes
 }

@@ -16,6 +16,10 @@ CONTROL_IMAGE = (
     "python:3.13-alpine@sha256:"
     "399babc8b49529dabfd9c922f2b5eea81d611e4512e3ed250d75bd2e7683f4b0"
 )
+MARIADB_IMAGE = (
+    "mariadb:11.8.6@sha256:"
+    "78a5047d3ba33975f183f183c2464cc7f1eab13ec8667e57cc9a5821d6da7577"
+)
 TESTED_BACKEND_IMAGE = "simple-erp-backend:acceptance"
 TESTED_WEB_IMAGE = "simple-erp-web:acceptance"
 TESTED_BACKEND_ARCHIVE = "/tmp/simple-erp-backend.tar.gz"
@@ -39,6 +43,43 @@ DEMO_SERVICE_NAMES = {"db", "backend", "web", "demo-tool", "demo-tool-smoke"}
 EXPECTED_LOGGING = {
     "driver": "local",
     "options": {"max-file": "3", "max-size": "10m"},
+}
+PUBLIC_RESOURCE_LIMITS = {
+    "DEMO_UPLOAD_ACCOUNT_QUOTA_BYTES": "268435456",
+    "DEMO_UPLOAD_ACCOUNT_QUOTA_FILES": "16",
+    "DEMO_UPLOAD_GENERATION_QUOTA_BYTES": "536870912",
+    "DEMO_UPLOAD_GENERATION_QUOTA_FILES": "32",
+    "DEMO_UPLOAD_MIN_FREE_BYTES": "5368709120",
+    "DEMO_UPLOAD_MIN_FREE_RATIO": "0.20",
+    "DEMO_MAX_CONCURRENT_TRANSFERS": "2",
+    "DEMO_MAX_CONCURRENT_UPLOADS_PER_ACCOUNT": "1",
+    "DEMO_MAX_CONCURRENT_DOWNLOADS_PER_ACCOUNT": "2",
+    "DEMO_EXCEL_ACCOUNT_QUOTA_ROWS": "500",
+    "DEMO_EXCEL_GENERATION_QUOTA_ROWS": "1000",
+    "DEMO_EXCEL_EXPORT_MAX_ROWS": "500",
+    "DEMO_LOGIN_GLOBAL_RATE_LIMIT": "30",
+    "DEMO_RATE_LIMIT_WINDOW": "PT1M",
+    "DEMO_INGRESS_RATE_LIMIT": "300",
+    "DEMO_INGRESS_GLOBAL_RATE_LIMIT": "600",
+    "DEMO_MAX_CONCURRENT_INGRESS": "8",
+    "DEMO_WRITE_RATE_LIMIT": "60",
+    "DEMO_WRITE_GLOBAL_RATE_LIMIT": "90",
+    "DEMO_MAX_CONCURRENT_WRITES": "4",
+    "DEMO_READ_RATE_LIMIT": "120",
+    "DEMO_READ_GLOBAL_RATE_LIMIT": "180",
+    "DEMO_PREVIEW_RATE_LIMIT": "20",
+    "DEMO_PREVIEW_GLOBAL_RATE_LIMIT": "30",
+    "DEMO_MAX_CONCURRENT_READS": "4",
+    "DEMO_MAX_CONCURRENT_PREVIEWS": "2",
+    "DEMO_UPLOAD_RATE_LIMIT": "10",
+    "DEMO_UPLOAD_GLOBAL_RATE_LIMIT": "16",
+    "DEMO_EXCEL_UPLOAD_RATE_LIMIT": "2",
+    "DEMO_EXCEL_UPLOAD_GLOBAL_RATE_LIMIT": "2",
+    "DEMO_DOWNLOAD_RATE_LIMIT": "20",
+    "DEMO_DOWNLOAD_GLOBAL_RATE_LIMIT": "30",
+    "DEMO_DOWNLOAD_BYTE_RATE_WINDOW": "PT1H",
+    "DEMO_DOWNLOAD_BYTE_RATE_LIMIT": "67108864",
+    "DEMO_DOWNLOAD_GLOBAL_BYTE_RATE_LIMIT": "100663296",
 }
 IMMUTABLE_IMAGE_PATTERN = re.compile(
     r"(?:sha256:[0-9a-f]{64}|[^@\s]+@sha256:[0-9a-f]{64})"
@@ -157,6 +198,44 @@ def select_demo_services(config: dict[str, object]) -> dict[str, dict[str, objec
     }
 
 
+def validate_web_public_ports(value: object) -> None:
+    ports = require_list(value, "web ports")
+    normalized: set[tuple[str, int, str, str]] = set()
+    for index, raw_port in enumerate(ports):
+        port = require_mapping(raw_port, f"web port {index}")
+        host_ip = port.get("host_ip")
+        target = port.get("target")
+        published = port.get("published")
+        protocol = port.get("protocol")
+        if not isinstance(host_ip, str) or not isinstance(target, int):
+            fail(f"web port {index} has an invalid host/target")
+        normalized.add((host_ip, target, str(published), str(protocol)))
+    require(
+        normalized
+        == {
+            ("0.0.0.0", 80, "80", "tcp"),
+            ("0.0.0.0", 443, "443", "tcp"),
+        },
+        "web must publish only public TCP ports 80 and 443",
+    )
+
+
+def validate_public_resource_limits(environment: dict[str, object]) -> None:
+    actual = {key: environment.get(key) for key in PUBLIC_RESOURCE_LIMITS}
+    require(
+        actual == PUBLIC_RESOURCE_LIMITS,
+        "public demo resource and cost envelope changed",
+    )
+
+
+def validate_demo_transaction_isolation(environment: dict[str, object]) -> None:
+    require(
+        environment.get("SPRING_DATASOURCE_HIKARI_TRANSACTION_ISOLATION")
+        == "TRANSACTION_READ_COMMITTED",
+        "demo database transaction isolation must stay READ_COMMITTED",
+    )
+
+
 def validate_service_contracts(config: dict[str, object]) -> dict[str, dict[str, object]]:
     require(config.get("name") == "simple-erp-demo", "Compose project name changed")
     services = select_demo_services(config)
@@ -176,6 +255,8 @@ def validate_service_contracts(config: dict[str, object]) -> dict[str, dict[str,
 
     require(not db.get("ports"), "database must not publish host ports")
     require(not backend.get("ports"), "backend must not publish host ports")
+    require(db.get("image") == MARIADB_IMAGE, "MariaDB image digest changed")
+    validate_web_public_ports(web.get("ports"))
     require(backend_env.get("DB_USERNAME") == "simple_erp_app", "app DB user changed")
     require(backend_env.get("DDL_AUTO") == "validate", "backend DDL mode must stay validate")
     require(
@@ -194,6 +275,8 @@ def validate_service_contracts(config: dict[str, object]) -> dict[str, dict[str,
         backend_env.get("DEMO_UPLOAD_ENABLED") == "true",
         "demo upload capability must stay enabled",
     )
+    validate_demo_transaction_isolation(backend_env)
+    validate_public_resource_limits(backend_env)
     for service_name in ("backend", "web"):
         image = services[service_name].get("image")
         require(
@@ -217,7 +300,8 @@ def validate_service_contracts(config: dict[str, object]) -> dict[str, dict[str,
         set(smoke_tool_env) == {"PYTHONDONTWRITEBYTECODE", "TZ"},
         "demo-tool-smoke environment allowlist changed",
     )
-    require(web_env.get("API_REQUEST_BODY_MAX_SIZE") == "32MB", "web body limit changed")
+    require(web_env.get("API_REQUEST_BODY_MAX_SIZE") == "32MB", "web upload body limit changed")
+    require(web_env.get("API_JSON_REQUEST_BODY_MAX_SIZE") == "1MB", "web JSON body limit changed")
     require(
         db_env.get("MARIADB_ROOT_PASSWORD") != backend_env.get("DB_PASSWORD"),
         "database root and app credentials must differ",
@@ -1131,6 +1215,122 @@ def validate_upload_size_texts(
         caddyfile.count("max_size {$API_REQUEST_BODY_MAX_SIZE:32MB}") == 1,
         "Caddy upload body limit must stay 32MB",
     )
+    require(
+        caddyfile.count("max_size {$API_JSON_REQUEST_BODY_MAX_SIZE:1MB}") == 1,
+        "Caddy non-upload API body limit must stay 1MB",
+    )
+    upload_matcher = caddyfile.partition("@uploadApi {")[2].partition("handle @uploadApi")[0]
+    require(
+        "method POST" in upload_matcher
+        and all(
+            path in upload_matcher
+            for path in (
+                "/api/v1/files",
+                "/api/v1/drive/files",
+                "/api/v1/customers/excel/upload",
+                "/api/v1/sales-contacts/excel/upload",
+            )
+        ),
+        "Caddy 32MB boundary must be limited to the four exact POST upload paths",
+    )
+    require(
+        caddyfile.find("handle @uploadApi")
+        < caddyfile.find("handle /api/*")
+        < caddyfile.find("max_size {$API_JSON_REQUEST_BODY_MAX_SIZE:1MB}"),
+        "Caddy exact upload route must precede the generic 1MB API route",
+    )
+
+
+def validate_caddy_internal_probe_texts(
+    caddyfile: str,
+    dockerfile: str,
+    compose_overlay: str,
+    reset_script: str,
+    smoke_script: str,
+    acceptance_script: str,
+    control_script: str,
+) -> None:
+    require(
+        caddyfile.count("(simple_erp_routes) {") == 1
+        and caddyfile.count("import simple_erp_routes") == 2,
+        "Caddy public and internal sites must share one route contract",
+    )
+    status_matcher = caddyfile.partition("@demoStatus {")[2].partition("handle @demoStatus")[0]
+    require(
+        "method GET HEAD" in status_matcher
+        and "path /api/v1/demo/status" in status_matcher,
+        "Caddy static demo status must be limited to GET and HEAD",
+    )
+    require(
+        caddyfile.count("reverse_proxy backend:8080 {") == 3
+        and caddyfile.count("header_up X-Forwarded-For {remote_host}") == 3,
+        "every Caddy backend proxy must overwrite X-Forwarded-For with its peer address",
+    )
+    shared_routes = caddyfile.partition("(simple_erp_routes) {")[2].partition(
+        "# 공개 진입점"
+    )[0]
+    public_site = caddyfile.partition("{$SITE_ADDRESS::80} {")[2].partition("\n:8080 {")[0]
+    internal_site = caddyfile.partition("\n:8080 {")[2]
+    require(
+        "/actuator" not in shared_routes
+        and "@publicActuator path /actuator /actuator/*" in public_site
+        and "handle @publicActuator" in public_site
+        and "respond 404" in public_site
+        and "@internalHealth path /actuator/health /actuator/health/*" in internal_site
+        and "handle @internalHealth" in internal_site,
+        "Caddy actuator health must be 404 publicly and proxied only on the internal site",
+    )
+    require(
+        caddyfile.count("\n:8080 {\n") == 1,
+        "Caddy internal probe site must stay on container-only port 8080",
+    )
+    require(
+        caddyfile.count('header Strict-Transport-Security "max-age=31536000"') == 1,
+        "Caddy public site must keep the one-year HSTS boundary",
+    )
+    require(
+        "EXPOSE 80 443 8080" in dockerfile
+        and "http://localhost:8080/" in dockerfile,
+        "web healthcheck must use the internal Caddy probe port",
+    )
+    require(
+        "DEMO_HTTP_PORT:-80}:80" in compose_overlay
+        and "DEMO_HTTPS_PORT:-443}:443" in compose_overlay
+        and not re.search(
+            r"(?m)^\s*-\s*[\"']?[^#\r\n]*:8080(?::8080)?[\"']?\s*$",
+            compose_overlay,
+        ),
+        "Caddy internal probe port must not be published by Compose",
+    )
+    require(
+        "--base-url http://web:8080" in reset_script
+        and reset_script.count("--base-url http://web:8080") == 1,
+        "reset live smoke must use the internal Caddy probe port",
+    )
+    require(
+        '"${base_url}" == "http://web:8080"' in smoke_script,
+        "smoke base URL allowlist must pin the internal Caddy probe port",
+    )
+    require(
+        acceptance_script.count("--base-url http://web:8080") == 5,
+        "all acceptance phases must use the internal Caddy probe port",
+    )
+    require(
+        'if value != "http://web:8080":' in control_script,
+        "acceptance control must pin the internal Caddy probe port",
+    )
+
+
+def validate_caddy_internal_probe_contract(project_root: Path) -> None:
+    validate_caddy_internal_probe_texts(
+        (project_root / "frontend/Caddyfile").read_text(encoding="utf-8"),
+        (project_root / "frontend/Dockerfile").read_text(encoding="utf-8"),
+        (project_root / "compose.demo.yml").read_text(encoding="utf-8"),
+        (project_root / "scripts/demo/reset-demo.sh").read_text(encoding="utf-8"),
+        (project_root / "scripts/demo/smoke-demo.sh").read_text(encoding="utf-8"),
+        (project_root / "scripts/demo/acceptance-demo.sh").read_text(encoding="utf-8"),
+        (project_root / "scripts/demo/demo_control.py").read_text(encoding="utf-8"),
+    )
 
 
 def validate_upload_size_contract(project_root: Path) -> None:
@@ -1287,6 +1487,7 @@ def validate_demo_contract(project_root: Path, config: dict[str, object]) -> Non
     )
     validate_acceptance_script_contract(root)
     validate_upload_size_contract(root)
+    validate_caddy_internal_probe_contract(root)
     validate_build_workflow_contract(root)
     validate_control_image_contract(root)
 

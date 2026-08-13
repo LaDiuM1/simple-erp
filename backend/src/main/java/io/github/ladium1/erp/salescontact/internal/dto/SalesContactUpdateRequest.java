@@ -32,6 +32,7 @@ public record SalesContactUpdateRequest(
         @Size(max = 20)
         List<@NotNull Long> sourceIds,
 
+        @Size(max = 4000)
         String note
 ) {
 }

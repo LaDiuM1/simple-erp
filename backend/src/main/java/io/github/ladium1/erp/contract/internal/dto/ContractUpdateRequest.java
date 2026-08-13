@@ -34,6 +34,7 @@ public record ContractUpdateRequest(
 
         OutputUnit outputUnit,
 
+        @Size(max = 4000)
         String optionText,
 
         @PositiveOrZero @Max(MoneyPolicy.MAX_AMOUNT)

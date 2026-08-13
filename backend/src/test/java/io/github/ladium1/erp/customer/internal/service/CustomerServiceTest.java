@@ -22,6 +22,8 @@ import io.github.ladium1.erp.customer.internal.exception.CustomerErrorCode;
 import io.github.ladium1.erp.customer.internal.mapper.CustomerMapper;
 import io.github.ladium1.erp.customer.internal.repository.CustomerRepository;
 import io.github.ladium1.erp.global.exception.BusinessException;
+import io.github.ladium1.erp.global.demo.DemoExcelExportGuard;
+import io.github.ladium1.erp.global.demo.DemoErrorCode;
 import io.github.ladium1.erp.global.menu.Menu;
 import io.github.ladium1.erp.global.security.DataScope;
 import io.github.ladium1.erp.global.security.DataScopeContext;
@@ -67,6 +69,20 @@ class CustomerServiceTest {
     @Mock private DataScopeResolver dataScopeResolver;
     @Mock private DataScopeContextProvider dataScopeContextProvider;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private DemoExcelExportGuard demoExcelExportGuard;
+
+    @Test
+    @DisplayName("Excel preflight 실패는 고객 전체 목록 materialization 전에 중단")
+    void excel_preflight_runs_before_search_all() {
+        org.mockito.BDDMockito.willThrow(new BusinessException(DemoErrorCode.DEMO_EXCEL_EXPORT_TOO_LARGE))
+                .given(demoExcelExportGuard)
+                .assertExportAllowed(DemoExcelExportGuard.Table.CUSTOMERS);
+
+        assertThatThrownBy(() -> customerService.exportExcel(null, org.springframework.data.domain.Sort.unsorted()))
+                .isInstanceOf(BusinessException.class);
+
+        verify(customerRepository, never()).searchAll(any(), any());
+    }
     @Spy private List<CustomerVisibilityContributor> visibilityContributors = new ArrayList<>();
 
     @BeforeEach

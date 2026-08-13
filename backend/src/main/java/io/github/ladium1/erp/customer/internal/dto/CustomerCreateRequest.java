@@ -67,6 +67,7 @@ public record CustomerCreateRequest(
 
         LocalDate tradeStartDate,
 
+        @Size(max = 4000)
         String note
 ) {
 }

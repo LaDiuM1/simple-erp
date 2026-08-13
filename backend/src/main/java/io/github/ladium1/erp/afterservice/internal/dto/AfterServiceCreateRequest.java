@@ -33,6 +33,7 @@ public record AfterServiceCreateRequest(
         @NotNull
         ServiceType type,
 
+        @Size(max = 4000)
         String symptom,
 
         @NotNull

@@ -38,6 +38,43 @@ class DeploymentWorkflowContractTest {
         assertThat(workflow).contains("if ! wait_for_pair \"Previous\"; then");
     }
 
+    @Test
+    @DisplayName("Caddy는 exact upload 4개만 32MB이고 나머지 API는 1MB")
+    void caddy_splits_upload_and_json_body_limits() throws IOException {
+        String caddyfile = readCaddyfile();
+        int uploadMatcher = caddyfile.indexOf("@uploadApi {");
+        int uploadLimit = caddyfile.indexOf("max_size {$API_REQUEST_BODY_MAX_SIZE:32MB}", uploadMatcher);
+        int genericApi = caddyfile.indexOf("handle /api/* {", uploadLimit);
+        int jsonLimit = caddyfile.indexOf("max_size {$API_JSON_REQUEST_BODY_MAX_SIZE:1MB}", genericApi);
+
+        assertThat(uploadMatcher).isGreaterThanOrEqualTo(0);
+        assertThat(caddyfile.substring(uploadMatcher, uploadLimit)).contains(
+                "method POST",
+                "/api/v1/files",
+                "/api/v1/drive/files",
+                "/api/v1/customers/excel/upload",
+                "/api/v1/sales-contacts/excel/upload"
+        );
+        assertThat(uploadLimit).isGreaterThan(uploadMatcher);
+        assertThat(genericApi).isGreaterThan(uploadLimit);
+        assertThat(jsonLimit).isGreaterThan(genericApi);
+        assertThat(caddyfile).containsOnlyOnce("max_size {$API_REQUEST_BODY_MAX_SIZE:32MB}");
+        assertThat(caddyfile).containsOnlyOnce("max_size {$API_JSON_REQUEST_BODY_MAX_SIZE:1MB}");
+    }
+
+    @Test
+    @DisplayName("Caddy는 status를 GET/HEAD로 제한하고 모든 backend proxy의 XFF를 peer 주소로 덮어씀")
+    void caddy_pins_status_methods_and_forwarded_ip_contract() throws IOException {
+        String caddyfile = readCaddyfile();
+        int statusMatcher = caddyfile.indexOf("@demoStatus {");
+        int statusHandle = caddyfile.indexOf("handle @demoStatus", statusMatcher);
+
+        assertThat(caddyfile.substring(statusMatcher, statusHandle))
+                .contains("method GET HEAD", "path /api/v1/demo/status");
+        assertThat(countOccurrences(caddyfile, "reverse_proxy backend:8080 {")).isEqualTo(3);
+        assertThat(countOccurrences(caddyfile, "header_up X-Forwarded-For {remote_host}")).isEqualTo(3);
+    }
+
     private static String readWorkflow() throws IOException {
         Path workflow = Stream.of(
                         Path.of(".github", "workflows", "deploy.yml"),
@@ -47,5 +84,26 @@ class DeploymentWorkflowContractTest {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("deploy.yml not found"));
         return Files.readString(workflow);
+    }
+
+    private static String readCaddyfile() throws IOException {
+        Path caddyfile = Stream.of(
+                        Path.of("frontend", "Caddyfile"),
+                        Path.of("..", "frontend", "Caddyfile")
+                )
+                .filter(Files::isRegularFile)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("frontend/Caddyfile not found"));
+        return Files.readString(caddyfile);
+    }
+
+    private static int countOccurrences(String source, String needle) {
+        int count = 0;
+        int offset = 0;
+        while ((offset = source.indexOf(needle, offset)) >= 0) {
+            count++;
+            offset += needle.length();
+        }
+        return count;
     }
 }

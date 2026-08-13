@@ -64,20 +64,22 @@ docker run --rm --network none --read-only --cap-drop ALL `
 아래 예시는 별도 MariaDB 11.8.6 컨테이너에서 번들을 검증한다. 저장소 루트에서 실행하고, 서버가 연결을 받을 준비가 된 뒤 가져오기를 진행한다.
 
 ```powershell
-$env:DEMO_DB_ROOT_PASSWORD = "로컬-검증용-비밀번호"
+$env:MARIADB_ROOT_PASSWORD = "로컬-검증용-비밀번호"
 docker run --name simple-erp-seed-check --detach `
-  -e MARIADB_ROOT_PASSWORD="$env:DEMO_DB_ROOT_PASSWORD" mariadb:11.8.6
+  -e MARIADB_ROOT_PASSWORD mariadb:11.8.6@sha256:78a5047d3ba33975f183f183c2464cc7f1eab13ec8667e57cc9a5821d6da7577
 
 docker cp demo/seed/schema.sql simple-erp-seed-check:/tmp/schema.sql
 docker cp demo/seed/seed-data.sql simple-erp-seed-check:/tmp/seed-data.sql
 docker cp demo/seed/verify-seed.sql simple-erp-seed-check:/tmp/verify-seed.sql
 
-docker exec -e MYSQL_PWD="$env:DEMO_DB_ROOT_PASSWORD" simple-erp-seed-check mariadb -uroot -e `
+$env:MYSQL_PWD = $env:MARIADB_ROOT_PASSWORD
+docker exec -e MYSQL_PWD simple-erp-seed-check mariadb -uroot -e `
   "CREATE DATABASE simple_erp_demo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-docker exec -e MYSQL_PWD="$env:DEMO_DB_ROOT_PASSWORD" simple-erp-seed-check sh -lc `
+docker exec -e MYSQL_PWD simple-erp-seed-check sh -lc `
   "mariadb -uroot simple_erp_demo < /tmp/schema.sql && mariadb -uroot simple_erp_demo < /tmp/seed-data.sql"
-docker exec -e MYSQL_PWD="$env:DEMO_DB_ROOT_PASSWORD" simple-erp-seed-check sh -lc `
+docker exec -e MYSQL_PWD simple-erp-seed-check sh -lc `
   "mariadb --batch --raw --skip-column-names -uroot simple_erp_demo < /tmp/verify-seed.sql"
+Remove-Item Env:MARIADB_ROOT_PASSWORD, Env:MYSQL_PWD
 ```
 
 마지막 명령이 아무 행도 출력하지 않아야 한다. 출력 행은 `check_name`, `record_id`, `detail` 순서의 위반 내역이다. 시드는 빈 canonical 스키마에 한 번 가져오는 것을 전제로 한다.
@@ -86,7 +88,7 @@ docker exec -e MYSQL_PWD="$env:DEMO_DB_ROOT_PASSWORD" simple-erp-seed-check sh -
 
 ## 데모 배포 경계
 
-데모는 기존 `compose.yml`을 단독으로 바꾸지 않는다. 모든 데모 명령은 project name `simple-erp-demo`와 `compose.yml`, `compose.demo.yml` 두 파일을 함께 명시한다. overlay는 MariaDB를 외부 포트에 공개하지 않고, backend에는 `simple_erp_app`의 live schema DML 권한만 준다. backend는 `DDL_AUTO=validate`로 실행하며 schema·reference 초기화기는 끈다. Caddy TLS 볼륨, DB 볼륨, seed 파일 볼륨도 서로 분리한다.
+데모는 기존 `compose.yml`을 단독으로 바꾸지 않는다. 모든 데모 명령은 project name `simple-erp-demo`와 `compose.yml`, `compose.demo.yml` 두 파일을 함께 명시한다. overlay는 ARM64를 포함해 검증한 MariaDB 11.8.6 manifest-list digest를 고정하고 DB를 외부 포트에 공개하지 않으며, backend에는 `simple_erp_app`의 live schema DML 권한만 준다. backend는 `DDL_AUTO=validate`로 실행하며 schema·reference 초기화기는 끈다. Caddy TLS 볼륨, DB 볼륨, seed 파일 볼륨도 서로 분리한다. Caddy의 공개 80/443 site는 `SITE_ADDRESS` 도메인만 수락하고 `/actuator/**`를 404로 닫는다. reset·acceptance·healthcheck만 Compose가 host에 publish하지 않는 컨테이너 전용 HTTP `:8080` site의 health endpoint를 사용한다.
 
 파괴 가능한 대상은 다음 literal allowlist로 고정되어 있다.
 
@@ -100,7 +102,11 @@ docker exec -e MYSQL_PWD="$env:DEMO_DB_ROOT_PASSWORD" simple-erp-seed-check sh -
 
 ## 운영 설정과 최초 기동
 
-운영 호스트는 `!override`를 지원하는 Docker Compose `2.24.4` 이상을 사용한다. `/opt/simple-erp-demo/.env.demo`에는 app DB 비밀번호, JWT, 복구 운영 계정과 이미지 설정만 둔다. DB root/reset 비밀번호는 여기에 넣지 않고 `/etc/simple-erp-demo/reset.env`에 `root:root`, mode `600`으로 둔다. reset service만 이 파일을 읽으며 backend와 web 컨테이너에는 root 자격 증명을 전달하지 않는다. app DB 비밀번호와 root 비밀번호는 반드시 달라야 한다.
+이 데모에는 기존 범용 `scripts/bootstrap-ec2.sh`와 `.github/workflows/deploy.yml`을 사용하지 않는다. 두 경로는 `/opt/simple-erp`와 tag 기반 단일 Compose 배포를 전제로 하므로 `/opt/simple-erp-demo`, 두 Compose 파일, 검증된 digest, reset 계약과 호환되지 않는다. 최초 호스트 준비에는 검토한 commit의 `scripts/demo/bootstrap-demo-ec2.sh`만 사용하고, 인증된 SSH로 전송한 로컬 파일과 원격 파일의 SHA-256이 같은지 확인한 뒤 root로 실행한다. 이 스크립트는 Amazon Linux 2023 ARM64, 서명된 OS 패키지, checksum으로 고정한 Compose·Buildx, Docker 자동 시작, 1GiB swap, root 소유 운영 경로를 검증하며 `ec2-user`를 사실상 root 권한인 docker 그룹에 넣지 않는다.
+
+앱 기동 전에는 `ops/sshd/00-simple-erp-demo-hardening.conf`를 `/etc/ssh/sshd_config.d/`에 `root:root`, mode `644`로 설치한다. OpenSSH는 먼저 읽은 값을 유지하므로 cloud-init 기본값보다 앞서는 `00-` 이름을 보존한다. 먼저 `sshd -t`를 통과시키고 기존 세션을 유지한 채 reload한 다음, 별도 새 세션의 key 로그인과 `sshd -T` 유효값을 확인한다. 이 설정은 root·비밀번호·X11·agent/TCP forwarding을 닫되 `ec2-user`의 public-key 접속은 유지한다. Session Manager 대체 경로를 실제로 검증하기 전에는 보안 그룹의 SSH 규칙을 제거하지 않는다.
+
+운영 호스트는 `!override`를 지원하는 Docker Compose `2.24.4` 이상을 사용한다. `/opt/simple-erp-demo/.env.demo`에는 app DB 비밀번호, JWT, 복구 운영 계정, 공개 데모 자원 상한과 이미지 설정만 둔다. DB root/reset 비밀번호는 여기에 넣지 않고 `/etc/simple-erp-demo/reset.env`에 `root:root`, mode `600`으로 둔다. reset service만 이 파일을 읽으며 backend와 web 컨테이너에는 root 자격 증명을 전달하지 않는다. app DB 비밀번호와 root 비밀번호는 반드시 달라야 한다.
 
 `BACKEND_IMAGE`와 `WEB_IMAGE`에는 같은 배포 commit에서 만든 registry digest(`name[:tag]@sha256:...`)를 명시한다. 로컬 acceptance에서는 Docker image ID(`sha256:...`)도 사용할 수 있다. digest가 함께 있으면 tag는 사람이 버전을 읽기 위한 표시에 불과하고 실제 이미지는 digest로 고정된다. reset은 digest 없는 `sha-*`, `latest`, 임의 tag를 거부하므로 tag의 이동 가능성을 배포 불변식으로 오인하지 않는다. 예제 값은 의도적으로 비워 둔다.
 
@@ -185,15 +191,17 @@ reset 초기화가 끝나 failure trap이 설치된 시점부터 pre-prune gate�
 
 ## 개인정보와 데모 제한
 
-요청 IP는 네트워크 계층에서 수신될 수 있다. 다만 데모 감사 DB에는 visitor IP를 저장하지 않고, Caddy access log도 활성화하지 않아 원문 IP를 보존하지 않는다. backend 공개 포트가 없고 Caddy가 외부의 기존 `X-Forwarded-*` 값을 기본 동작으로 무시하는 경계에서만 interceptor가 `X-Forwarded-For`를 신뢰한다. 로그인 rate limit 식별자는 backend 프로세스 시작 때 만든 무작위 salt와 요청 주소를 SHA-256으로 해시한 키이며 메모리에만 둔다. 만료된 키는 다음 정리 실행에서 제거되므로 기본 설정에서는 최대 약 2분 보존될 수 있다. 이 키는 방문자 분석이나 장기 추적에 사용하지 않는다.
+요청 IP는 네트워크 계층에서 수신될 수 있다. 다만 데모 감사 DB에는 visitor IP를 저장하지 않고, Caddy access log도 활성화하지 않아 원문 IP를 보존하지 않는다. backend 공개 포트가 없고 Caddy의 모든 backend proxy가 외부 `X-Forwarded-For`를 직전 peer 주소로 명시적으로 덮어쓰는 경계에서만 interceptor가 이 헤더를 신뢰한다. 로그인 rate limit 식별자는 backend 프로세스 시작 때 만든 무작위 salt와 요청 주소를 SHA-256으로 해시한 키이며 메모리에만 둔다. 만료된 키는 다음 정리 실행에서 제거되므로 기본 설정에서는 최대 약 2분 보존될 수 있다. 이 키는 방문자 분석이나 장기 추적에 사용하지 않는다.
 
-브라우저의 실제 위치 대신 서울 시청 인근 고정 모의 좌표를 사용한다. Caddy와 Spring multipart request는 32MB, Spring과 UI의 파일당 상한은 30MiB로 두어 multipart 부가 정보를 수용하면서 사용자 파일 경계는 하나로 유지한다. 자유 입력란과 업로드 파일에 방문자가 실제 개인정보를 넣을 가능성까지 자동 판별할 수는 없다. 화면 고지와 6시간 reset으로 보완하며, 이를 개인정보 수집 방지의 완전한 보장으로 표현하지 않는다.
+브라우저의 실제 위치 대신 서울 시청 인근 고정 모의 좌표를 사용한다. Caddy는 정확히 4개인 multipart POST 업로드 경로에만 32MB를 허용하고 나머지 `/api/*` 본문은 1MB로 제한한다. Spring multipart request는 32MB, Spring과 UI의 파일당 상한은 30MiB로 두어 multipart 부가 정보를 수용하면서 사용자 파일 경계는 하나로 유지한다. 자유 입력란과 업로드 파일에 방문자가 실제 개인정보를 넣을 가능성까지 자동 판별할 수는 없다. 화면 고지와 6시간 reset으로 보완하며, 이를 개인정보 수집 방지의 완전한 보장으로 표현하지 않는다.
+
+공개 계정이 디스크·메모리·egress 비용을 무제한 소비하지 못하도록 현재 reset generation의 저장 파일을 계정당 256MiB·16개, 전체 512MiB·32개로 제한한다. 이 상한은 manifest의 `reset_at` 이후 DB 메타데이터를 잠금 상태에서 다시 집계하므로 backend 재시작으로 초기화되지 않는다. 저장 직전에는 실제 파일시스템에 최소 5GiB 또는 전체의 20% 중 큰 값이 남는지도 두 번 확인하고, 조회 실패도 저장을 거부한다. JWT·계정 DB 조회 전 ingress는 분당 IP 300·전체 600, 동시 8개로 제한한다. 인증 조회는 계정 120·전체 180과 동시 4개, 일반 쓰기는 계정 60·전체 90과 동시 4개, 코드 미리보기는 계정 20·전체 30과 동시 2개를 적용한다. 업로드와 저장 파일 다운로드는 전체 동시 2개, 계정당 업로드 1개·다운로드 2개로 제한한다. 요청 수는 분당 일반 업로드 계정 10개·전체 16개, Excel import 계정 2개·전체 2개, 다운로드 계정 20개·전체 30개다. Excel import는 파일당 1MiB·데이터 100행·보수적인 OOXML 압축 해제 상한을 적용하고, 성공 행을 고객사와 영업 명부 합산 계정당 500행·전체 1,000행까지 현재 generation의 감사 로그로 영속 집계한다. Excel export는 6개 공개 도메인 모두 전체 entity 조회 전에 PK만 최대 501개 확인하고 500행 초과를 거절하며, export에 실릴 수 있는 자유 TEXT 입력은 create/update 양쪽 4,000자로 제한한다. 로그인도 IP당 10회와 전체 30회를 원자적으로 함께 차감한다. 다운로드는 추가로 시간당 계정 64MiB·전체 96MiB를 넘으면 외부 전송을 거부한다. 이 값은 2GiB RAM·30GiB root volume과 월간 네트워크 무료 사용량에 여유를 남기기 위한 공개 데모 안전 상한이며 정상 기능의 일반 운영 용량을 뜻하지 않는다.
 
 `READY`에서는 고객사·영업 명부 Excel, 게시판·전자결재·경비의 공통 첨부, Drive 파일 업로드를 모두 허용한다. reset 진입과 동시에 모든 쓰기를 잠그고 DB와 파일 generation 교체가 끝나 `READY`가 된 뒤에만 다시 연다. 성공한 reset은 방문자가 만든 DB 행과 업로드 파일 bytes를 함께 제거한다.
 
 데모에서 첨부 연결이나 Drive 항목을 삭제해도 애플리케이션은 `stored_files` 메타데이터와 파일 본체를 즉시 물리 삭제하지 않는다. 삭제 중 일부만 반영되어 DB와 디스크의 수명이 갈라지지 않도록 물리 삭제는 reset이 단독으로 소유한다. 성공한 reset은 canonical DB를 재import하고 새 canonical 파일 generation을 승격한 뒤 이전 generation 전체를 삭제하므로, 연결 해제된 파일과 방문자 업로드 bytes가 같은 reset에서 제거된다.
 
-쓰기 요청 하나가 내부 반복 작업으로 증폭되지 않도록 일괄 변경은 최대 20건으로 제한한다. 직책·제품 카테고리의 전체 스냅샷 순서 변경은 요청과 서비스 경계에서 최대 50건으로 제한하고, 도메인 총량이 이를 넘으면 전체 엔티티를 읽기 전에 중단한다. 이 상한은 Caddy·Spring 32MB request body 제한, Spring·UI 30MiB 파일 상한, 계정별 쓰기 rate limit과 별개로 적용되는 DB fan-out 경계다.
+쓰기 요청 하나가 내부 반복 작업으로 증폭되지 않도록 일괄 변경은 최대 20건으로 제한한다. 직책·제품 카테고리의 전체 스냅샷 순서 변경은 요청과 서비스 경계에서 최대 50건으로 제한하고, 도메인 총량이 이를 넘으면 전체 엔티티를 읽기 전에 중단한다. 이 상한은 Caddy의 일반 API 1MB·정확한 업로드 경로 32MB, Spring·UI 30MiB 파일 상한, 계정별 쓰기 rate limit과 별개로 적용되는 DB fan-out 경계다.
 
 ## 자동 검증
 
@@ -221,7 +229,7 @@ python3 scripts/demo/verify_demo_contract.py \
 
 `scripts/demo/acceptance-demo.sh`는 배포 대상 이미지와 실제 MariaDB·backend·web을 사용해 `canonical reset → 업무 쓰기 → canonical reset → 삭제 확인`을 한 번에 실행한다. 기존 인수 범위는 고객 생성·수정, 설치완료 전이와 정산완료 직접 등록에서 비동기 설비가 정확히 한 번 생성되는지, 해당 설비의 AS 접수, 게시글, 경비 상신·승인, 모의 위치 출퇴근을 검사한다. 데모 계정 권한과 복구 운영 계정 은닉·보호 계정 삭제 거부, 본인·퇴사자 결재선, 퇴사자 계약 배정, 잘못된 계약 일정, 다른 고객사 담당자 참조도 실패하는지도 확인한다.
 
-격리된 로컬 이미지 환경에서 업로드 기능 복구의 완료 조건도 통과했다. 고객사 Excel, 영업 명부 Excel, 게시판·전자결재·경비가 공유하는 일반 첨부, Drive 파일을 각각 업로드해 조회·다운로드했고, backend 재시작 뒤에도 DB와 파일이 정확히 대응했다. 파일당 정확히 30MiB인 첨부는 성공하고 1byte 초과 첨부는 413으로 거부됐다. 이어 reset을 실행해 acceptance에서 만든 13개 업무·파일 ID의 API 조회가 실패하고 직전 generation 디렉터리와 업로드 bytes가 남지 않는 것을 확인했다.
+격리된 로컬 이미지 환경에서 업로드 기능 복구의 완료 조건도 통과했다. 고객사 Excel, 영업 명부 Excel, 게시판·전자결재·경비가 공유하는 일반 첨부, Drive 파일을 각각 업로드해 조회·다운로드했고, backend 재시작 뒤에도 DB와 파일이 정확히 대응했다. 파일당 정확히 30MiB인 첨부는 성공하고 1byte 초과 첨부는 413으로 거부됐다. 데모 backend 연결은 `TRANSACTION_READ_COMMITTED`로 고정해 manifest 잠금 대기 전에 다른 조회가 있어도 직전 커밋된 업로드 사용량을 quota 판정에 반영하며, 이 격리 수준 변경은 데모 Compose에만 적용된다. 이어 reset을 실행해 acceptance에서 만든 13개 업무·파일 ID의 API 조회가 실패하고 직전 generation 디렉터리와 업로드 bytes가 남지 않는 것을 확인했다.
 
 스크립트는 시작 전에도 reset하고 첫 쓰기 이후 성공·실패와 관계없이 정리 reset을 실행한다. 따라서 공유 데모에서 실행하면 기존 방문자 입력이 즉시 사라진다. 배포 전 점검이나 격리된 로컬 환경에서만 실행하고, 운영 checkout에서는 reset service와 같은 root 전용 자격 증명 환경을 사용한다.
 
