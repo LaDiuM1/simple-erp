@@ -147,7 +147,10 @@ jobs:
               values.append(f"{key}={value}")
           Path(".env.demo").write_text("\n".join(values) + "\n", encoding="utf-8")
           PY
-          mkdir -p runtime/state runtime/work/ci runtime/logs
+          mkdir -p runtime/work/ci runtime/logs
+          # The demo tool runs as UID 0 without DAC override. Mirror the production
+          # root-owned state directory instead of relying on the runner's UID.
+          sudo install -d -o 0 -g 10001 -m 0755 runtime/state
           docker compose \
             --project-name simple-erp-demo \
             --env-file .env.demo \
@@ -361,3 +364,6 @@ jobs:
             --project-name simple-erp-demo \
             --env-file .env.demo \
             -f compose.yml -f compose.demo.yml down --remove-orphans || true
+          if [[ -d runtime/state ]]; then
+            sudo chown -R "$(id -u):$(id -g)" runtime/state
+          fi

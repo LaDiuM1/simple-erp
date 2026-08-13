@@ -107,6 +107,33 @@ class StaticContractVerifierTest(unittest.TestCase):
                 ),
             )
 
+    def test_ci_state_fixture_requires_production_equivalent_owner(self) -> None:
+        reset = (ROOT / "scripts/demo/reset-demo.sh").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/demo-seed.yml").read_text(encoding="utf-8")
+        verifier.validate_stored_file_mapping_queries(reset, workflow)
+        with self.assertRaisesRegex(
+            verifier.ContractViolation, "state bind ownership"
+        ):
+            verifier.validate_stored_file_mapping_queries(
+                reset,
+                workflow.replace(
+                    "sudo install -d -o 0 -g 10001 -m 0755 runtime/state",
+                    "mkdir -p runtime/state",
+                    1,
+                ),
+            )
+        with self.assertRaisesRegex(
+            verifier.ContractViolation, "state bind cleanup"
+        ):
+            verifier.validate_stored_file_mapping_queries(
+                reset,
+                workflow.replace(
+                    'sudo chown -R "$(id -u):$(id -g)" runtime/state',
+                    'chown -R "$(id -u):$(id -g)" runtime/state',
+                    1,
+                ),
+            )
+
     def test_bind_contract_normalizes_sources_and_preserves_access_mode(self) -> None:
         source = ROOT / "scripts/demo/demo_control.py"
         volumes = [

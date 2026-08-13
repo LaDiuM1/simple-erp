@@ -126,6 +126,15 @@ def validate_stored_file_mapping_queries(reset_script: str, seed_workflow: str) 
     for label, source in (("reset", reset_script), ("seed workflow", seed_workflow)):
         normalized = normalize_sql(source)
         require(expected in normalized, f"{label} stored file mapping query changed")
+    require(
+        "sudo install -d -o 0 -g 10001 -m 0755 runtime/state\n"
+        "          docker compose \\\n"
+        "            --project-name simple-erp-demo \\\n"
+        "            --env-file .env.demo \\\n"
+        "            -f compose.yml -f compose.demo.yml up -d db"
+        in seed_workflow,
+        "seed workflow state bind ownership changed",
+    )
     require_ordered(
         seed_workflow,
         "> runtime/work/ci/stored-files.tsv",
@@ -141,6 +150,12 @@ def validate_stored_file_mapping_queries(reset_script: str, seed_workflow: str) 
         "rmdir -- runtime/work/ci",
         "chmod 0700 runtime/work",
         label="seed workflow bind fixture cleanup",
+    )
+    require_ordered(
+        seed_workflow,
+        "- name: Stop isolated CI services",
+        'sudo chown -R "$(id -u):$(id -g)" runtime/state',
+        label="seed workflow state bind cleanup",
     )
 
 
