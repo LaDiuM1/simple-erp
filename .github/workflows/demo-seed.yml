@@ -147,10 +147,7 @@ jobs:
               values.append(f"{key}={value}")
           Path(".env.demo").write_text("\n".join(values) + "\n", encoding="utf-8")
           PY
-          mkdir -p runtime/work/ci runtime/logs
-          # The demo tool runs as UID 0 without DAC override. Mirror the production
-          # root-owned state directory instead of relying on the runner's UID.
-          sudo install -d -o 0 -g 10001 -m 0755 runtime/state
+          mkdir -p runtime/state runtime/work/ci runtime/logs
           docker compose \
             --project-name simple-erp-demo \
             --env-file .env.demo \
@@ -324,6 +321,10 @@ jobs:
           rmdir -- runtime/work/ci
           chmod 0700 runtime/work
 
+          # Seed verification above initializes the layout as the runner. Transfer
+          # the state bind to its production owner only when the control container
+          # is ready to publish lifecycle state.
+          sudo install -d -o 0 -g 10001 -m 0755 runtime/state
           "${compose[@]}" run --rm --no-deps -T demo-tool write-state \
             --seed-dir /seed --state-dir /state \
             --state READY --candidate "$generation" \
