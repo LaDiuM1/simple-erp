@@ -873,6 +873,21 @@ class StaticContractVerifierTest(unittest.TestCase):
         ):
             verifier.validate_tested_image_pair_flow(live_job, publish_job)
 
+    def test_live_acceptance_requires_production_root_runtime_boundary(self) -> None:
+        live_job, publish_job = build_workflow_jobs()
+        verifier.validate_tested_image_pair_flow(live_job, publish_job)
+        with self.assertRaisesRegex(
+            verifier.ContractViolation, "live demo workflow is missing"
+        ):
+            verifier.validate_tested_image_pair_flow(
+                live_job.replace(
+                    "sudo --preserve-env=DEMO_DB_ROOT_PASSWORD,DEMO_TEST_MODE,DEMO_TEST_PROJECT_ROOT,DEMO_SMOKE_TIMEOUT_SECONDS",
+                    "sudo -E",
+                    1,
+                ),
+                publish_job,
+            )
+
     def test_tested_image_pair_contract_rejects_later_overwrite_step(self) -> None:
         live_job, publish_job = build_workflow_jobs()
         publish_job += """

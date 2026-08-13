@@ -559,6 +559,15 @@ def validate_tested_image_pair_flow(live_job: str, publish_job: str) -> None:
         ),
         "live verification gained an unapproved image mutation command",
     )
+    for required in (
+        "timeout-minutes: 40",
+        'echo "DEMO_SMOKE_TIMEOUT_SECONDS=420"',
+        "sudo --preserve-env=DEMO_DB_ROOT_PASSWORD,DEMO_TEST_MODE,DEMO_TEST_PROJECT_ROOT,DEMO_SMOKE_TIMEOUT_SECONDS \\",
+        "/usr/bin/bash scripts/demo/acceptance-demo.sh",
+        'sudo chown -R "$(id -u):$(id -g)" runtime',
+    ):
+        require(required in live_job, f"live demo workflow is missing: {required}")
+    require("sudo -E" not in live_job, "live acceptance may preserve only explicit test variables")
     require(
         workflow_step_identities(publish_job, "publish job")
         == [
@@ -1482,12 +1491,6 @@ def validate_build_workflow_contract(project_root: Path) -> None:
     require("packages: write" not in verify_jobs, "verification jobs gained package write access")
     require(live_job.count("platforms: linux/arm64") == 2, "arm64 live image builds changed")
     require(live_job.count("load: true") == 2, "live acceptance must load both images")
-    for required in (
-        "timeout-minutes: 40",
-        'echo "DEMO_SMOKE_TIMEOUT_SECONDS=420"',
-        "bash scripts/demo/acceptance-demo.sh",
-    ):
-        require(required in live_job, f"live demo workflow is missing: {required}")
     require("if: github.event_name == 'push'" in publish_job, "publish push gate changed")
     require(publish_job.count("packages: write") == 1, "publish permission contract changed")
     validate_tested_image_pair_flow(live_job, publish_job)

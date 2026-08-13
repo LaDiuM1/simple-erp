@@ -137,7 +137,11 @@ jobs:
           chmod 600 .env.demo
 
       - name: Run reset-safe live acceptance
-        run: bash scripts/demo/acceptance-demo.sh
+        run: |
+          # Production reset and acceptance run as root. Preserve only the four
+          # test controls; credentials stay in the environment rather than argv.
+          sudo --preserve-env=DEMO_DB_ROOT_PASSWORD,DEMO_TEST_MODE,DEMO_TEST_PROJECT_ROOT,DEMO_SMOKE_TIMEOUT_SECONDS \
+            /usr/bin/bash scripts/demo/acceptance-demo.sh
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -175,6 +179,9 @@ jobs:
         run: |
           docker compose --project-name simple-erp-demo --env-file .env.demo \
             -f compose.yml -f compose.demo.yml down --volumes --remove-orphans || true
+          if [[ -d runtime ]]; then
+            sudo chown -R "$(id -u):$(id -g)" runtime
+          fi
 
   publish:
     name: publish tested image pair
