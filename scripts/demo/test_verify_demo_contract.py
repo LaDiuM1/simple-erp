@@ -435,6 +435,54 @@ class StaticContractVerifierTest(unittest.TestCase):
                 with self.assertRaises(verifier.ContractViolation):
                     verifier.validate_files_volume_initializer(weakened)
 
+    def test_reset_timer_static_contract_rejects_runtime_fallback_drift(self) -> None:
+        lib_script = (ROOT / "scripts/demo/lib.sh").read_text(encoding="utf-8")
+        timer_unit = (ROOT / "ops/systemd/simple-erp-demo-reset.timer").read_text(
+            encoding="utf-8"
+        )
+        verifier.validate_reset_timer_contract(lib_script, timer_unit)
+
+        mutations = (
+            (
+                lib_script.replace(
+                    '[[ "${service_state}" == "activating" ]]',
+                    '[[ "${service_state}" == "active" ]]',
+                    1,
+                ),
+                timer_unit,
+            ),
+            (
+                lib_script.replace(
+                    '--property=NextElapseUSecRealtime --value 2>/dev/null)" \\\n'
+                    '    || { demo_fail "systemd reset timer next execution time cannot be read"; return 1; }',
+                    '--property=NextElapseUSecRealtime --value 2>/dev/null || true)"',
+                    1,
+                ),
+                timer_unit,
+            ),
+            (
+                lib_script.replace(
+                    'candidate="$(demo_next_calendar_reset_at "${snapshot}")" || return 1\n'
+                    '  observed_epoch="$(demo_epoch_now)"',
+                    'observed_epoch="$(demo_epoch_now)"\n'
+                    '  candidate="$(demo_next_calendar_reset_at "${snapshot}")" || return 1',
+                    1,
+                ),
+                timer_unit,
+            ),
+            (
+                lib_script,
+                timer_unit.replace("00/6:00:00 Asia/Seoul", "00/3:00:00 Asia/Seoul"),
+            ),
+        )
+        for weakened_library, weakened_timer in mutations:
+            with self.subTest():
+                with self.assertRaises(verifier.ContractViolation):
+                    verifier.validate_reset_timer_contract(
+                        weakened_library,
+                        weakened_timer,
+                    )
+
     def test_control_failure_contract_accepts_every_early_stage(self) -> None:
         control = (ROOT / "scripts/demo/demo_control.py").read_text(encoding="utf-8")
 

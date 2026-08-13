@@ -89,6 +89,183 @@ class ResetScriptResourceContractTest(unittest.TestCase):
 
 
 @unittest.skipUnless(os.name == "posix" and shutil.which("bash"), "POSIX bash 필요")
+class ResetTimerScheduleContractTest(unittest.TestCase):
+
+    KST = dt.timezone(dt.timedelta(hours=9))
+    LIBRARY = ROOT / "scripts/demo/lib.sh"
+    TIMER_CALENDAR = "OnCalendar=*-*-* 00/6:00:00 Asia/Seoul\n"
+
+    @classmethod
+    def snapshot(cls, local_time: str) -> str:
+        local = dt.datetime.fromisoformat(local_time).replace(tzinfo=cls.KST)
+        return f"{int(local.timestamp())}|{local:%Y-%m-%d}|{local:%H:%M:%S}"
+
+    @classmethod
+    def epoch(cls, local_time: str) -> str:
+        local = dt.datetime.fromisoformat(local_time).replace(tzinfo=cls.KST)
+        return str(int(local.timestamp()))
+
+    def run_library(self, command: str, environment: dict[str, str] | None = None):
+        merged_environment = os.environ.copy()
+        if environment:
+            merged_environment.update(environment)
+        return subprocess.run(
+            [
+                "bash",
+                "-c",
+                f"source {json.dumps(str(self.LIBRARY))}; {command}",
+            ],
+            text=True,
+            capture_output=True,
+            env=merged_environment,
+            check=False,
+        )
+
+    def run_next_reset(self, **overrides: str):
+        with tempfile.TemporaryDirectory(prefix="demo-reset-timer-") as directory:
+            temporary = Path(directory)
+            fake_systemctl = temporary / "systemctl"
+            fake_systemctl.write_text(
+                "#!/usr/bin/env python3\n"
+                "import os\n"
+                "import sys\n"
+                "args = sys.argv[1:]\n"
+                "if args == ['is-active', '--quiet', 'simple-erp-demo-reset.timer']:\n"
+                "    raise SystemExit(int(os.environ.get('FAKE_TIMER_ACTIVE_EXIT', '0')))\n"
+                "if args == ['is-enabled', '--quiet', 'simple-erp-demo-reset.timer']:\n"
+                "    raise SystemExit(int(os.environ.get('FAKE_TIMER_ENABLED_EXIT', '0')))\n"
+                "if args == ['show', 'simple-erp-demo-reset.timer', '--property=Unit', '--value']:\n"
+                "    print(os.environ.get('FAKE_TIMER_UNIT', 'simple-erp-demo-reset.service'))\n"
+                "    raise SystemExit(int(os.environ.get('FAKE_TIMER_UNIT_EXIT', '0')))\n"
+                "if args == ['cat', 'simple-erp-demo-reset.timer']:\n"
+                "    sys.stdout.write(os.environ['FAKE_TIMER_TEXT'])\n"
+                "    raise SystemExit(int(os.environ.get('FAKE_TIMER_CAT_EXIT', '0')))\n"
+                "if args == ['show', 'simple-erp-demo-reset.timer', '--property=NextElapseUSecRealtime', '--value']:\n"
+                "    print(os.environ.get('FAKE_NEXT_ELAPSE', ''))\n"
+                "    raise SystemExit(int(os.environ.get('FAKE_NEXT_ELAPSE_EXIT', '0')))\n"
+                "if args == ['show', 'simple-erp-demo-reset.service', '--property=ActiveState', '--value']:\n"
+                "    print(os.environ.get('FAKE_SERVICE_STATE', 'activating'))\n"
+                "    raise SystemExit(int(os.environ.get('FAKE_SERVICE_STATE_EXIT', '0')))\n"
+                "print(f'unexpected systemctl arguments: {args!r}', file=sys.stderr)\n"
+                "raise SystemExit(64)\n",
+                encoding="utf-8",
+            )
+            fake_systemctl.chmod(0o755)
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "PATH": f"{temporary}{os.pathsep}{environment['PATH']}",
+                    "FAKE_TIMER_TEXT": self.TIMER_CALENDAR,
+                    "FAKE_KST_SNAPSHOT": self.snapshot("2026-08-14 05:59:59"),
+                    "FAKE_NOW_EPOCH": self.epoch("2026-08-14 05:59:59"),
+                }
+            )
+            environment.update(overrides)
+            return self.run_library(
+                "demo_kst_clock_snapshot() { printf '%s\\n' \"${FAKE_KST_SNAPSHOT}\"; }; "
+                "demo_epoch_now() { printf '%s\\n' \"${FAKE_NOW_EPOCH}\"; }; "
+                "demo_next_reset_at",
+                environment,
+            )
+
+    def test_calendar_helper_is_deterministic_at_all_reset_boundaries(self) -> None:
+        scenarios = {
+            "2026-08-14 05:59:59": "2026-08-14T06:00:00+09:00",
+            "2026-08-14 06:00:00": "2026-08-14T12:00:00+09:00",
+            "2026-08-14 17:59:59": "2026-08-14T18:00:00+09:00",
+            "2026-08-14 18:00:00": "2026-08-15T00:00:00+09:00",
+            "2026-08-14 23:59:59": "2026-08-15T00:00:00+09:00",
+        }
+        for snapshot, expected in scenarios.items():
+            with self.subTest(snapshot=snapshot):
+                result = self.run_library(
+                    "demo_next_calendar_reset_at "
+                    + json.dumps(self.snapshot(snapshot))
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), expected)
+
+    def test_elapsed_boundary_is_advanced_by_six_hours(self) -> None:
+        result = self.run_library(
+            "demo_ensure_future_reset_at "
+            "2026-08-14T06:00:00+09:00 "
+            + self.epoch("2026-08-14 06:00:00")
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "2026-08-14T12:00:00+09:00")
+
+    def test_activating_service_allows_blank_or_na_timer_property(self) -> None:
+        for value in ("", "n/a"):
+            with self.subTest(next_elapse=value):
+                result = self.run_next_reset(FAKE_NEXT_ELAPSE=value)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(
+                    result.stdout.strip(),
+                    "2026-08-14T06:00:00+09:00",
+                )
+
+    def test_fallback_requires_exact_activating_service_state(self) -> None:
+        for state in ("active", "inactive", "failed", ""):
+            with self.subTest(state=state):
+                result = self.run_next_reset(FAKE_SERVICE_STATE=state)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("outside service activation", result.stderr)
+
+    def test_systemd_property_read_failures_are_not_treated_as_empty_values(self) -> None:
+        scenarios = (
+            (
+                {"FAKE_NEXT_ELAPSE_EXIT": "1"},
+                "next execution time cannot be read",
+            ),
+            (
+                {"FAKE_SERVICE_STATE_EXIT": "1"},
+                "service state cannot be read",
+            ),
+        )
+        for overrides, error in scenarios:
+            with self.subTest(overrides=overrides):
+                result = self.run_next_reset(**overrides)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(error, result.stderr)
+
+    def test_timer_unit_and_calendar_contracts_fail_closed(self) -> None:
+        scenarios = (
+            {"FAKE_TIMER_ACTIVE_EXIT": "3"},
+            {"FAKE_TIMER_ENABLED_EXIT": "1"},
+            {"FAKE_TIMER_UNIT_EXIT": "1"},
+            {"FAKE_TIMER_UNIT": "other-reset.service"},
+            {"FAKE_TIMER_CAT_EXIT": "1"},
+            {"FAKE_TIMER_TEXT": self.TIMER_CALENDAR * 2},
+            {"FAKE_TIMER_TEXT": "OnCalendar=*-*-* 00/6:00:00 +09\n"},
+        )
+        for overrides in scenarios:
+            with self.subTest(overrides=overrides):
+                result = self.run_next_reset(**overrides)
+                self.assertNotEqual(result.returncode, 0)
+
+    def test_valid_systemd_timestamp_with_numeric_offset_is_preserved(self) -> None:
+        result = self.run_next_reset(
+            FAKE_NEXT_ELAPSE="2026-08-20T06:00:00+09:00",
+            FAKE_SERVICE_STATE="inactive",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "2026-08-20T06:00:00+09:00")
+
+    def test_invalid_nonempty_systemd_timestamp_is_rejected(self) -> None:
+        result = self.run_next_reset(FAKE_NEXT_ELAPSE="not-a-timestamp")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid next execution time", result.stderr)
+
+    def test_fallback_rechecks_clock_after_candidate_calculation(self) -> None:
+        result = self.run_next_reset(
+            FAKE_KST_SNAPSHOT=self.snapshot("2026-08-14 05:59:59"),
+            FAKE_NOW_EPOCH=self.epoch("2026-08-14 06:00:00"),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "2026-08-14T12:00:00+09:00")
+
+
+@unittest.skipUnless(os.name == "posix" and shutil.which("bash"), "POSIX bash 필요")
 class DbSecretArgvContractTest(unittest.TestCase):
 
     def test_root_db_password_reaches_docker_environment_but_not_actual_argv(self) -> None:

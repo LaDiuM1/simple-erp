@@ -12,6 +12,9 @@ DEMO_FILES_VOLUME="simple-erp-demo-files"
 DEMO_PREFLIGHT_CONTAINER="simple-erp-demo-preflight"
 DEMO_PRODUCTION_ROOT="/opt/simple-erp-demo"
 DEMO_ROOT_ENV_FILE="/etc/simple-erp-demo/reset.env"
+readonly DEMO_RESET_TIMER_UNIT="simple-erp-demo-reset.timer"
+readonly DEMO_RESET_SERVICE_UNIT="simple-erp-demo-reset.service"
+readonly DEMO_RESET_TIMER_CALENDAR="OnCalendar=*-*-* 00/6:00:00 Asia/Seoul"
 readonly DEMO_CONTROL_IMAGE="python:3.13-alpine@sha256:399babc8b49529dabfd9c922f2b5eea81d611e4512e3ed250d75bd2e7683f4b0"
 export DEMO_CONTROL_IMAGE
 
@@ -194,19 +197,131 @@ demo_prepare_files_volume() {
     '
 }
 
+demo_assert_reset_timer_contract() {
+  local configured_service timer_text calendar_count exact_calendar_count
+  systemctl is-active --quiet "${DEMO_RESET_TIMER_UNIT}" \
+    || { demo_fail "systemd reset timer is not active"; return 1; }
+  systemctl is-enabled --quiet "${DEMO_RESET_TIMER_UNIT}" \
+    || { demo_fail "systemd reset timer is not enabled"; return 1; }
+
+  configured_service="$(systemctl show "${DEMO_RESET_TIMER_UNIT}" \
+    --property=Unit --value 2>/dev/null)" \
+    || { demo_fail "systemd reset timer Unit cannot be read"; return 1; }
+  [[ "${configured_service}" == "${DEMO_RESET_SERVICE_UNIT}" ]] \
+    || { demo_fail "systemd reset timer Unit contract mismatch"; return 1; }
+
+  timer_text="$(systemctl cat "${DEMO_RESET_TIMER_UNIT}" 2>/dev/null)" \
+    || { demo_fail "systemd reset timer definition cannot be read"; return 1; }
+  calendar_count="$(printf '%s\n' "${timer_text}" \
+    | grep -Ec '^[[:space:]]*OnCalendar=' || true)"
+  exact_calendar_count="$(printf '%s\n' "${timer_text}" \
+    | grep -Fxc "${DEMO_RESET_TIMER_CALENDAR}" || true)"
+  [[ "${calendar_count}" == "1" && "${exact_calendar_count}" == "1" ]] \
+    || { demo_fail "systemd reset timer OnCalendar contract mismatch"; return 1; }
+}
+
+demo_kst_clock_snapshot() {
+  TZ=Asia/Seoul date '+%s|%F|%T'
+}
+
+demo_epoch_now() {
+  date '+%s'
+}
+
+demo_next_calendar_reset_at() {
+  local snapshot="${1:-}"
+  local snapshot_epoch snapshot_date snapshot_time snapshot_hour
+  local parsed_snapshot_epoch next_date next_hour candidate_epoch
+  if [[ "${snapshot}" =~ ^([1-9][0-9]*)\|([0-9]{4}-[0-9]{2}-[0-9]{2})\|([0-9]{2}:[0-9]{2}:[0-9]{2})$ ]]; then
+    snapshot_epoch="${BASH_REMATCH[1]}"
+    snapshot_date="${BASH_REMATCH[2]}"
+    snapshot_time="${BASH_REMATCH[3]}"
+  else
+    demo_fail "invalid KST clock snapshot"
+    return 1
+  fi
+
+  parsed_snapshot_epoch="$(TZ=Asia/Seoul date \
+    -d "${snapshot_date} ${snapshot_time}" '+%s' 2>/dev/null)" \
+    || { demo_fail "invalid KST clock snapshot value"; return 1; }
+  [[ "${parsed_snapshot_epoch}" == "${snapshot_epoch}" ]] \
+    || { demo_fail "KST clock snapshot fields disagree"; return 1; }
+
+  snapshot_hour=$((10#${snapshot_time%%:*}))
+  next_date="${snapshot_date}"
+  if ((snapshot_hour < 6)); then
+    next_hour="06"
+  elif ((snapshot_hour < 12)); then
+    next_hour="12"
+  elif ((snapshot_hour < 18)); then
+    next_hour="18"
+  else
+    next_hour="00"
+    next_date="$(TZ=Asia/Seoul date -d "${snapshot_date} +1 day" '+%F')" \
+      || { demo_fail "next KST calendar date cannot be resolved"; return 1; }
+  fi
+
+  candidate_epoch="$(TZ=Asia/Seoul date \
+    -d "${next_date} ${next_hour}:00:00" '+%s' 2>/dev/null)" \
+    || { demo_fail "next KST reset boundary cannot be resolved"; return 1; }
+  while ((candidate_epoch <= snapshot_epoch)); do
+    ((candidate_epoch += 21600))
+  done
+  TZ=Asia/Seoul date -d "@${candidate_epoch}" --iso-8601=seconds
+}
+
+demo_ensure_future_reset_at() {
+  local candidate="${1:-}"
+  local observed_epoch="${2:-}"
+  local candidate_epoch intervals
+  [[ "${observed_epoch}" =~ ^[1-9][0-9]*$ ]] \
+    || { demo_fail "invalid reset schedule guard epoch"; return 1; }
+  candidate_epoch="$(date -d "${candidate}" '+%s' 2>/dev/null)" \
+    || { demo_fail "invalid reset schedule candidate"; return 1; }
+
+  # 경계 시각을 지나 버린 후보는 다음 6시간 경계로 넘긴다.
+  if ((candidate_epoch <= observed_epoch)); then
+    intervals=$(((observed_epoch - candidate_epoch) / 21600 + 1))
+    ((candidate_epoch += intervals * 21600))
+  fi
+  ((candidate_epoch > observed_epoch)) \
+    || { demo_fail "next reset schedule is not in the future"; return 1; }
+  TZ=Asia/Seoul date -d "@${candidate_epoch}" --iso-8601=seconds
+}
+
 demo_next_reset_at() {
   if demo_is_true "${DEMO_TEST_MODE:-false}"; then
     date -d "+21600 seconds" --iso-8601=seconds
     return
   fi
 
-  command -v systemctl >/dev/null || demo_fail "systemctl is required outside test mode"
-  local raw
-  raw="$(systemctl show simple-erp-demo-reset.timer \
-    --property=NextElapseUSecRealtime --value 2>/dev/null || true)"
-  [[ -n "${raw}" && "${raw}" != "n/a" ]] \
-    || demo_fail "active systemd reset timer has no next execution time"
-  date -d "${raw}" --iso-8601=seconds
+  command -v systemctl >/dev/null \
+    || { demo_fail "systemctl is required outside test mode"; return 1; }
+  demo_assert_reset_timer_contract || return 1
+
+  local raw resolved service_state snapshot candidate observed_epoch
+  raw="$(systemctl show "${DEMO_RESET_TIMER_UNIT}" \
+    --property=NextElapseUSecRealtime --value 2>/dev/null)" \
+    || { demo_fail "systemd reset timer next execution time cannot be read"; return 1; }
+  if [[ -n "${raw}" && "${raw}" != "n/a" ]]; then
+    resolved="$(TZ=Asia/Seoul date -d "${raw}" --iso-8601=seconds 2>/dev/null)" \
+      || { demo_fail "systemd reset timer returned an invalid next execution time"; return 1; }
+    printf '%s\n' "${resolved}"
+    return
+  fi
+
+  service_state="$(systemctl show "${DEMO_RESET_SERVICE_UNIT}" \
+    --property=ActiveState --value 2>/dev/null)" \
+    || { demo_fail "systemd reset service state cannot be read"; return 1; }
+  [[ "${service_state}" == "activating" ]] \
+    || { demo_fail "systemd reset timer has no next execution time outside service activation"; return 1; }
+
+  snapshot="$(demo_kst_clock_snapshot)" \
+    || { demo_fail "current KST clock snapshot cannot be read"; return 1; }
+  candidate="$(demo_next_calendar_reset_at "${snapshot}")" || return 1
+  observed_epoch="$(demo_epoch_now)" \
+    || { demo_fail "current epoch cannot be read"; return 1; }
+  demo_ensure_future_reset_at "${candidate}" "${observed_epoch}"
 }
 
 demo_acquire_lock() {

@@ -887,6 +887,83 @@ def validate_files_volume_initializer(lib_script: str) -> None:
     )
 
 
+def validate_reset_timer_contract(lib_script: str, timer_unit: str) -> None:
+    require(
+        timer_unit.count("OnCalendar=*-*-* 00/6:00:00 Asia/Seoul") == 1
+        and timer_unit.count("Unit=simple-erp-demo-reset.service") == 1,
+        "reset timer calendar or service contract changed",
+    )
+    for declaration in (
+        'readonly DEMO_RESET_TIMER_UNIT="simple-erp-demo-reset.timer"',
+        'readonly DEMO_RESET_SERVICE_UNIT="simple-erp-demo-reset.service"',
+        'readonly DEMO_RESET_TIMER_CALENDAR="OnCalendar=*-*-* 00/6:00:00 Asia/Seoul"',
+    ):
+        require(declaration in lib_script, f"reset timer constant changed: {declaration}")
+
+    assertion, _ = shell_function_body(lib_script, "demo_assert_reset_timer_contract")
+    require_ordered(
+        assertion,
+        'systemctl is-active --quiet "${DEMO_RESET_TIMER_UNIT}"',
+        'systemctl is-enabled --quiet "${DEMO_RESET_TIMER_UNIT}"',
+        '--property=Unit --value',
+        '[[ "${configured_service}" == "${DEMO_RESET_SERVICE_UNIT}" ]]',
+        'systemctl cat "${DEMO_RESET_TIMER_UNIT}"',
+        "grep -Ec '^[[:space:]]*OnCalendar='",
+        'grep -Fxc "${DEMO_RESET_TIMER_CALENDAR}"',
+        '[[ "${calendar_count}" == "1" && "${exact_calendar_count}" == "1" ]]',
+        label="reset timer runtime contract",
+    )
+
+    calendar_helper, _ = shell_function_body(
+        lib_script, "demo_next_calendar_reset_at"
+    )
+    for token in (
+        'local snapshot="${1:-}"',
+        "TZ=Asia/Seoul date",
+        "candidate_epoch <= snapshot_epoch",
+        "--iso-8601=seconds",
+    ):
+        require(token in calendar_helper, f"calendar reset helper changed: {token}")
+    require(
+        "systemctl" not in calendar_helper and "demo_epoch_now" not in calendar_helper,
+        "calendar reset helper must remain pure over its snapshot argument",
+    )
+
+    future_guard, _ = shell_function_body(lib_script, "demo_ensure_future_reset_at")
+    for token in (
+        'local candidate="${1:-}"',
+        'local observed_epoch="${2:-}"',
+        "candidate_epoch <= observed_epoch",
+        "candidate_epoch > observed_epoch",
+        "21600",
+    ):
+        require(token in future_guard, f"future reset guard changed: {token}")
+
+    resolver, _ = shell_function_body(lib_script, "demo_next_reset_at")
+    require(
+        'systemctl is-active --quiet "${DEMO_RESET_SERVICE_UNIT}"' not in resolver,
+        "reset fallback must not use is-active for an activating oneshot service",
+    )
+    require(
+        "|| true" not in resolver,
+        "reset schedule property failures must not become empty fallback values",
+    )
+    require_ordered(
+        resolver,
+        "demo_assert_reset_timer_contract || return 1",
+        "--property=NextElapseUSecRealtime --value",
+        'demo_fail "systemd reset timer next execution time cannot be read"',
+        'if [[ -n "${raw}" && "${raw}" != "n/a" ]]',
+        '--property=ActiveState --value',
+        '[[ "${service_state}" == "activating" ]]',
+        'snapshot="$(demo_kst_clock_snapshot)"',
+        'candidate="$(demo_next_calendar_reset_at "${snapshot}")"',
+        'observed_epoch="$(demo_epoch_now)"',
+        'demo_ensure_future_reset_at "${candidate}" "${observed_epoch}"',
+        label="reset schedule fallback",
+    )
+
+
 def validate_control_plane_failure_contract(control_script: str) -> None:
     pattern_match = re.search(
         r'CONTROL_PLANE_FAILURE_STAGE_PATTERN\s*=\s*re\.compile\(\s*r"([^"]+)"',
@@ -921,8 +998,12 @@ def validate_reset_script_contract(project_root: Path) -> None:
         encoding="utf-8"
     )
     lib_script = (project_root / "scripts/demo/lib.sh").read_text(encoding="utf-8")
+    timer_unit = (project_root / "ops/systemd/simple-erp-demo-reset.timer").read_text(
+        encoding="utf-8"
+    )
     validate_reset_script_text(reset_script)
     validate_files_volume_initializer(lib_script)
+    validate_reset_timer_contract(lib_script, timer_unit)
     validate_control_plane_failure_contract(control_script)
 
 
