@@ -91,6 +91,22 @@ class StaticContractVerifierTest(unittest.TestCase):
                 reset, workflow.replace("status, owner_type, owner_id, uploader_id", "status")
             )
 
+    def test_stored_file_mapping_fixture_requires_non_privileged_read_contract(self) -> None:
+        reset = (ROOT / "scripts/demo/reset-demo.sh").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/demo-seed.yml").read_text(encoding="utf-8")
+        verifier.validate_stored_file_mapping_queries(reset, workflow)
+        with self.assertRaisesRegex(
+            verifier.ContractViolation, "bind fixture permissions"
+        ):
+            verifier.validate_stored_file_mapping_queries(
+                reset,
+                workflow.replace(
+                    "chmod 0644 runtime/work/ci/stored-files.tsv",
+                    "chmod 0600 runtime/work/ci/stored-files.tsv",
+                    1,
+                ),
+            )
+
     def test_bind_contract_normalizes_sources_and_preserves_access_mode(self) -> None:
         source = ROOT / "scripts/demo/demo_control.py"
         volumes = [

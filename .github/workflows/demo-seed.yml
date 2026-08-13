@@ -300,6 +300,10 @@ jobs:
                     status, owner_type, owner_id, uploader_id
              FROM stored_files ORDER BY id" \
             > runtime/work/ci/stored-files.tsv
+          # The control container intentionally drops DAC override. GitHub's runner UID
+          # owns this bind fixture, so grant only traversal/read needed for this check.
+          chmod 0711 runtime/work runtime/work/ci
+          chmod 0644 runtime/work/ci/stored-files.tsv
           generation=00000000-0000-4000-8000-000000000001
           "${compose[@]}" run --rm --no-deps -T demo-tool stage-files \
             --seed-dir /seed --files-root /files \
@@ -313,6 +317,9 @@ jobs:
             --seed-dir /seed --files-root /files \
             --mapping /work/ci/stored-files.tsv --generation "$generation" \
             --expected-app-version "$DEMO_COMPATIBLE_APP_VERSION"
+          rm -f -- runtime/work/ci/stored-files.tsv
+          rmdir -- runtime/work/ci
+          chmod 0700 runtime/work
 
           "${compose[@]}" run --rm --no-deps -T demo-tool write-state \
             --seed-dir /seed --state-dir /state \

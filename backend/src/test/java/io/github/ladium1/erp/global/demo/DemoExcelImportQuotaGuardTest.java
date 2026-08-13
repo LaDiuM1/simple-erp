@@ -26,12 +26,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DemoExcelImportQuotaGuardTest {
 
-    private static final LocalDateTime RESET_AT = LocalDateTime.of(2026, 8, 13, 9, 0);
-
     private DemoProperties properties;
     private JdbcTemplate jdbcTemplate;
     private TransactionTemplate transactionTemplate;
     private DemoExcelImportQuotaGuard guard;
+    private LocalDateTime resetAt;
 
     @BeforeEach
     void setUp() {
@@ -56,7 +55,8 @@ class DemoExcelImportQuotaGuardTest {
                     menu_code VARCHAR(255) NOT NULL, target_id BIGINT, target_type VARCHAR(64), trace_id VARCHAR(8)
                 )
                 """);
-        jdbcTemplate.update("INSERT INTO demo_seed_manifest(id, reset_at) VALUES (1, ?)", Timestamp.valueOf(RESET_AT));
+        resetAt = jdbcTemplate.queryForObject("SELECT CURRENT_TIMESTAMP(6)", LocalDateTime.class).minusMinutes(1);
+        jdbcTemplate.update("INSERT INTO demo_seed_manifest(id, reset_at) VALUES (1, ?)", Timestamp.valueOf(resetAt));
         jdbcTemplate.update("INSERT INTO employees(id, login_id) VALUES (1, 'demo.manager'), (2, 'other.manager')");
         guard = new DemoExcelImportQuotaGuard(jdbcTemplate, properties);
         authenticate("demo.manager");
@@ -90,7 +90,7 @@ class DemoExcelImportQuotaGuardTest {
     @Test
     @DisplayName("reset 이전 감사 행은 제외하되 다른 계정까지 합친 generation quota를 적용")
     void generation_quota_uses_manifest_reset_boundary() {
-        insertAudit(RESET_AT.minusSeconds(1), "demo.manager", 99L, "DEMO_CUSTOMER_EXCEL_IMPORT");
+        insertAudit(resetAt.minusSeconds(1), "demo.manager", 99L, "DEMO_CUSTOMER_EXCEL_IMPORT");
         authenticate("other.manager");
         transactionTemplate.executeWithoutResult(ignored -> guard.assertRowsAllowedAndRecord(
                 DemoExcelImportQuotaGuard.ImportKind.CUSTOMER, List.of(1L, 2L, 3L)));

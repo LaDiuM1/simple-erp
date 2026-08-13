@@ -126,6 +126,22 @@ def validate_stored_file_mapping_queries(reset_script: str, seed_workflow: str) 
     for label, source in (("reset", reset_script), ("seed workflow", seed_workflow)):
         normalized = normalize_sql(source)
         require(expected in normalized, f"{label} stored file mapping query changed")
+    require_ordered(
+        seed_workflow,
+        "> runtime/work/ci/stored-files.tsv",
+        "chmod 0711 runtime/work runtime/work/ci",
+        "chmod 0644 runtime/work/ci/stored-files.tsv",
+        'demo-tool stage-files \\\n',
+        label="seed workflow bind fixture permissions",
+    )
+    require_ordered(
+        seed_workflow,
+        "demo-tool verify-current-files \\\n",
+        "rm -f -- runtime/work/ci/stored-files.tsv",
+        "rmdir -- runtime/work/ci",
+        "chmod 0700 runtime/work",
+        label="seed workflow bind fixture cleanup",
+    )
 
 
 def load_compose_config(path: Path) -> dict[str, object]:
