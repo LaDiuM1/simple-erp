@@ -1,6 +1,6 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { fireEvent, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MENU_CODE } from '@/shared/config/menuConfig';
 import { renderWithTheme } from '@/test/renderWithTheme';
 import WritePermissionRoute from './WritePermissionRoute';
@@ -44,6 +44,10 @@ describe('WritePermissionRoute', () => {
     mocks.retry.mockReset();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('읽기 권한만 있으면 직접 URL 의 등록 폼을 렌더링하지 않는다', () => {
     renderRoute();
 
@@ -53,12 +57,19 @@ describe('WritePermissionRoute', () => {
   });
 
   it('프로필을 불러오는 중에는 권한 없음 화면을 노출하지 않고 허용 후 렌더링한다', () => {
+    vi.useFakeTimers();
     mocks.isLoading = true;
     const view = renderRoute();
 
-    expect(screen.getByRole('status', { name: '페이지를 불러오는 중' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     expect(screen.queryByText('수정 권한이 없어 이 페이지를 사용할 수 없습니다.'))
       .not.toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(200));
+
+    expect(screen.getByRole('status')).toHaveTextContent('페이지 불러오는 중');
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
 
     mocks.isLoading = false;
     mocks.canWrite = true;
