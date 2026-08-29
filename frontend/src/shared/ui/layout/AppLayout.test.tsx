@@ -105,6 +105,7 @@ describe('AppLayout route transition', () => {
     expect(main).not.toContainElement(transitionOverlay);
     expect(screen.queryByRole('progressbar', { name: '페이지 불러오는 중' }))
       .not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 
     runNextFrame(16);
     expect(main).toHaveAttribute('aria-busy', 'true');
@@ -112,6 +113,8 @@ describe('AppLayout route transition', () => {
     expect(contentFrame.querySelector('[data-route-transition="pending"]')).toBeInTheDocument();
     expect(screen.queryByRole('progressbar', { name: '페이지 불러오는 중' }))
       .not.toBeInTheDocument();
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 
     runNextFrame(32);
     expect(main).not.toHaveAttribute('aria-busy');
@@ -120,9 +123,11 @@ describe('AppLayout route transition', () => {
       .not.toBeInTheDocument();
     expect(screen.queryByRole('progressbar', { name: '페이지 불러오는 중' }))
       .not.toBeInTheDocument();
+    expect(screen.queryByRole('status'))
+      .not.toBeInTheDocument();
   });
 
-  it('느린 화면 이동은 지연 진행선을 표시한 뒤 완성 화면을 공개한다', async () => {
+  it('느린 화면 이동은 숨김 상태를 전달한 뒤 완성 화면을 공개한다', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     let resolvePage: ((page: { default: () => ReactElement }) => void) | undefined;
     const PendingPage = lazy(() => new Promise<{ default: () => ReactElement }>((resolve) => {
@@ -160,6 +165,9 @@ describe('AppLayout route transition', () => {
     expect(contentFrame.querySelector('[data-route-transition="pending"]')).toBeInTheDocument();
     expect(screen.queryByRole('progressbar', { name: '페이지 불러오는 중' }))
       .not.toBeInTheDocument();
+    const pendingStatuses = screen.getAllByRole('status');
+    expect(pendingStatuses).toHaveLength(2);
+    pendingStatuses.forEach((status) => expect(status).toBeEmptyDOMElement());
 
     runNextFrame(16);
     runNextFrame(32);
@@ -168,14 +176,17 @@ describe('AppLayout route transition', () => {
     expect(main).not.toHaveAttribute('inert');
     expect(contentFrame.querySelector('[data-route-transition="pending"]'))
       .not.toBeInTheDocument();
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 
     act(() => vi.advanceTimersByTime(199));
     expect(screen.queryByRole('progressbar', { name: '페이지 불러오는 중' }))
       .not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 
     act(() => vi.advanceTimersByTime(1));
-    expect(screen.getByRole('progressbar', { name: '페이지 불러오는 중' }))
-      .toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('페이지 불러오는 중');
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
 
     if (!resolvePage) throw new Error('지연 화면 요청이 시작되지 않았습니다.');
     await act(async () => {
@@ -185,6 +196,8 @@ describe('AppLayout route transition', () => {
 
     expect(screen.getByText('완성된 결재 화면')).toBeInTheDocument();
     expect(screen.queryByRole('progressbar', { name: '페이지 불러오는 중' }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole('status'))
       .not.toBeInTheDocument();
   });
 });

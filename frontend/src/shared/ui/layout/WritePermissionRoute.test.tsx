@@ -61,15 +61,15 @@ describe('WritePermissionRoute', () => {
     mocks.isLoading = true;
     const view = renderRoute();
 
-    expect(screen.queryByRole('progressbar', { name: '페이지 불러오는 중' }))
-      .not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     expect(screen.queryByText('수정 권한이 없어 이 페이지를 사용할 수 없습니다.'))
       .not.toBeInTheDocument();
 
     act(() => vi.advanceTimersByTime(200));
 
-    expect(screen.getByRole('progressbar', { name: '페이지 불러오는 중' }))
-      .toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('페이지 불러오는 중');
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
 
     mocks.isLoading = false;
     mocks.canWrite = true;
